@@ -1,0 +1,51 @@
+# GitLab CI — GitHub Actions build.yml ile ayni iki-is mantigi.
+# Job 1: lint + platform-bagimsiz unit testler (py 3.10-3.12 matrix).
+# Job 2: debian paket + docker entegrasyon (Pardus base image, non-gating).
+
+stages:
+  - test
+  - integration
+
+# --- Job 1: Lint + Unit (Python matrix) -----------------------------------
+.lint_and_test:
+  stage: test
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -e ".[test]"
+    - pip install ruff
+  script:
+    - ruff check src tests || true   # non-gating (soft) lint
+    - pytest tests/ -v
+
+lint-and-test:py310:
+  extends: .lint_and_test
+  image: python:3.10-slim
+
+lint-and-test:py311:
+  extends: .lint_and_test
+  image: python:3.11-slim
+
+lint-and-test:py312:
+  extends: .lint_and_test
+  image: python:3.12-slim
+
+# --- Job 2: Debian build + entegrasyon ------------------------------------
+# docker-in-docker: run_docker_test.sh Pardus imajini kurar ve entrypoint'i
+# calistirir. Base image registry riski -> allow_failure ile non-gating.
+debian-integration:
+  stage: integration
+  image: docker:27
+  services:
+    - docker:27-dind
+  needs: ["lint-and-test:py311"]
+  allow_failure: true
+  before_script:
+    - apk add --no-cache python3
+  script:
+    - python3 tools/compile_mo.py locale
+    - sh tests/run_docker_test.sh
+  artifacts:
+    paths:
+      - pardus-paylasim_1.0.0_all.deb
+    expire_in: 1 week
+    when: always

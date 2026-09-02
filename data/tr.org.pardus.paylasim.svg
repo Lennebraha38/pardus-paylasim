@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" version="1.1" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <!-- Background Gradient: Deep Pardus Blue/Dark Green -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141E30"/>
+      <stop offset="100%" stop-color="#243B55"/>
+    </linearGradient>
+    
+    <!-- Shield Gradient: Glowing Emerald/Cyan (Represents Security & Continuity) -->
+    <linearGradient id="shield-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00C9FF"/>
+      <stop offset="100%" stop-color="#92FE9D"/>
+    </linearGradient>
+
+    <!-- Node/Connection line gradient -->
+    <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e0e0"/>
+    </linearGradient>
+
+    <!-- Soft Drop Shadow for Depth -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Base Squircle (Modern App Icon Shape) -->
+  <rect width="236" height="236" x="10" y="10" rx="54" fill="url(#bg-grad)" filter="url(#shadow)" />
+  <rect width="236" height="236" x="10" y="10" rx="54" fill="none" stroke="#2C5364" stroke-width="2"/>
+  
+  <!-- Outer Shield Path -->
+  <path d="M128,45 L70,72 L70,128 C70,175 95,202 128,218 C161,202 186,175 186,128 L186,72 Z" 
+        fill="url(#shield-grad)" filter="url(#shadow)"/>
+  
+  <!-- Inner Cutout/Symbol (P2P Nodes & Protection) -->
+  <path d="M128,198 C100,185 84,162 84,128 L84,82 L128,62 L172,82 L172,128 C172,162 156,185 128,198 Z" 
+        fill="#141E30" opacity="0.95"/>
+
+  <!-- Network Connection Nodes -->
+  <!-- Center Node -->
+  <circle cx="128" cy="135" r="14" fill="#ffffff" filter="url(#shadow)"/>
+  <!-- Top Left Node -->
+  <circle cx="100" cy="105" r="10" fill="#92FE9D"/>
+  <!-- Top Right Node -->
+  <circle cx="156" cy="105" r="10" fill="#00C9FF"/>
+  
+  <!-- Connecting Lines -->
+  <path d="M107,112 L120,126" stroke="url(#line-grad)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M149,112 L136,126" stroke="url(#line-grad)" stroke-width="6" stroke-linecap="round"/>
+</svg>

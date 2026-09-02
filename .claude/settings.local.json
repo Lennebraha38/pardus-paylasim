@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcp-obsidian__obsidian_get_recent_changes",
+      "Bash(PYTHONPATH=src python -m pytest tests/ -v --tb=short)",
+      "Bash(python -c \"import sys,json;[print\\(json.loads\\(l\\).get\\('timestamp',''\\), json.loads\\(l\\).get\\('type',''\\)\\) for l in sys.stdin if l.strip\\(\\)]\")",
+      "Bash(python *)",
+      "Bash(PYTHONUTF8=1 py *)",
+      "Bash(dpkg-deb -c pardus-paylasim_1.0.0_all.deb)",
+      "Bash(ar t *)"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Pardus Güvenli Paylaşım
+GenericName=Güvenli Paylaşım, Cihaz Tanıma ve Ekran Paylaşımı
+Comment=Dosya meta veri temizleme, Wi-Fi/Bluetooth cihaz tanıma ve ekran paylaşımı merkezi
+Exec=pardus-paylasim %U
+Icon=tr.org.pardus.paylasim
+Terminal=false
+Type=Application
+Categories=Utility;Security;GTK;
+StartupNotify=true
+Keywords=pardus;paylaşım;security;privacy;airplay;airdrop;sidecar;screen-share;

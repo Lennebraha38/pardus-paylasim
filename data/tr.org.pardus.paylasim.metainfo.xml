@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>tr.org.pardus.paylasim</id>
+  <name>Pardus Güvenli Paylaşım</name>
+  <summary>Pardus cihazlar arası güvenli dosya ve ekran paylaşımı</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>
+      Pardus Güvenli Paylaşım, yerel ağınızdaki diğer Pardus cihazlarını mDNS ve Bluetooth LE
+      kullanarak anında bulur. Ekranınızı şifreli bir şekilde paylaşabilir, dosyalarınızı 
+      meta verilerinden (konum, yazar vb.) arındırarak güvenle aktarabilirsiniz.
+    </p>
+  </description>
+  <launchable type="desktop-id">tr.org.pardus.paylasim.desktop</launchable>
+  <icon type="stock">tr.org.pardus.paylasim</icon>
+  <developer_name>Pardus Geliştirici Ekibi</developer_name>
+  <url type="homepage">https://www.pardus.org.tr/</url>
+</component>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="tr.org.pardus.paylasim" path="/tr/org/pardus/paylasim/">
+    <key name="device-name" type="s">
+      <default>''</default>
+      <summary>Cihaz adı</summary>
+      <description>
+        Ağda görünen cihaz adı. Boş bırakılırsa çalışma zamanında sistem
+        ana bilgisayar adı (hostname) kullanılır.
+      </description>
+    </key>
+    <key name="mdns-visible" type="b">
+      <default>true</default>
+      <summary>mDNS görünürlüğü</summary>
+      <description>
+        Cihazın Wi-Fi ağında mDNS/Zeroconf ile görünür olup olmadığı.
+      </description>
+    </key>
+    <key name="auto-clipboard-protection" type="b">
+      <default>false</default>
+      <summary>Otomatik pano koruması</summary>
+      <description>
+        Pano içeriğindeki hassas metinlerin otomatik maskelenip
+        maskelenmeyeceği.
+      </description>
+    </key>
+    <key name="download-dir" type="s">
+      <default>''</default>
+      <summary>İndirme dizini</summary>
+      <description>
+        Alınan dosyaların kaydedileceği dizin. Boş bırakılırsa çalışma
+        zamanında ~/İndirilenler/PardusPaylasim kullanılır.
+      </description>
+    </key>
+    <key name="screen-quality" type="i">
+      <range min="1" max="100"/>
+      <default>70</default>
+      <summary>Ekran akışı JPEG kalitesi</summary>
+      <description>
+        Ekran paylaşımı akışının JPEG kodlama kalitesi (1-100). Yüksek değer
+        daha net görüntü ama daha fazla bant genişliği demektir.
+      </description>
+    </key>
+    <key name="framerate" type="i">
+      <range min="1" max="60"/>
+      <default>25</default>
+      <summary>Ekran akışı kare hızı</summary>
+      <description>
+        Ekran paylaşımı akışının hedef kare hızı (fps, 1-60). Düşük değer
+        bant genişliğini azaltır, yüksek değer akıcılığı artırır.
+      </description>
+    </key>
+    <key name="resolution" type="s">
+      <default>'native'</default>
+      <summary>Ekran akışı çözünürlüğü</summary>
+      <description>
+        Ekran paylaşımı akışının çözünürlüğü. 'native' kaynak çözünürlüğü
+        (ölçekleme yok) anlamına gelir; ör. '1920x1080' ile ölçeklenir.
+      </description>
+    </key>
+    <key name="port" type="i">
+      <range min="1" max="65535"/>
+      <default>52345</default>
+      <summary>Ekran akışı portu</summary>
+      <description>
+        Ekran paylaşımı HTTP(S) sunucusunun dinleyeceği TCP portu.
+      </description>
+    </key>
+    <key name="allow-web-origin" type="s">
+      <default>''</default>
+      <summary>Web istemci CORS izin listesi</summary>
+      <description>
+        Tarayıcı tabanlı web istemcinin ekran akışına erişebileceği origin
+        listesi (virgülle ayrılır, ör. 'https://ornek.local'). Boş bırakılırsa
+        hiçbir origin'e CORS izni verilmez ve joker '*' asla gönderilmez.
+      </description>
+    </key>
+  </schema>
+</schemalist>
