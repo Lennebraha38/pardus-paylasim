@@ -1,0 +1,32 @@
+services:
+  router:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.linux_protocol_mock
+    command: ["python3", "src/pardus_paylasim_server/router.py"]
+    networks:
+      - verify-net
+    healthcheck:
+      # Router WebSocket üzerinden hizmet veriyorsa basitçe TCP bağlantı kontrolü:
+      test: ["CMD-SHELL", "python3 -c 'import socket; s=socket.socket(); s.settimeout(2); s.connect((\"127.0.0.1\", 8765)); s.close()'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  verify:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.verify
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: pardus-paylasim-linux-verify
+    # Volume bind-mount YAPILMAZ (immutable). Kaynak kod Dockerfile içinden kopyalanmıştır.
+    depends_on:
+      router:
+        condition: service_healthy
+    networks:
+      - verify-net
+
+networks:
+  verify-net:

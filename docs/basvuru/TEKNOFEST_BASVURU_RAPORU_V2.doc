@@ -1,0 +1,107 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>TEKNOFEST Başvuru Raporu</title>
+<style>
+body { font-family: 'Calibri', sans-serif; font-size: 11pt; line-height: 1.5; }
+h1 { color: #2E74B5; font-size: 16pt; text-align: center; }
+h2 { color: #2E74B5; font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+h3 { color: #44546A; font-size: 12pt; }
+p { margin-bottom: 10px; }
+li { margin-bottom: 5px; }
+.bold { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>TEKNOFEST 2026 - PARDUS HATA YAKALAMA VE ÖNERİ YARIŞMASI BAŞVURU RAPORU</h1>
+
+<p><span class="bold">Yarışma Kategorisi:</span> Geliştirme Kategorisi<br>
+<span class="bold">Proje Adı:</span> Pardus Güvenli Paylaşım (Pardus Secure Share)<br>
+<span class="bold">Hedef İşletim Sistemi:</span> Pardus İşletim Sistemi (Debian tabanlı)<br>
+<span class="bold">Açık Kaynak Kod Deposu:</span> <a href="https://github.com/tefografi/pardus-paylasim">https://github.com/tefografi/pardus-paylasim</a> <i>(Yarışma şartnamesi Madde 3.b ve Madde 27 gereğince başvuru esnasında açık/public hale getirilmelidir.)</i></p>
+
+<p><span class="bold">Hata / Öneri Türü (Madde 7.2):</span> Kullanılabilirlik Önerisi ve Güvenlik Zafiyeti Giderimi<br>
+<span class="bold">Önem Seviyesi (Madde 7.1):</span> Yüksek Önem Dereceli Öneri</p>
+
+<hr>
+
+<h2>1. Hatanın / Önerinin Eksiksiz Tanımı (Problem Durumu)</h2>
+<p>Günümüz modern işletim sistemlerinde kullanıcılar, aynı ağ (LAN) üzerindeki cihazlar arasında hızlıca dosya veya ekran paylaşabilmek için entegre ve kolay kullanımlı araçlara ihtiyaç duymaktadır (Örn: Apple ekosistemindeki AirDrop). Pardus dağıtımlarında;</p>
+<ul>
+    <li><b>Sıfır-yapılandırmalı (Zero-config)</b>,</li>
+    <li><b>İnternet kotası veya üçüncü parti bir bulut sunucu gerektirmeyen (P2P)</b>,</li>
+    <li><b>Kişisel veri gizliliğini (TCKN, IBAN, Kredi Kartı vb.) ön planda tutan</b></li>
+</ul>
+<p>yerleşik bir güvenli paylaşım aracı eksikliği (fonksiyonel / kullanılabilirlik iyileştirme önerisi) tespit edilmiştir. İstemciler arası dosya veya ekran paylaşımı için Pardus kullanıcılarının dış kaynaklı ve kapalı kaynak yazılımlar kullanmak zorunda kalması, hem kurumsal hem de bireysel veri güvenliği açısından <b>yüksek dereceli bir güvenlik riskine (zafiyet)</b> yol açmaktadır.</p>
+
+<h2>2. Öneri ve Kullanım Senaryosu (Use-Case)</h2>
+<p><b>Oluşum ve Çözüm Senaryosu (Madde 7.1):</b></p>
+<ul>
+    <li><b>Kullanıcı Profili:</b> Aynı ofis ağına bağlı Pardus işletim sistemli iki bilgisayar kullanıcısı (Alice ve Bob).</li>
+    <li><b>Senaryo:</b> Alice, içerisinde gizli TC Kimlik numaralarının ve IBAN bilgilerinin bulunduğu hassas bir belgeyi Bob'a göndermek istemektedir.</li>
+    <li><b>Uygulama Adımları:</b>
+        <ol>
+            <li>Her iki kullanıcı uygulamayı açar. İnternet olmadan, mDNS keşif algoritması ile Alice'in ekranında "Bob'un Bilgisayarı" otomatik olarak görünür.</li>
+            <li>Alice, Bob'un bilgisayarını seçer ve dosyayı sürükleyip bırakır.</li>
+            <li>Uygulama Alice'e 6 haneli rastgele bir PIN kodu (Örn: <code>857321</code>) üretir.</li>
+            <li>Bob tarafında ekranına bir istek düşer, Alice'in söylediği PIN kodunu girer.</li>
+            <li>Dosya AES şifreli olarak direkt lokal soket üzerinden (P2P) aktarılır.</li>
+            <li>Eğer Alice yanlışlıkla panosuna (Clipboard) TCKN'yi kopyalarsa, sistemdeki DLP motoru çalışır, TCKN'nin Mod-10 sağlama matematiğini onaylayarak anında <code>100*****146</code> olarak maskeler ve ekranda veri sızıntısını engellediğine dair bildirim verir.</li>
+        </ol>
+    </li>
+</ul>
+
+<h2>3. Geliştirilen Çözüm ve Yazılım İçeriği (Mimari Rapor)</h2>
+<p>Bu eksikliği gidermek adına, <b>Geliştirme Kategorisi</b> yönergeleri doğrultusunda sıfırdan, Pardus native yeni bir yazılım geliştirilmiştir: <b>"Pardus Güvenli Paylaşım"</b>. Projenin teknik yetenekleri şöyledir:</p>
+
+<h3>A. Ağ Keşif Modülü (mDNS & Zero-Config)</h3>
+<p>Uygulama başlatıldığında cihazların IP girmeden bulabilmesi için Zeroconf (Bonjour/mDNS) devreye girer. Cihaz <code>_pardus-share._tcp.local.</code> adında özel bir Multicast kayıt oluşturarak anlık olarak ağda listelenir.</p>
+
+<h3>B. Uçtan Uca Dosya Transfer Modülü (P2P)</h3>
+<p>Dosya gönderimi buluta çıkmadan, direkt yerel ağ TCP soketleri üzerinden yapılır. PIN tabanlı güvenli aktarım modunda, dosyaların byteları hafızada (In-Memory) kriptografik olarak şifrelenir. Hedef istemci doğru PIN koduna sahip değilse blokları çözemez.</p>
+
+<h3>C. Güvenli Ekran Yayınlama Modülü</h3>
+<p>Ekran paylaşımı MJPEG HTTP Streaming kullanılarak yapılır.</p>
+<ul>
+    <li><b>Kamera Görüntü Yakalama:</b> GStreamer (PipeWire/X11) donanımsal hızlandırması ile kareler çekilir. Yedek (fallback) olarak <code>scrot</code> veya <code>gnome-screenshot</code> kullanılır.</li>
+    <li><b>Donanımsal Susturucu:</b> OS seviyesinde deklanşör sesini engellemek için <code>CANBERRA_DRIVER=null</code> komutu sisteme enjekte edilmiştir.</li>
+    <li><b>Güvenlik (Auth):</b> Her ekran izleme talebi, sunulan 6 haneli PIN'i doğrulamak zorundadır. Yetkisiz girişler <b>HTTP 403 Forbidden</b> hata koduyla reddedilir.</li>
+</ul>
+
+<h3>D. Pano (Clipboard) ve Hassas Veri Koruması (DLP Engine)</h3>
+<p>İşletim sistemi panosunu siber güvenlik standartlarında (Data Loss Prevention) denetler.</p>
+<ul>
+    <li><b>TCKN Doğrulaması:</b> 11 haneli sıradan rakamları engellemez; <b>Nüfus Müdürlüğü standardı Mod-10 Sağlama Algoritması</b> kullanarak doğrular ve gizler.</li>
+    <li><b>Regex Engine:</b> Luhn algoritmalı kredi kartları, IBAN'lar, Telefon ve e-posta verilerini Lookbehind kısıtlamalarıyla tespit edip yıldızlar.</li>
+</ul>
+
+<h3>E. Native Entegrasyon ve Dağıtım (CI/CD)</h3>
+<ul>
+    <li><b>GSettings / JSON Fallback:</b> GNOME/GTK ortamlarda ayarları yerel <code>dconf</code> kayıt defterine yazar.</li>
+    <li><b>Uluslararasılaştırma (i18n):</b> Tüm arayüz <code>gettext</code> (.po/.mo) sistemiyle Türkçeleştirilmiştir.</li>
+    <li><b>CI/CD & .deb Paketleme:</b> Proje <code>build_deb.py</code> ile tek tuşla, tüm bağımlılıklarını barındıran Debian / Pardus paketine (<code>.deb</code>) dönüştürülür. Docker test ortamlarında (Alice & Bob izolasyonu) mDNS ve protokol entegrasyonu %100 otomatize test edilir.</li>
+</ul>
+
+<h2>4. Ekran Görüntüsü Olarak Sunumu</h2>
+<p><i>(Şartname Madde 27 gereği, sisteme yüklerken aşağıdaki adımların gerçek ekran görüntülerini rapora ekleyiniz)</i></p>
+<ul>
+    <li><b>Görsel 1:</b> Uygulama Ana Ekranı (Cihazların mDNS ile keşfedildiği liste görünümü).</li>
+    <li><b>Görsel 2:</b> Pano Güvenliği (Kopyalanan TCKN ve IBAN'ın anında maskelendiğine dair bildirim).</li>
+    <li><b>Görsel 3:</b> Dosya / Ekran Paylaşımı için eşleşme esnasında çıkan "6 Haneli Güvenlik PIN'i" penceresi.</li>
+</ul>
+
+<h2>5. Geliştirme Kategorisi Kriterlerine Uygunluk Beyanı</h2>
+<p>TEKNOFEST 2026 Pardus Teknik Şartnamesi'nde belirtilen kriterler bazında projemiz;</p>
+<ul>
+    <li><b>7.1 Değerlendirme Kriterleri (Çözümün Uygulanabilirliği):</b> Uygulanabilir bir kod geliştirilmiş ve çalışan <code>.deb</code> kurulum paketi hazırlanmıştır.</li>
+    <li><b>7.2 Puanlama (Geliştirilen kod içeriği ve kalitesi):</b> Python kullanılarak modüler (discovery, screen, clipboard) mimari oluşturulmuş, Docker entegrasyon testleriyle fonksiyonellik %100 güvence altına alınmıştır.</li>
+    <li><b>Kategori Uygunluğu:</b> Şartname'de belirtilen <b>"yeni bir yazılım geliştirmeleri"</b> kapsamında tamamen Pardus ekosistemine özgür yazılım olarak kazandırılmak üzere tasarlanmıştır.</li>
+</ul>
+
+<p><i>Önemli Not (Madde 3.b): Uygulama kaynak kodları sisteme (talep.pardus.org.tr) girilirken, depo linkinin (https://github.com/tefografi/pardus-paylasim) erişilebilir (public) olması gerekmektedir. İlgili bağlantı başvuru formunda "Geliştirme Kategorisi - Çözüm Bağlantısı" alanına eklenecektir.</i></p>
+
+</body>
+</html>

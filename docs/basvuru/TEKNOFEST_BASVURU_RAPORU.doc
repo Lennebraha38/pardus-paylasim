@@ -1,0 +1,68 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>TEKNOFEST Başvuru Raporu</title>
+<style>
+body { font-family: 'Calibri', sans-serif; font-size: 11pt; line-height: 1.5; }
+h1 { color: #2E74B5; font-size: 16pt; text-align: center; }
+h2 { color: #2E74B5; font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+h3 { color: #44546A; font-size: 12pt; }
+p { margin-bottom: 10px; }
+li { margin-bottom: 5px; }
+.bold { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>TEKNOFEST 2026 - PARDUS HATA YAKALAMA VE ÖNERİ YARIŞMASI BAŞVURU RAPORU</h1>
+
+<p><span class="bold">Yarışma Kategorisi:</span> Geliştirme Kategorisi<br>
+<span class="bold">Proje Adı:</span> Pardus Güvenli Paylaşım (Pardus Secure Share)<br>
+<span class="bold">Hedef İşletim Sistemi:</span> Pardus İşletim Sistemi (Debian tabanlı)<br>
+<span class="bold">Açık Kaynak Kod Deposu:</span> <a href="https://github.com/tefografi/pardus-paylasim">https://github.com/tefografi/pardus-paylasim</a> <i>(Yarışma şartnamesi Madde 3.b ve Madde 27 gereğince başvuru esnasında açık/public hale getirilmelidir.)</i></p>
+
+<hr>
+
+<h2>1. Hatanın / Önerinin Eksiksiz Tanımı (Problem Durumu)</h2>
+<p>Günümüz modern işletim sistemlerinde kullanıcılar, aynı ağ (LAN) üzerindeki cihazlar arasında hızlıca dosya veya ekran paylaşabilmek için entegre ve kolay kullanımlı araçlara ihtiyaç duymaktadır (Örn: Apple ekosistemindeki AirDrop). Pardus dağıtımlarında;</p>
+<ul>
+    <li><b>Sıfır-yapılandırmalı (Zero-config)</b>,</li>
+    <li><b>İnternet kotası veya üçüncü parti bir bulut sunucu gerektirmeyen (P2P)</b>,</li>
+    <li><b>Kişisel veri gizliliğini (TCKN, IBAN, Kredi Kartı vb.) ön planda tutan</b></li>
+</ul>
+<p>yerleşik bir güvenli paylaşım aracı eksikliği (fonksiyonel / kullanılabilirlik iyileştirme önerisi) tespit edilmiştir. İstemciler arası dosya veya ekran paylaşımı için Pardus kullanıcılarının dış kaynaklı yazılımlar kullanmak zorunda kalması, kurumsal ve bireysel veri güvenliği açısından risk oluşturmaktadır.</p>
+
+<h2>2. Geliştirilen Çözüm ve Yazılım İçeriği</h2>
+<p>Bu eksikliği gidermek adına, <b>Geliştirme Kategorisi</b> yönergeleri doğrultusunda sıfırdan, Pardus native (GSettings ve GTK entegreli) yeni bir yazılım geliştirilmiştir: <b>"Pardus Güvenli Paylaşım"</b>.</p>
+
+<h3>Temel Modüller ve Geliştirme Kalitesi:</h3>
+<ol>
+    <li><b>mDNS (Zeroconf) ile Yerel Ağ Keşfi:</b> IP girmeye gerek kalmadan cihazlar otomatik olarak birbirini bulur (<code>_pardus-share._tcp.local</code>).</li>
+    <li><b>P2P Dosya Transferi (Güvenli Mod):</b> Aktarımlar cihazlar arasında direkt soket üzerinden yapılır. Gizli modda, 6 haneli dinamik PIN eşleşmesi ile veriler kriptografik olarak şifrelenir.</li>
+    <li><b>HTTP Streaming ile PIN Korumalı Ekran Paylaşımı:</b> Pardus cihazları ekranlarını ağ üzerinden birbirlerine sunabilir. Yetkisiz girişler <b>HTTP 403 Forbidden</b> ile engellenir. Deklanşör seslerini önlemek için <code>CANBERRA_DRIVER=null</code> entegrasyonu kullanılmıştır.</li>
+    <li><b>Siber Güvenlik Odaklı Pano Maskeleme (DLP - Data Loss Prevention):</b> Panoya (Clipboard) kopyalanan metinlerde veya aktarılan verilerde yer alan TCKN, IBAN, Telefon, E-posta ve API Key verilerini yakalar. <b>Özellikle TCKN algoritması, matematiksel Mod-10 sağlama yöntemiyle çalışarak sadece "gerçek" TCKN'leri tespit edip maskeler (100*****146), hatalı veya sıradan numaraları engellemez.</b></li>
+    <li><b>Debian/Pardus Native Entegrasyon:</b> Uygulama tamamen <code>gettext</code> ile Türkçeleştirilmiş olup, <code>build_deb.py</code> ile bağımlılıkları barındıran <code>pardus-paylasim.deb</code> paketi halinde saniyeler içinde derlenebilir.</li>
+</ol>
+
+<h2>3. Ekran Görüntüsü Olarak Sunumu</h2>
+<p><i>(Şartname Madde 27 gereği, sisteme yüklerken aşağıdaki adımların gerçek ekran görüntülerini rapora ekleyiniz)</i></p>
+<ul>
+    <li><b>Görsel 1:</b> Uygulama Ana Ekranı (Cihazların mDNS ile keşfedildiği liste görünümü).</li>
+    <li><b>Görsel 2:</b> Pano Güvenliği (Kopyalanan TCKN ve IBAN'ın anında maskelendiğine dair bildirim).</li>
+    <li><b>Görsel 3:</b> Dosya / Ekran Paylaşımı için eşleşme esnasında çıkan "6 Haneli Güvenlik PIN'i" penceresi.</li>
+</ul>
+
+<h2>4. Geliştirme Kategorisi Kriterlerine Uygunluk Beyanı</h2>
+<p>TEKNOFEST 2026 Pardus Teknik Şartnamesi'nde belirtilen kriterler bazında projemiz;</p>
+<ul>
+    <li><b>7.1 Değerlendirme Kriterleri (Çözümün Uygulanabilirliği):</b> Uygulanabilir bir kod geliştirilmiş ve çalışan <code>.deb</code> kurulum paketi hazırlanmıştır.</li>
+    <li><b>7.2 Puanlama (Geliştirilen kod içeriği ve kalitesi):</b> Python kullanılarak modüler (discovery, screen, clipboard) bir mimari oluşturulmuş, Docker bazlı entegrasyon (Alice & Bob) testleriyle fonksiyonellik %100 güvence altına alınmıştır.</li>
+    <li><b>Kategori Uygunluğu:</b> Şartname'de belirtilen <b>"yeni bir yazılım geliştirmeleri"</b> kapsamında tamamen Pardus ekosistemine özgür yazılım olarak kazandırılmak üzere tasarlanmıştır.</li>
+</ul>
+
+<p><i>Önemli Not (Madde 3.b): Uygulama kaynak kodları sisteme (talep.pardus.org.tr) girilirken, depo linkinin (https://github.com/tefografi/pardus-paylasim) erişilebilir (public) olması gerekmektedir. İlgili bağlantı başvuru formunda "Geliştirme Kategorisi - Çözüm Bağlantısı" alanına eklenecektir.</i></p>
+
+</body>
+</html>

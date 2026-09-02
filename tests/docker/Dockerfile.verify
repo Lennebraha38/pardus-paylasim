@@ -1,0 +1,43 @@
+FROM pardus/yirmiuc@sha256:48c81e9c1c8ae80254cff28f846afdde6384adf8665f4dfdbd7894240bf9e141
+
+# Base apt packages needed for testing
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-gi \
+    python3-gi-cairo \
+    gir1.2-gtk-4.0 \
+    gir1.2-adw-1 \
+    gir1.2-gstreamer-1.0 \
+    python3-gst-1.0 \
+    mat2 \
+    libimage-exiftool-perl \
+    xvfb \
+    dbus-x11 \
+    lintian \
+    file \
+    pkg-config \
+    libcairo2-dev \
+    libgirepository1.0-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install frozen requirements
+COPY tests/docker/requirements.txt /app/requirements.txt
+RUN grep -v -i -e "pygobject" -e "pycairo" -e "pywin32" -e "pypiwin32" -e "win10toast" /app/requirements.txt > /app/req_filtered.txt && \
+    pip3 install --break-system-packages -r /app/req_filtered.txt
+
+# Copy the entire source code (immutable)
+COPY . /app
+
+# Ensure PYTHONPATH is set so that pardus_paylasim can be imported
+ENV PYTHONPATH=/app/src
+
+# Image label to track the git commit
+ARG GIT_COMMIT=unknown
+RUN if [ "$GIT_COMMIT" = "unknown" ]; then echo "GIT_COMMIT is required" && exit 1; fi
+LABEL git_commit=$GIT_COMMIT
+
+# Entrypoint will just be pytest
+ENTRYPOINT ["python3", "-m", "pytest", "tests", "-v"]

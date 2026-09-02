@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Pardus Paylaşım — Dosya Yöneticisi</title>
+  <link rel="stylesheet" href="/viewer.css">
+  <link rel="stylesheet" href="/file-manager.css">
+</head>
+<body>
+  <main aria-label="Uzak Dosya Yöneticisi">
+    <h1>Uzak Dosya Yöneticisi</h1>
+    
+    <section aria-label="Araç Çubuğu">
+      <p>Şu anki dizin: <strong id="current-path" aria-live="polite">/ (İndirilenler)</strong></p>
+      <button id="btn-up" class="btn btn-secondary" aria-label="Üst Dizine Çık">Üst Dizine Çık</button>
+    </section>
+
+    <div role="status" aria-live="polite" id="status-message" class="sr-only"></div>
+
+    <section aria-label="Dosya Listesi">
+      <div class="file-list" id="file-list" role="list">
+        <!-- İçerik JS ile doldurulacak -->
+      </div>
+    </section>
+  </main>
+  
+  <script src="/file-manager.js"></script>
+</body>
+</html>

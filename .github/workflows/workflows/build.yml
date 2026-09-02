@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Job 1: Lint + platform-bagimsiz unit testler (GTK gerektirmez)
+  # Matrix: Python 3.10 / 3.11 / 3.12 — Ubuntu runner.
+  # ruff non-gating (soft): mevcut kod ihlalleri build'i kirmaz.
+  # -------------------------------------------------------------------------
+  lint-and-test:
+    name: Lint & Unit (py${{ matrix.python-version }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package (test + dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+          pip install ruff
+
+      - name: Ruff lint (non-gating)
+        continue-on-error: true
+        run: ruff check src tests
+
+      - name: Run platform-independent tests
+        run: pytest tests/ -v
+
+  # -------------------------------------------------------------------------
+  # Job 2: Debian paket + entegrasyon (docker, Pardus base image)
+  # lint-and-test yesil olduktan sonra. Base image registry riski nedeniyle
+  # continue-on-error: erisilemezse is raporlanir ama pipeline'i kirmaz.
+  # -------------------------------------------------------------------------
+  debian-integration:
+    name: Debian build & integration
+    runs-on: ubuntu-22.04
+    needs: lint-and-test
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile translations (.po -> .mo)
+        run: python tools/compile_mo.py locale
+
+      - name: Build .deb + docker integration
+        run: bash tests/run_docker_test.sh
+
+      - name: Upload Debian Package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pardus-paylasim-deb
+          path: pardus-paylasim_1.0.0_all.deb
+          if-no-files-found: ignore

@@ -32,6 +32,9 @@ htmlcov/
 *.tmp
 *.bak
 
-# Binary
+# Binary (large files)
 *.deb
 *.deb.sha256
+
+# Google Drive temp
+.gdrive_*

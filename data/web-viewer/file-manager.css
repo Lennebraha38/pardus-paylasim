@@ -1,0 +1,10 @@
+body { padding: 20px; font-family: sans-serif; }
+.file-list { margin-top: 20px; border: 1px solid #ccc; border-radius: 4px; }
+.file-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+.file-item:last-child { border-bottom: none; }
+.file-icon { margin-right: 10px; }
+.file-name { flex: 1; cursor: pointer; color: #3498db; background: none; border: none; text-align: left; font: inherit; padding: 0; text-decoration: underline; }
+.file-name:focus { outline: 2px solid #e74c3c; }
+.file-size { color: #888; }
+.btn-small { padding: 4px 8px; font-size: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }

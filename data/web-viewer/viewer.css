@@ -1,0 +1,408 @@
+/* Pardus Paylaşım — uzak ekran web viewer.
+   Yön: karanlık kontrol-odası. Kısıtlı palet, teknik okumalar monospace.
+   Offline + CSP 'self' → web font yok; sistem yığını kullanılır (bilinçli). */
+
+:root {
+  --bg: #0b0e14;
+  --surface: #141a24;
+  --surface-2: #1b2330;
+  --border: #263143;
+  --text: #e6edf3;
+  --muted: #8b98a9;
+  --accent: #3d8bff;
+  --accent-dim: #24405f;
+  --danger: #ff5b5b;
+  --danger-dim: #48242a;
+  --ok: #46d18a;
+  --warn: #f5b849;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --gap: 14px;
+  --bar-h: 58px;
+
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, sans-serif;
+  --mono: "Cascadia Code", "JetBrains Mono", "DejaVu Sans Mono", ui-monospace,
+    "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --dur: 160ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- üst bar ---- */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  height: var(--bar-h);
+  padding: 0 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  user-select: none;
+}
+
+.brand .dot {
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.brand.live .dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ok) 22%, transparent);
+}
+
+.brand.ctrl .dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--danger) 26%, transparent);
+}
+
+.brand-name {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+/* ---- kontroller ---- */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.pin-input {
+  width: 8ch;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 17px;
+  letter-spacing: 0.35em;
+  text-align: center;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.pin-input::placeholder {
+  color: var(--border);
+  letter-spacing: 0.35em;
+}
+
+.pin-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent);
+}
+
+.btn {
+  padding: 8px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+
+.btn:focus, select.btn:focus, input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--border);
+  border-color: #33425a;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06101f;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 88%, white);
+  border-color: color-mix(in oklab, var(--accent) 88%, white);
+}
+
+.btn-danger {
+  background: var(--danger-dim);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #170a0a;
+}
+
+/* ---- sahne ---- */
+
+.stage {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: var(--gap);
+  padding: var(--gap);
+  min-height: 0;
+}
+
+.frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070b radial-gradient(120% 120% at 50% 0%, #0f1420 0%, #05070b 70%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 0;
+  outline: none;
+}
+
+.frame.controlling {
+  border-color: var(--danger);
+  cursor: none;
+  box-shadow: inset 0 0 0 1px var(--danger),
+    inset 0 0 40px color-mix(in oklab, var(--danger) 14%, transparent);
+}
+
+.frame:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+.screen {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.frame.live .screen {
+  display: block;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+}
+
+.frame.live .placeholder {
+  display: none;
+}
+
+.ph-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ph-hint {
+  margin: 0;
+  font-size: 13px;
+  max-width: 34ch;
+}
+
+.ph-hint strong {
+  color: var(--accent);
+}
+
+/* ---- meta panel ---- */
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-y: auto;
+}
+
+.meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+}
+
+.meta-key {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.meta-val {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.meta-val.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.meta-val.fp {
+  line-height: 1.55;
+  color: var(--warn);
+}
+
+.status-idle {
+  color: var(--muted);
+}
+.status-live {
+  color: var(--ok);
+}
+.status-ctrl {
+  color: var(--danger);
+  font-weight: 600;
+}
+.status-err {
+  color: var(--danger);
+}
+.status-wait {
+  color: var(--warn);
+}
+
+.meta-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-left: 2px solid var(--warn);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.meta-note strong {
+  color: var(--warn);
+}
+
+/* ---- dar ekran ---- */
+
+@media (max-width: 720px) {
+  .bar {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+  .controls {
+    flex-wrap: wrap;
+  }
+  .stage {
+    grid-template-columns: 1fr;
+  }
+  .meta {
+    order: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 1ms !important;
+  }
+}
+
+
+/* Chat Panel */
+.chat-panel { width: 250px; display: flex; flex-direction: column; background: var(--bg-surface); border-left: 1px solid var(--border); }
+.chat-header { padding: 10px; font-weight: 500; border-bottom: 1px solid var(--border); }
+.chat-messages { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.9em; display: flex; flex-direction: column; gap: 8px; }
+.chat-message { background: var(--bg-elevated); padding: 6px 10px; border-radius: 6px; word-break: break-word; }
+.chat-message.self { background: var(--primary); color: white; align-self: flex-end; }
+.chat-input-area { display: flex; padding: 10px; gap: 8px; border-top: 1px solid var(--border); }
+.chat-input-area input { flex: 1; padding: 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-main); }
+
+
+/* Mobil uyum */
+.frame { touch-action: none; }

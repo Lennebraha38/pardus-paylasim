@@ -1,0 +1,15 @@
+FROM python:3.10-slim
+
+# Windows ağ davranışını simüle edecek ortam
+RUN apt-get update && apt-get install -y gcc g++ python3-dev libavdevice-dev libavfilter-dev libopus-dev libvpx-dev iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . /app
+WORKDIR /app
+
+# Gereksinimler
+RUN pip install --upgrade pip && pip install --no-cache-dir . pytest pytest-asyncio requests websockets
+
+ENV PARDUS_PAYLASIM_MOCK_WINDOWS=1
+
+CMD ["python3", "src/pardus_paylasim/agent_main.py"]

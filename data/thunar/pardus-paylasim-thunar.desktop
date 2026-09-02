@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Güvenli Paylaşım ile Temizle
+Comment=Dosyadaki gizlilik ve meta verileri temizler
+Exec=pardus-paylasim --clean %F
+Icon=tr.org.pardus.paylasim
+MimeType=image/jpeg;image/png;application/pdf;application/vnd.openxmlformats-officedocument.wordprocessingml.document;

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  router:
+    build:
+      context: ../../
+      dockerfile: tests/docker/Dockerfile.linux_protocol_mock
+    command: ["python3", "src/pardus_paylasim_server/router.py"]
+    volumes:
+      - ../../:/app
+    networks:
+      - paylasim-net
+
+  pardus-host-1:
+    build:
+      context: ../../
+      dockerfile: tests/docker/Dockerfile.pardus
+    depends_on:
+      - router
+    volumes:
+      - ../../:/app
+    networks:
+      - paylasim-net
+
+  pardus-host-2:
+    build:
+      context: ../../
+      dockerfile: tests/docker/Dockerfile.pardus
+    depends_on:
+      - router
+    volumes:
+      - ../../:/app
+    networks:
+      - paylasim-net
+
+  linux-protocol-mock:
+    build:
+      context: ../../
+      dockerfile: tests/docker/Dockerfile.linux_protocol_mock
+    command: ["pytest", "tests/e2e/test_protocols.py", "-v"]
+    depends_on:
+      - router
+      - pardus-host-1
+      - pardus-host-2
+    volumes:
+      - ../../:/app
+    networks:
+      - paylasim-net
+
+networks:
+  paylasim-net:

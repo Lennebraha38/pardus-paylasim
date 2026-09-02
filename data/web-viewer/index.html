@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Pardus Paylaşım — Uzak Ekran</title>
+  <link rel="stylesheet" href="/viewer.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="brand-name">Pardus Paylaşım</span>
+      <span class="brand-sub">uzak ekran</span>
+    </div>
+
+    <form id="conn-form" class="controls" autocomplete="off">
+      <label class="field">
+        <span class="field-label">PIN</span>
+        <input id="pin" class="pin-input" inputmode="numeric" pattern="[0-9]*"
+               maxlength="6" placeholder="000000" aria-label="Eşleşme PIN kodu">
+      </label>
+      <button id="btn-connect" type="submit" class="btn btn-primary" aria-label="Bağlan">İzle</button>
+      <button id="btn-control" type="button" class="btn" disabled aria-label="Kontrolü İste">Kontrolü İste</button>
+      <button id="btn-kill" type="button" class="btn btn-danger" hidden aria-label="Bağlantıyı Durdur">Durdur</button>
+      <button id="btn-upload" type="button" class="btn" title="Karşı cihaza dosya gönder" disabled aria-label="Dosya Gönder">Dosya Gönder</button>
+      <button id="btn-fm" type="button" class="btn" title="Uzak dosyalara göz at" disabled aria-label="Dosya Yöneticisi">Dosya Yöneticisi</button>
+      <input type="file" id="file-input" hidden multiple>
+      <select id="monitor-select" title="Monitör Seçimi" class="btn" aria-label="Monitör Seçimi">
+        <option value="0">Tüm Ekranlar</option>
+        <option value="1">Ekran 1</option>
+        <option value="2">Ekran 2</option>
+      </select>
+      <select id="quality-select" title="Akış Kalitesi" class="btn" aria-label="Akış Kalitesi Seçimi">
+        <option value="high">Yüksek</option>
+        <option value="medium">Orta</option>
+        <option value="low">Düşük</option>
+      </select>
+    </form>
+  </header>
+
+  <main class="stage">
+    <div id="frame" class="frame" tabindex="0"
+         aria-label="Uzak ekran görüntüsü ve kontrol alanı">
+      <video id="screen" class="screen" autoplay playsinline muted></video>
+      <div id="placeholder" class="placeholder">
+        <p class="ph-title">Bağlı değil</p>
+        <p class="ph-hint">PIN gir → <strong>İzle</strong>. Kontrol için host onayı gerekir.</p>
+      </div>
+    </div>
+
+    <aside class="meta">
+      <div class="meta-row">
+        <span class="meta-key">Durum</span>
+        <span id="status" class="meta-val status-idle">hazır</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Host</span>
+        <span id="host" class="meta-val mono">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">TLS parmak izi</span>
+        <span id="fingerprint" class="meta-val mono fp">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Kontrol backend</span>
+        <span id="backend" class="meta-val mono">—</span>
+      </div>
+      <p class="meta-note">
+        Parmak izini karşı cihazdakiyle karşılaştırın. Uyuşmuyorsa
+        <strong>bağlanmayın</strong> (MITM riski).
+      </p>
+    </aside>
+    
+    <aside class="chat-panel" id="chat-panel" style="display: none;">
+      <div class="chat-header">Sohbet</div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <form id="chat-form" class="chat-input-area">
+        <input type="text" id="chat-input" placeholder="Mesaj yazın..." autocomplete="off">
+        <button type="submit" class="btn btn-primary btn-small">Gönder</button>
+      </form>
+    </aside>
+  </main>
+
+  <script src="/viewer.js"></script>
+</body>
+</html>
