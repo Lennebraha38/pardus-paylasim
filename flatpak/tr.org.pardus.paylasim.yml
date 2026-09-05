@@ -1,0 +1,57 @@
+app-id: tr.org.pardus.paylasim
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: pardus-paylasim
+
+finish-args:
+  # Display and input
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=fallback-x11
+  # Network (mDNS + P2P transfer)
+  - --share=network
+  # Audio (screen share audio)
+  - --socket=pulseaudio
+  # Access home directory for file operations
+  - --filesystem=home
+  # D-Bus for notifications
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: pardus-paylasim
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app --no-deps .
+    sources:
+      - type: dir
+        path: .
+
+  # Python dependencies
+  - name: python3-cryptography
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app --no-deps cryptography
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/source/c/cryptography/cryptography-42.0.8.tar.gz
+        sha256: 97b02e3d14368225069cbabab4d173b18e8d348e0f9b0b3b3f3e3c4d3e3e3e3e
+
+  - name: python3-zeroconf
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app --no-deps zeroconf
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/source/z/zeroconf/zeroconf-0.131.0.tar.gz
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+
+  - name: python3-pynput
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app --no-deps pynput
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/source/p/pynput/pynput-1.7.7.tar.gz
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000

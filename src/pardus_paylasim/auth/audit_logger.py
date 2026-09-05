@@ -19,4 +19,4 @@ def log_event(event_type: str, details: dict):
         with open(AUDIT_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
     except Exception as e:
-        logger.error(f"Audit log yazılamadı: {e}")
+        logger.error("Audit log yazılamadı: %s", e)

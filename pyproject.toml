@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pardus-paylasim"
+version = "1.0.0"
+description = "Pardus Güvenli Paylaşım ve Süreklilik Merkezi"
+readme = "README.md"
+license = {text = "GPL-3.0-only"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Pardus Ekibi"},
+]
+keywords = ["pardus", "file-sharing", "screen-share", "privacy", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+]
+dependencies = [
+    "cryptography>=41.0",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PyGObject>=3.42",
+]
+network = [
+    "zeroconf>=0.80",
+]
+input = [
+    "pynput>=1.7",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "zeroconf>=0.80",
+]
+dev = [
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "pre-commit>=3.0",
+]
+
+[project.scripts]
+pardus-paylasim = "pardus_paylasim.app:main"
+
+[project.urls]
+Homepage = "https://github.com/Lennebraha38/pardus-paylasim"
+Repository = "https://github.com/Lennebraha38/pardus-paylasim"
+Issues = "https://github.com/Lennebraha38/pardus-paylasim/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "S",   # flake8-bandit (security)
+]
+ignore = [
+    "E501",   # line length (handled by formatter)
+    "B008",   # function call in default argument (dataclass pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]   # assert allowed in tests
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: Birim testleri",
+    "backend: Saf Python mantık testleri",
+    "turing: Metin maskeleme, metadata temizliği vb.",
+    "docker: Docker compose gerektirenler",
+    "e2e: Gerçek router/network üzerinden yapılanlar",
+    "integration: Entegrasyon testleri",
+    "security: Güvenlik, fuzzing ve payload testleri",
+    "accessibility: UI/UX Erişilebilirlik (WCAG) testleri",
+]
+addopts = "--strict-markers -ra --import-mode=importlib"

@@ -39,7 +39,7 @@ jobs:
         run: ruff check src tests
 
       - name: Run platform-independent tests
-        run: pytest tests/ -v
+        run: pytest tests/ -m "not docker and not e2e" -v
 
   # -------------------------------------------------------------------------
   # Job 2: Debian paket + entegrasyon (docker, Pardus base image)

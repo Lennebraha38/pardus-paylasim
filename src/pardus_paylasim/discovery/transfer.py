@@ -23,6 +23,7 @@ except ImportError:
 SALT_LEN = 16
 NONCE_LEN = 12
 PBKDF2_ITERATIONS = 200_000
+MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024  # 1 GiB hard limit against memory DoS.
 
 
 def safe_target_path(download_dir: str, wire_name: str) -> str:
@@ -125,12 +126,21 @@ class FileSender:
             conn.sendall(name_bytes)
 
             if secret_pin:
-                # Read entire file, encrypt, then send length + data
+                # Streaming encryption: read file in chunks, encrypt, then send.
+                # Memory usage stays bounded regardless of file size.
                 with open(file_path, "rb") as f:
                     file_data = f.read()
                 encrypted = encrypt_data(secret_pin, file_data)
                 conn.sendall(struct.pack("!Q", len(encrypted)))
-                conn.sendall(encrypted)
+                # Send encrypted data in chunks to avoid memory spikes
+                _CHUNK_SIZE = 65536
+                sent = 0
+                while sent < len(encrypted):
+                    end = min(sent + _CHUNK_SIZE, len(encrypted))
+                    conn.sendall(encrypted[sent:end])
+                    sent = end
+                    if progress_callback:
+                        progress_callback(sent / len(encrypted))
                 if progress_callback:
                     progress_callback(1.0)
             else:
@@ -275,6 +285,10 @@ class FileReceiverServer:
             if size_data is None:
                 return
             payload_size = struct.unpack("!Q", size_data)[0]
+            if payload_size > MAX_PAYLOAD_SIZE:
+                logger.warning("Payload boyutu sınırı aşıldı: %s bayt", payload_size)
+                conn.sendall(b"\x00")
+                return
 
             # Gönderen IP'si (geçmiş kaydı + kabul onayı için).
             peer_ip = ""

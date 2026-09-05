@@ -33,7 +33,7 @@ _PRIORITY_HIGH = "high"
 
 
 def send_notification(
-    app: "Optional[object]",
+    app: Optional[object],
     title: str,
     body: str,
     notification_id: str = "pardus-paylasim",
@@ -84,7 +84,7 @@ def send_notification(
         return False
 
 
-def withdraw_notification(app: "Optional[object]", notification_id: str) -> None:
+def withdraw_notification(app: Optional[object], notification_id: str) -> None:
     """Gösterilen bir bildirimi geri çeker (varsa). Hata durumunda sessizdir."""
     if not HAS_GTK or app is None:
         return

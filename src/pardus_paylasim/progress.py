@@ -19,7 +19,7 @@ class TransferStats(NamedTuple):
     """
 
     rate_bps: float
-    eta_seconds: "float | None"
+    eta_seconds: float | None
     percent: float
 
 
@@ -54,7 +54,7 @@ def compute_stats(
     rate_bps = transferred / elapsed if elapsed > 0 else 0.0
 
     # ETA: kalan baytı anlık hıza böl. Hız 0 veya boyut bilinmiyorsa None.
-    eta_seconds: "float | None"
+    eta_seconds: float | None
     if total > 0 and rate_bps > 0:
         remaining = max(0, total - transferred)
         eta_seconds = remaining / rate_bps
@@ -87,7 +87,7 @@ def human_rate(rate_bps: float) -> str:
     return f"{human_size(rate_bps)}/s"
 
 
-def human_eta(eta_seconds: "float | None") -> str:
+def human_eta(eta_seconds: float | None) -> str:
     """Kalan süreyi kısa biçime çevirir (ör. '~1 dk 5 sn', '~12 sn').
 
     None ise '—' döner (hesaplanamadı). i18n: çağıran taraf gerekirse _() ile

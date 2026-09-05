@@ -3,6 +3,7 @@ Unit tests for DeviceManager & Discovery logic.
 """
 
 import time
+from unittest.mock import patch
 import unittest
 
 from pardus_paylasim.discovery.device_manager import DeviceManager, PardusDevice
@@ -18,7 +19,8 @@ class TestDiscovery(unittest.TestCase):
             discovered_list.extend(devices)
 
         mgr.register_listener(callback)
-        mgr.start_discovery()
+        with patch.dict("os.environ", {"PARDUS_MDNS_SIMULATE": "1"}):
+            mgr.start_discovery()
         time.sleep(2)
 
         devices = mgr.get_devices()
