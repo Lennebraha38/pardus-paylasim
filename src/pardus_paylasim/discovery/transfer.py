@@ -4,6 +4,7 @@ import socket
 import ssl
 import struct
 import threading
+import tempfile
 from typing import Optional
 
 from . import net_util
@@ -24,6 +25,9 @@ SALT_LEN = 16
 NONCE_LEN = 12
 PBKDF2_ITERATIONS = 200_000
 MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024  # 1 GiB hard limit against memory DoS.
+SECRET_MAGIC = b"PPS2"
+SECRET_CHUNK_SIZE = 64 * 1024
+SECRET_FRAME_OVERHEAD = 4 + 16
 
 
 def safe_target_path(download_dir: str, wire_name: str) -> str:
@@ -85,6 +89,16 @@ def decrypt_data(pin: str, encrypted_data: bytes) -> bytes:
     return aesgcm.decrypt(nonce, ct, None)
 
 
+def _secret_payload_size(file_size: int) -> int:
+    """Return the framed encrypted payload size for a plaintext file."""
+    chunks = max(1, (file_size + SECRET_CHUNK_SIZE - 1) // SECRET_CHUNK_SIZE)
+    return len(SECRET_MAGIC) + SALT_LEN + 8 + chunks * SECRET_FRAME_OVERHEAD + file_size
+
+
+def _secret_nonce(prefix: bytes, counter: int) -> bytes:
+    return prefix + struct.pack("!I", counter)
+
+
 class FileTransferError(Exception):
     pass
 
@@ -126,25 +140,44 @@ class FileSender:
             conn.sendall(name_bytes)
 
             if secret_pin:
-                # Streaming encryption: read file in chunks, encrypt, then send.
-                # Memory usage stays bounded regardless of file size.
+                if not HAS_CRYPTO:
+                    raise FileTransferError("cryptography kütüphanesi kurulu değil!")
+                payload_size = _secret_payload_size(file_size)
+                if payload_size > MAX_PAYLOAD_SIZE:
+                    raise FileTransferError("Dosya boyutu aktarım sınırını aşıyor.")
+                conn.sendall(struct.pack("!Q", payload_size))
+                salt = os.urandom(SALT_LEN)
+                nonce_prefix = os.urandom(8)
+                key = derive_key(secret_pin, salt)
+                aesgcm = AESGCM(key)
+                conn.sendall(SECRET_MAGIC + salt + nonce_prefix)
                 with open(file_path, "rb") as f:
-                    file_data = f.read()
-                encrypted = encrypt_data(secret_pin, file_data)
-                conn.sendall(struct.pack("!Q", len(encrypted)))
-                # Send encrypted data in chunks to avoid memory spikes
-                _CHUNK_SIZE = 65536
-                sent = 0
-                while sent < len(encrypted):
-                    end = min(sent + _CHUNK_SIZE, len(encrypted))
-                    conn.sendall(encrypted[sent:end])
-                    sent = end
-                    if progress_callback:
-                        progress_callback(sent / len(encrypted))
+                    sent = 0
+                    counter = 0
+                    while True:
+                        chunk = f.read(SECRET_CHUNK_SIZE)
+                        if not chunk:
+                            if counter == 0:
+                                encrypted = aesgcm.encrypt(
+                                    _secret_nonce(nonce_prefix, counter), b"", None
+                                )
+                                conn.sendall(struct.pack("!I", len(encrypted)))
+                            break
+                        encrypted = aesgcm.encrypt(
+                            _secret_nonce(nonce_prefix, counter), chunk, None
+                        )
+                        conn.sendall(struct.pack("!I", len(encrypted)))
+                        conn.sendall(encrypted)
+                        sent += len(chunk)
+                        counter += 1
+                        if progress_callback:
+                            progress_callback(sent / file_size if file_size else 1.0)
                 if progress_callback:
                     progress_callback(1.0)
             else:
                 # Normal mode: chunked
+                if file_size > MAX_PAYLOAD_SIZE:
+                    raise FileTransferError("Dosya boyutu aktarım sınırını aşıyor.")
                 conn.sendall(struct.pack("!Q", file_size))
                 sent = 0
                 with open(file_path, "rb") as f:
@@ -261,6 +294,7 @@ class FileReceiverServer:
                     break
 
     def _handle_client(self, conn):
+        temp_path = None
         try:
             conn.settimeout(30)
             mode_byte = net_util.recv_exact(conn, 1)
@@ -313,10 +347,6 @@ class FileReceiverServer:
                 )
                 return
 
-            payload_data = net_util.recv_exact(conn, payload_size)
-            if payload_data is None:
-                return
-
             if is_secret:
                 if not self.get_secret_pin_callback:
                     conn.sendall(b"\x00")
@@ -327,12 +357,16 @@ class FileReceiverServer:
                     conn.sendall(b"\x00")
                     return
                 try:
-                    file_data = decrypt_data(pin, bytes(payload_data))
+                    temp_path = self._receive_secret_payload(conn, payload_size, pin)
+                    file_data = temp_path
                 except Exception as e:
                     logger.error("Şifre çözme hatası: %s", e)
                     conn.sendall(b"\x00")
                     return
             else:
+                payload_data = net_util.recv_exact(conn, payload_size)
+                if payload_data is None:
+                    return
                 file_data = bytes(payload_data)
 
             # Güvenli hedef yol: alt klasörlere izin verir (klasör transferi),
@@ -351,8 +385,11 @@ class FileReceiverServer:
                 save_path = f"{base}_{counter}{ext}"
                 counter += 1
 
-            with open(save_path, "wb") as f:
-                f.write(file_data)
+            if is_secret:
+                os.replace(file_data, save_path)
+            else:
+                with open(save_path, "wb") as f:
+                    f.write(file_data)
 
             conn.sendall(b"\x01")  # ACK success
 
@@ -370,12 +407,60 @@ class FileReceiverServer:
 
         except Exception as e:
             logger.error("Dosya alma hatası: %s", e)
+            if temp_path:
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    logger.warning("Geçici aktarım dosyası silinemedi: %s", temp_path)
             try:
                 conn.sendall(b"\x00")
             except OSError:
                 pass
         finally:
             conn.close()
+
+    def _receive_secret_payload(self, conn, payload_size: int, pin: str) -> str:
+        """Decrypt framed secret data into a temporary file without buffering it."""
+        if payload_size < len(SECRET_MAGIC) + SALT_LEN + 8:
+            raise FileTransferError("Geçersiz şifreli aktarım başlığı.")
+        header = net_util.recv_exact(conn, len(SECRET_MAGIC) + SALT_LEN + 8)
+        if header is None or header[:4] != SECRET_MAGIC:
+            raise FileTransferError("Desteklenmeyen şifreli aktarım biçimi.")
+        salt = header[4 : 4 + SALT_LEN]
+        nonce_prefix = header[4 + SALT_LEN :]
+        aesgcm = AESGCM(derive_key(pin, salt))
+        remaining = payload_size - len(header)
+        counter = 0
+        temp = tempfile.NamedTemporaryFile(
+            mode="wb", dir=self.download_dir, prefix=".pardus-transfer-", delete=False
+        )
+        try:
+            with temp:
+                while remaining:
+                    frame_len_data = net_util.recv_exact(conn, 4)
+                    if frame_len_data is None:
+                        raise FileTransferError("Şifreli aktarım erken sona erdi.")
+                    frame_len = struct.unpack("!I", frame_len_data)[0]
+                    if frame_len < 16 or frame_len > SECRET_CHUNK_SIZE + 16:
+                        raise FileTransferError("Geçersiz şifreli aktarım parçası.")
+                    remaining -= 4
+                    if frame_len > remaining:
+                        raise FileTransferError("Şifreli aktarım boyutu tutarsız.")
+                    frame = net_util.recv_exact(conn, frame_len)
+                    if frame is None:
+                        raise FileTransferError("Şifreli aktarım erken sona erdi.")
+                    remaining -= frame_len
+                    temp.write(aesgcm.decrypt(_secret_nonce(nonce_prefix, counter), frame, None))
+                    counter += 1
+            if remaining != 0:
+                raise FileTransferError("Şifreli aktarım boyutu tutarsız.")
+            return temp.name
+        except Exception:
+            try:
+                os.unlink(temp.name)
+            except OSError:
+                logger.warning("Geçici aktarım dosyası silinemedi: %s", temp.name)
+            raise
 
     def _log_history(self, file_name, size_bytes, peer, status, secret):
         """Alım kaydını geçmişe ekler. history None ise sessizce atlar;

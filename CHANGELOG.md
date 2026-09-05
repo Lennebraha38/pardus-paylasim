@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - README.md with comprehensive project documentation
 - CHANGELOG.md for tracking changes
-- Streaming chunked file transfer for large files (memory optimization)
+- Framed, authenticated streaming encryption for large secret transfers
 - Flatpak manifest for universal Linux packaging
 - Containerfile for Docker builds
 - Accessibility (a11y) test suite

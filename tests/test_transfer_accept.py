@@ -17,6 +17,7 @@ _PORT_ACCEPT = 8951
 _PORT_REJECT = 8952
 _PORT_DEFAULT = 8953
 _PORT_TRAVERSAL = 8954
+_PORT_SECRET = 8955
 
 
 def _wait_for(predicate, timeout=5.0):
@@ -150,6 +151,30 @@ class TestFileAcceptGate(unittest.TestCase):
             )
             # Aşım hedefi oluşmamalı.
             self.assertFalse(os.path.exists("/tmp/pardus_evil.bin"))
+        finally:
+            server.stop()
+
+    @unittest.skipUnless(
+        __import__("pardus_paylasim.discovery.transfer", fromlist=["HAS_CRYPTO"]).HAS_CRYPTO,
+        "cryptography not installed",
+    )
+    def test_secret_transfer_round_trip(self):
+        received = []
+        server = FileReceiverServer(
+            self.download_dir, port=_PORT_SECRET, ssl_context=self.server_ctx
+        )
+        server.on_file_received = lambda p: received.append(p)
+        server.on_file_request = lambda name, size, ip: True
+        server.get_secret_pin_callback = lambda name: "123456"
+        server.start()
+        try:
+            content = b"secret data" * 10000
+            src = self._make_source_file("secret.bin", content)
+            sender = FileSender("127.0.0.1", _PORT_SECRET, self.client_ctx)
+            sender.send_file(src, secret_pin="123456")
+            self.assertTrue(_wait_for(lambda: len(received) == 1))
+            with open(received[0], "rb") as f:
+                self.assertEqual(f.read(), content)
         finally:
             server.stop()
 
