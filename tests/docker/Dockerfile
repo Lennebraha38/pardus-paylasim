@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     lintian \
     file \
     python3-cryptography \
+    python3-qrcode \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

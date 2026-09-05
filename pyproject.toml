@@ -45,6 +45,7 @@ test = [
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21",
     "zeroconf>=0.80",
+    "qrcode>=7.4",
 ]
 dev = [
     "ruff>=0.4",
