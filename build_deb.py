@@ -48,9 +48,13 @@ def validate_path_for_packaging(full_path: str, base_dir: str):
     if os.path.islink(full_path):
         raise ValueError(f"Security Error: Symlinks are not allowed in distribution packages: {full_path}")
 
-    abs_base = os.path.abspath(base_dir)
-    abs_path = os.path.abspath(full_path)
-    if not abs_path.startswith(abs_base):
+    abs_base = os.path.realpath(base_dir)
+    abs_path = os.path.realpath(full_path)
+    try:
+        within_base = os.path.commonpath((abs_base, abs_path)) == abs_base
+    except ValueError:
+        within_base = False
+    if not within_base:
         raise ValueError(f"Security Error: Path escapes distribution boundary: {abs_path}")
 
 
