@@ -364,10 +364,11 @@ class FileReceiverServer:
                     conn.sendall(b"\x00")
                     return
             else:
-                payload_data = net_util.recv_exact(conn, payload_size)
-                if payload_data is None:
-                    return
-                file_data = bytes(payload_data)
+                # Streaming: dosyayı doğrudan diskte yaz, bellek kullanımı sabit.
+                temp_path = self._receive_normal_payload(
+                    conn, payload_size, file_name
+                )
+                file_data = temp_path
 
             # Güvenli hedef yol: alt klasörlere izin verir (klasör transferi),
             # ama '../' / mutlak yol ile download_dir dışına çıkışı engeller.
@@ -385,11 +386,10 @@ class FileReceiverServer:
                 save_path = f"{base}_{counter}{ext}"
                 counter += 1
 
-            if is_secret:
-                os.replace(file_data, save_path)
+            if temp_path is not None:
+                os.replace(temp_path, save_path)
             else:
-                with open(save_path, "wb") as f:
-                    f.write(file_data)
+                raise FileTransferError("Dosya alınamadı.")
 
             conn.sendall(b"\x01")  # ACK success
 
@@ -418,6 +418,36 @@ class FileReceiverServer:
                 pass
         finally:
             conn.close()
+
+    def _receive_normal_payload(self, conn: socket.socket, payload_size: int, file_name: str) -> str:
+        """Receive an unencrypted payload into a temp file in streaming chunks.
+
+        Reads `payload_size` bytes from `conn` and writes them directly to a
+        temporary file inside `download_dir` so memory usage stays bounded
+        regardless of the file size.
+        """
+        temp = tempfile.NamedTemporaryFile(
+            mode="wb", dir=self.download_dir, prefix=".pardus-transfer-", delete=False
+        )
+        try:
+            received = 0
+            chunk_size = 65536
+            while received < payload_size:
+                to_read = min(chunk_size, payload_size - received)
+                chunk = net_util.recv_exact(conn, to_read)
+                if chunk is None:
+                    raise FileTransferError("Normal aktarım erken sona erdi.")
+                temp.write(chunk)
+                received += len(chunk)
+            return temp.name
+        except Exception:
+            try:
+                os.unlink(temp.name)
+            except OSError:
+                pass
+            raise
+        finally:
+            temp.close()
 
     def _receive_secret_payload(self, conn, payload_size: int, pin: str) -> str:
         """Decrypt framed secret data into a temporary file without buffering it."""

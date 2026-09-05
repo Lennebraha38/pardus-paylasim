@@ -164,6 +164,9 @@ class MainWindow:
         # Tab 5: Settings / Dashboard
         self._build_settings_tab()
 
+        # Tab 6: 🆕 Innovations (Mesh + AI + WebRTC + Async)
+        self._build_innovations_tab()
+
         # View switcher in header (so tabs are always visible at the top macOS-style)
         switcher = Adw.ViewSwitcher()
         switcher.set_stack(self.view_stack)
@@ -192,9 +195,9 @@ class MainWindow:
     #  Keyboard shortcuts (GTK4 actions + accelerators)
     # ──────────────────────────────────────────────
 
-    # Sekmelerin sıralı adları — Ctrl+1..5 bu sıraya göre eşlenir.
+    # Sekmelerin sıralı adları — Ctrl+1..6 bu sıraya göre eşlenir.
     # (view_stack'e ekleme sırasıyla birebir aynı olmalı.)
-    TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings")
+    TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings", "innovations")
 
     @staticmethod
     def _tab_name_for_index(index, tab_names=TAB_NAMES):
@@ -224,7 +227,7 @@ class MainWindow:
         if not HAS_GTK or self.app is None:
             return
 
-        # Sekme geçişi: Ctrl+1..5 → view_stack.set_visible_child_name.
+        # Sekme geçişi: Ctrl+1..6 → view_stack.set_visible_child_name.
         for i, name in enumerate(self.TAB_NAMES, start=1):
             action = Gio.SimpleAction.new(f"tab-{i}", None)
             # Varsayılan bağ (default arg) döngü kapanış tuzağını önler.
@@ -918,6 +921,159 @@ class MainWindow:
         group3.add(self.row_dir)
 
         self.view_stack.add_titled(page, "settings", "⚙️ Ayarlar")
+
+    def _build_innovations_tab(self):
+        """🆕 Devrim Niteliğinde Yenilikler: Mesh, AI, WebRTC, Asenkron Transfer."""
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_top(16)
+        box.set_margin_bottom(16)
+        box.set_margin_start(16)
+        box.set_margin_end(16)
+
+        header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        lbl_title = Gtk.Label(label=_("🚀 Devrim Niteliğinde Yenilikler"))
+        lbl_title.add_css_class("title-2")
+        lbl_title.set_halign(Gtk.Align.START)
+        lbl_sub = Gtk.Label(
+            label=_(
+                "Mesh ağı, yerel yapay zeka, WebRTC ekran paylaşımı ve asenkron transfer.\n"
+                "Tüm veriler cihazınızda kalır — buluta gönderilmez."
+            )
+        )
+        lbl_sub.add_css_class("body")
+        lbl_sub.set_halign(Gtk.Align.START)
+        header_box.append(lbl_title)
+        header_box.append(lbl_sub)
+        box.append(header_box)
+
+        # Mesh Ağı durumu
+        mesh_group = Adw.PreferencesGroup(
+            title=_("🌐 Mesh Ağı"),
+            description=_("Cihazlar arası parça-parça P2P transfer"),
+        )
+        self.mesh_status_row = Adw.ActionRow(
+            title=_("Mesh Durumu"),
+            subtitle=_("Başlatılmadı"),
+        )
+        btn_mesh_toggle = Gtk.Button(label=_("Başlat"))
+        btn_mesh_toggle.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_mesh_toggle, _("Mesh ağını başlat"))
+        btn_mesh_toggle.connect("clicked", self._on_mesh_toggle)
+        self.mesh_status_row.add_suffix(btn_mesh_toggle)
+        self.btn_mesh_toggle = btn_mesh_toggle
+        mesh_group.add(self.mesh_status_row)
+
+        self.mesh_peers_row = Adw.ActionRow(
+            title=_("Bağlı Eşler"), subtitle="0",
+        )
+        mesh_group.add(self.mesh_peers_row)
+        box.append(mesh_group)
+
+        # AI Hassas Veri Tespiti
+        ai_group = Adw.PreferencesGroup(
+            title=_("🤖 Yerel Yapay Zeka"),
+            description=_("TCKN, IBAN, kredi kartı, JWT, API/SSH key tespiti"),
+        )
+        ai_input_row = Adw.ActionRow(
+            title=_("AI Taraması Test"),
+            subtitle=_("Örnek metin tara: TCKN, IBAN, API key..."),
+        )
+        btn_ai_scan = Gtk.Button(label=_("Tara"))
+        btn_ai_scan.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_ai_scan, _("Yerel AI ile tara"))
+        btn_ai_scan.connect("clicked", self._on_ai_scan_demo)
+        ai_input_row.add_suffix(btn_ai_scan)
+        ai_group.add(ai_input_row)
+
+        self.ai_result_row = Adw.ActionRow(
+            title=_("Sonuç"), subtitle=_("Henüz taranmadı"),
+        )
+        ai_group.add(self.ai_result_row)
+        box.append(ai_group)
+
+        # WebRTC Data Channel
+        webrtc_group = Adw.PreferencesGroup(
+            title=_("📡 WebRTC Ekran Paylaşımı"),
+            description=_("Düşük gecikmeli SCTP-benzeri data channel"),
+        )
+        webrtc_status_row = Adw.ActionRow(
+            title=_("WebRTC Durumu"), subtitle=_("Devre dışı"),
+        )
+        webrtc_group.add(webrtc_status_row)
+        self.webrtc_status_row = webrtc_status_row
+        box.append(webrtc_group)
+
+        # Asenkron Transfer
+        async_group = Adw.PreferencesGroup(
+            title=_("📬 Asenkron Transfer"),
+            description=_("Çevrimdışı cihazlara kuyruklanmış gönderim"),
+        )
+        async_status_row = Adw.ActionRow(
+            title=_("Bekleyen Transferler"),
+            subtitle=_("Veritabanı: ~/.local/share/pardus-paylasim/async_transfers.db"),
+        )
+        btn_async_refresh = Gtk.Button(label=_("Yenile"))
+        btn_async_refresh.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_async_refresh, _("Bekleyen transferleri yenile"))
+        btn_async_refresh.connect("clicked", self._on_async_refresh)
+        async_status_row.add_suffix(btn_async_refresh)
+        async_group.add(async_status_row)
+
+        self.async_count_row = Adw.ActionRow(
+            title=_("Toplam Bekleyen"), subtitle="0",
+        )
+        async_group.add(self.async_count_row)
+        box.append(async_group)
+
+        page = Gtk.ScrolledWindow()
+        page.set_child(box)
+        self.view_stack.add_titled(page, "innovations", "🚀 Yenilikler")
+
+    def _on_mesh_toggle(self, btn):
+        from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
+        import socket
+        import uuid
+        if not hasattr(self, "_mesh_node") or self._mesh_node is None:
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+                s.close()
+            except OSError:
+                ip = "127.0.0.1"
+            self._mesh_node = MeshNode(
+                peer_id=str(uuid.uuid4())[:8], local_ip=ip,
+            )
+            self._mesh_node.start()
+            self.mesh_status_row.set_subtitle(_("Çalışıyor"))
+            self.btn_mesh_toggle.set_label(_("Durdur"))
+        else:
+            self._mesh_node.stop()
+            self._mesh_node = None
+            self.mesh_status_row.set_subtitle(_("Başlatılmadı"))
+            self.btn_mesh_toggle.set_label(_("Başlat"))
+
+    def _on_ai_scan_demo(self, btn):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        sample = "TCKN: 10000000146, Email: ahmet@example.com, Kart: 4532015112830366"
+        det = LocalSensitiveDetector()
+        result = det.detect(sample)
+        if result.has_sensitive:
+            labels = ", ".join(d.label for d in result.detections)
+            self.ai_result_row.set_subtitle(
+                f"{len(result.detections)} bulgu: {labels}"
+            )
+        else:
+            self.ai_result_row.set_subtitle(_("Hassas veri bulunamadı."))
+
+    def _on_async_refresh(self, btn):
+        from pardus_paylasim.discovery.async_transfer.manager import AsyncTransferStore
+        try:
+            store = AsyncTransferStore()
+            pending = store.get_pending_for_receiver("")
+            self.async_count_row.set_subtitle(str(len(pending)))
+        except Exception as e:
+            self.async_count_row.set_subtitle(_("Hata: ") + str(e))
 
     def _on_setting_changed(self, widget, *args):
         # args[0] might be the property name like "active", args[1] is our key if we used connect(..., key)

@@ -14,12 +14,39 @@
 |---------|----------|
 | **mDNS Keşfi** | Yerel ağda cihazları otomatik bulma (Zeroconf) |
 | **P2P Dosya Transferi** | AES-256-GCM ile PIN korumalı uçtan uca aktarım |
+| **Mesh Ağı** 🆕 | Parça-parça (64KB) P2P transfer, 3 hop'a kadar relay, SHA-256 parça doğrulama |
+| **Yerel AI Hassas Veri Tespiti** 🆕 | TCKN (Mod-10), IBAN (Mod-97), kredi kartı (Luhn), JWT, SSH/API key, private key — çevrimdışı |
+| **WebRTC Data Channel** 🆕 | SCTP benzeri güvenilir kanal, zlib sıkıştırma, sıralı mesaj |
+| **Asenkron Transfer** 🆕 | Çevrimdışı cihazlara kuyruk, hash dedup, SQLite tabanlı geçmiş |
 | **Ekran Yayını** | GStreamer/PipeWire ile düşük gecikmeli MJPEG streaming |
 | **Pano Senkronizasyonu** | Cihazlar arası hassas veri maskeleme |
 | **Metadata Temizleme** | EXIF, PDF ve ofis belgelerinden gizli verileri silme |
 | **Uzaktan Kontrol** | AnyDesk tarzı WebSocket tabanlı uzaktan kontrol |
 | **TLS/SSL** | Fail-closed güvenlik modeli, self-signed sertifika |
 | **i18n** | Türkçe ve İngilizce destek |
+
+## 🏗️ Mimari
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    GTK4/Adw GUI (6 sekme)               │
+│  Gizlilik │ Keşif │ Ekran │ Pano │ Ayarlar │ 🚀Yenilikler│
+└──────┬──────────┬──────────┬──────────┬─────────┬────────┘
+       │          │          │          │         │
+┌──────▼──┐ ┌─────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌──▼──────────────┐
+│ Cleaner │ │Discovery │ │ Screen │ │Clipbrd │ │ 🆕 Yenilikler  │
+│ EXIF/PDF│ │ mDNS     │ │ MJPEG  │ │Masker  │ │ • Mesh (8920)  │
+│ Office  │ │ P2P:8900 │ │ :52345 │ │:8901   │ │ • AI (yerel)   │
+│         │ │ Mesh     │ │ WebRTC │ │ AI     │ │ • WebRTC(8921) │
+│         │ │ Async    │ │ :8921  │ │        │ │ • Async(SQLite)│
+└─────────┴─┴──────────┴─┴────────┴─┴────────┴─┴───────────────┘
+       │          │          │          │
+       └──────────┴──────────┴──────────┘
+                  TLS (fail-closed)
+              AES-256-GCM + PBKDF2/200K
+```
+
+**Portlar:** Dosya `8900` · Pano `8901` · Mesh `8920` · WebRTC `8921` · Ekran `52345`
 
 ## 🚀 Kurulum
 
@@ -43,8 +70,15 @@ pip install -e ".[dev,test]"
 ### Docker
 
 ```bash
-docker build -t pardus-paylasim .
+docker build -f Containerfile -t pardus-paylasim .
 docker run --rm -it pardus-paylasim
+```
+
+### Flatpak
+
+```bash
+flatpak-builder --user --install build-dir flatpak/tr.org.pardus.paylasim.yml
+flatpak run tr.org.pardus.paylasim
 ```
 
 ## 📁 Proje Yapısı
@@ -53,47 +87,115 @@ docker run --rm -it pardus-paylasim
 pardus-paylasim/
 ├── src/
 │   ├── pardus_paylasim/           # Ana uygulama
-│   │   ├── app.py                 # Entry point (GTK4/Adw)
+│   │   ├── app.py                 # Entry point (GTK4/Adw + CLI)
 │   │   ├── config.py              # GSettings + JSON fallback
-│   │   ├── window.py              # Ana pencere (5 sekme)
-│   │   ├── discovery/             # mDNS, BLE, dosya transferi
+│   │   ├── window.py              # Ana pencere (6 sekme)
+│   │   ├── discovery/             # mDNS, dosya transferi
+│   │   │   ├── mesh/              # 🆕 P2P mesh ağı (8920)
+│   │   │   └── async_transfer/    # 🆕 Çevrimdışı kuyruk (SQLite)
 │   │   ├── screen/                # Ekran yayınlama ve kontrol
+│   │   │   └── webrtc/            # 🆕 Data channel (8921)
 │   │   ├── clipboard/             # Pano maskeleme
+│   │   │   └── ai/                # 🆕 Yerel AI tespiti
 │   │   ├── cleaner/               # Metadata temizleme
 │   │   └── auth/                  # Güvenlik ve audit log
 │   ├── pardus_paylasim_agent/     # Arka plan agentı
 │   └── pardus_paylasim_server/    # HTTP sunucu
-├── tests/                         # Testler ve Docker/E2E senaryoları
+├── tests/                         # 40+ test dosyası
 ├── data/                          # Web viewer ve statik varlıklar
 ├── docs/                          # Teknik dokümanlar
 ├── scripts/                       # Build ve kurulum betikleri
 └── tools/                         # Yardımcı araçlar
 ```
 
-## 🔧 Kullanım
+## 📖 Kullanıcı Kılavuzu
 
-### CLI
+### GUI Sekmeleri
+
+| # | Sekme | Ne İşe Yarar |
+|---|-------|--------------|
+| 1 | 🛡️ Gizlilik | Dosya seç → metadata tara → temizle |
+| 2 | 🔍 Keşif | Ağdaki cihazları bul → dosya gönder/al |
+| 3 | 🖥️ Ekran | Ekranını paylaş veya karşı tarafı izle |
+| 4 | 📋 Pano | Hassas veriyi maskele, cihazlara senkronize et |
+| 5 | ⚙️ Ayarlar | Cihaz adı, klasör, mDNS görünürlüğü |
+| 6 | 🚀 Yenilikler | Mesh başlat/durdur, AI tara, asenkron kuyruk |
+
+### 🚀 Yenilikler Sekmesi — Adım Adım
+
+1. **Mesh Ağı:** "Başlat" → durum "Çalışıyor" olur, eş sayısı artar.
+2. **AI Taraması:** "Tara" → örnek metindeki TCKN/e-posta/kart listelenir.
+3. **Asenkron:** "Yenile" → bekleyen çevrimdışı transfer sayısı görünür.
+
+### 🔧 Kullanım
+
+#### CLI
 
 ```bash
 # Dosya temizleme
 pardus-paylasim --clean dosya1.jpg dosya2.pdf
 
-# Metin maskeleme
-pardus-paylasim --mask "TCKN: 12345678901"
+# Klasik maskeleme (regex)
+pardus-paylasim --mask "TCKN: 10000000146"
 
-# Çıktı ile
+# 🆕 AI ile hassas veri tara (TCKN/IBAN/kart/JWT/API key/SSH key)
+pardus-paylasim --ai-scan "Kartım 4532-0151-1283-0366 ve mail a@b.com"
+
+# 🆕 Mesh ağı durumu
+pardus-paylasim --mesh-status
+
+# 🆕 Bekleyen asenkron transferler
+pardus-paylasim --async-list
+
+# Çıktı ile temizleme
 pardus-paylasim --clean foto.jpg --out temiz_foto.jpg
 ```
 
-### GUI
+#### GUI
 
 ```bash
 pardus-paylasim
 ```
 
+#### Python API (4 yeni modül)
+
+```python
+# 1. Mesh — parça-parça transfer
+from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
+node = MeshNode(peer_id="benim-id", local_ip="192.168.1.10")
+node.start()   # 8920 portunda dinler
+node.stop()
+
+# 2. Yerel AI — hassas veri tespiti (çevrimdışı)
+from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+det = LocalSensitiveDetector()
+sonuc = det.detect("TCKN: 10000000146")
+print(sonuc.detections[0].label)  # "tckn"
+print(det.mask_with_ai("Mail: a@b.com"))  # maskelenmiş metin
+
+# 3. WebRTC — SDP teklifi oluştur
+from pardus_paylasim.screen.webrtc.data_channel import SDPMessage, WebRTCScreenNode
+teklif = SDPMessage.create_offer("oturum-1", {"codecs": ["jpeg"]})
+node = WebRTCScreenNode(peer_id="ben", port=8921)
+node.start()
+
+# 4. Asenkron — çevrimdışı kuyruk
+from pardus_paylasim.discovery.async_transfer.manager import AsyncTransferManager
+mgr = AsyncTransferManager(device_id="ben", device_name="Ofis PC")
+tid = mgr.queue_offline("/home/kullanici/rapor.pdf", receiver_id="ev-pc", receiver_name="Ev")
+bekleyen = mgr.check_pending_for("ev-pc")  # karşı taraf çevrimiçi olunca
+```
+
 ## 🧪 Testler
 
 ```bash
+# Hızlı testler (önerilen: ağ gerektirmez)
+pytest tests/test_ui_integration.py tests/test_accessibility.py -v
+
+# 4 yeni modül (doğrudan, pytest'siz de çalışır)
+python3 tests/test_innovations_simple.py
+pytest tests/test_innovations.py -v
+
 # Platform bağımsız testler
 pytest tests/ -m "not docker and not e2e" -v
 
@@ -110,13 +212,32 @@ pytest tests/ -m docker -v
 pytest tests/ -m security -v
 ```
 
+> **Not:** `pytest.ini` kaldırıldı; tüm pytest ayarı `pyproject.toml`
+> içindeki `[tool.pytest.ini_options]` bölümündedir.
+
 ## 🔒 Güvenlik
 
 - **Fail-Closed Modeli:** TLS olmadan sunucu başlatılmaz
 - **AES-256-GCM:** PIN tabanlı PBKDF2 (200K iterasyon) ile şifreleme
+- **Streaming I/O:** Dosyalar parça-parça aktarılır, bellek kullanımı dosya boyutundan bağımsız
+- **Parça Doğrulama:** Mesh transferinde her parça SHA-256 ile doğrulanır
 - **Path Traversal Koruması:** `realpath` ile dizin aşımı engeli
 - **TCKN Doğrulama:** Mod-10 kriptografik algoritması
+- **IBAN Doğrulama:** Mod-97 algoritması
+- **Kredi Kartı:** Luhn algoritması
+- **Yerel AI:** Hassas veri tespiti cihazda yapılır, buluta veri gitmez
 - **Audit Logging:** Tüm güvenlik olayları JSONL formatında kaydedilir
+
+## 🛠️ Sorun Giderme
+
+| Sorun | Çözüm |
+|-------|-------|
+| `pytest: configfile pytest.ini (WARNING: ignoring ...)` | Eski sürümden kalma `pytest.ini` dosyasını silin; ayar `pyproject.toml`'dadır |
+| `ModuleNotFoundError: pardus_paylasim` | Kök dizindeki `conftest.py` `src/` yolunu ekler; `pip install -e .` veya `PYTHONPATH=src` kullanın |
+| Port çakışması (8920/8921/8900) | Başka örnek çalışıyor olabilir; `stop()` çağrıldığından emin olun veya portu değiştirin |
+| Testler takılıyor | Soket açan testler `try/finally` ile kapatılmalı; `MeshNode.stop()` / `DataChannel.close()` çağrılmalı |
+| IBAN tespit edilmiyor | Test IBAN'ının Mod-97'si `1` olmalı (örn. `TR96 3456 7890 1234 5678 9012 34`) |
+| GTK4 bulunamadı | CLI modu otomatik açılır; GUI için `gir1.2-gtk-4.0 gir1.2-adw-1` kurun |
 
 ## 📊 CI/CD
 
