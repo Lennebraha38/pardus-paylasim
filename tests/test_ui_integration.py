@@ -137,6 +137,25 @@ def test_window_cancel_and_last_peer():
     assert '"last_peer"' in content or "'last_peer'" in content
 
 
+def test_window_manual_device_and_multi():
+    """Manuel cihaz ekleme + çoklu seçim + çoklu gönderim var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "Gtk.SelectionMode.MULTIPLE" in content
+    assert "def _send_targets" in content
+    assert "def _on_manual_device_add" in content
+    assert "entry_manual_ip" in content
+    assert "upsert_manual_device" in content
+
+
+def test_window_clipboard_history():
+    """Pano geçmişi (bellek-içi, temizleme) bağlı mı?"""
+    content = _read(WINDOW_FILE)
+    assert "clip_history_list" in content
+    assert "def _record_clip_history" in content
+    assert "def _on_clip_history_clear" in content
+    assert "maxlen=20" in content
+
+
 def test_app_has_mesh_status_arg():
     content = _read(APP_FILE)
     assert "--mesh-status" in content
@@ -185,6 +204,8 @@ if __name__ == "__main__":
         ("window_fingerprint_section", test_window_fingerprint_section),
         ("window_trust_from_list", test_window_trust_from_list),
         ("window_cancel_and_last_peer", test_window_cancel_and_last_peer),
+        ("window_manual_device_and_multi", test_window_manual_device_and_multi),
+        ("window_clipboard_history", test_window_clipboard_history),
         ("app_has_mesh_status_arg", test_app_has_mesh_status_arg),
         ("app_has_async_list_arg", test_app_has_async_list_arg),
         ("app_no_ai_scan_arg", test_app_no_ai_scan_arg),

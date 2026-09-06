@@ -464,13 +464,31 @@ class MainWindow:
         # Device list
         self.device_list = Gtk.ListBox()
         self.device_list.add_css_class("boxed-list")
-        self.device_list.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.device_list.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.device_list.connect("row-selected", self._on_device_selected)
 
         dev_scroll = Gtk.ScrolledWindow()
         dev_scroll.set_vexpand(True)
         dev_scroll.set_min_content_height(250)
         dev_scroll.set_child(self.device_list)
+
+        # Manuel cihaz ekleme (mDNS'in çalışmadığı ağlar için).
+        manual_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        manual_box.set_margin_top(6)
+        self.entry_manual_name = Gtk.Entry()
+        self.entry_manual_name.set_placeholder_text(_("Ad"))
+        self.entry_manual_name.set_width_chars(12)
+        self.entry_manual_ip = Gtk.Entry()
+        self.entry_manual_ip.set_placeholder_text("192.168.1.20:8900")
+        self.entry_manual_ip.set_width_chars(18)
+        for w in (self.entry_manual_name, self.entry_manual_ip):
+            w.set_valign(Gtk.Align.CENTER)
+            manual_box.append(w)
+        btn_manual_add = Gtk.Button(label=_("Cihaz Ekle"))
+        btn_manual_add.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_manual_add, _("IP adresiyle cihazı elle ekle"))
+        btn_manual_add.connect("clicked", self._on_manual_device_add)
+        manual_box.append(btn_manual_add)
 
         # Device detail panel
         self.device_detail = Gtk.Label(label=_("Cihaz seçildiğinde detaylar burada görünür."))
@@ -579,6 +597,7 @@ class MainWindow:
         box.append(header_box)
         box.append(ctrl_box)
         box.append(dev_scroll)
+        box.append(manual_box)
         box.append(self.device_detail)
         box.append(action_box)
         box.append(self.chk_clean_before_send)
@@ -881,6 +900,25 @@ class MainWindow:
         findings_scroll.set_min_content_height(100)
         findings_scroll.set_child(self.clip_findings_list)
 
+        # Pano geçmişi (yalnız bellekte, en fazla 20 öğe; diske yazılmaz).
+        lbl_history = Gtk.Label(label=_("Pano Geçmişi (yalnız bu oturum):"),
+                                halign=Gtk.Align.START)
+        lbl_history.add_css_class("heading")
+        self.clip_history_list = Gtk.ListBox()
+        self.clip_history_list.add_css_class("boxed-list")
+        self.clip_history_list.set_selection_mode(Gtk.SelectionMode.NONE)
+        history_scroll = Gtk.ScrolledWindow()
+        history_scroll.set_min_content_height(80)
+        history_scroll.set_child(self.clip_history_list)
+        btn_history_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.btn_clip_history_clear = Gtk.Button(label=_("🗑️ Geçmişi Temizle"))
+        self.btn_clip_history_clear.add_css_class("pill")
+        self.btn_clip_history_clear.connect("clicked", self._on_clip_history_clear)
+        btn_history_row.append(self.btn_clip_history_clear)
+        from collections import deque
+
+        self._clip_history = deque(maxlen=20)
+
         lbl_findings = Gtk.Label(label=_("Tespit Edilen Hassas Veriler:"), halign=Gtk.Align.START)
         lbl_findings.add_css_class("heading")
 
@@ -900,10 +938,53 @@ class MainWindow:
         box.append(output_scroll)
         box.append(lbl_findings)
         box.append(findings_scroll)
+        box.append(lbl_history)
+        box.append(history_scroll)
+        box.append(btn_history_row)
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
         self.view_stack.add_titled(page, "clipboard", "📋 Hassas Pano")
+
+    def _on_clip_history_clear(self, btn):
+        from collections import deque
+
+        self._clip_history = deque(maxlen=20)
+        while True:
+            row = self.clip_history_list.get_first_child()
+            if row is None:
+                break
+            self.clip_history_list.remove(row)
+
+    def _record_clip_history(self, text, direction):
+        """Pano öğesini maskeli önizlemeyle geçmişe ekler (bellek-içi)."""
+        from pardus_paylasim.clipboard.sensitive_masker import SensitiveMasker
+
+        try:
+            masked = SensitiveMasker.mask_text(text)
+        except Exception:
+            masked = "…"
+        preview = masked[:80] + ("…" if len(masked) > 80 else "")
+        self._clip_history.appendleft((direction, preview))
+        while True:
+            last = self.clip_history_list.get_last_child()
+            if last is None:
+                break
+            count = 0
+            child = self.clip_history_list.get_first_child()
+            while child is not None:
+                count += 1
+                child = child.get_next_sibling()
+            if count < 20:
+                break
+            self.clip_history_list.remove(last)
+        lbl = Gtk.Label(label=f"{direction} · {preview}")
+        lbl.set_halign(Gtk.Align.START)
+        lbl.set_wrap(True)
+        lbl.add_css_class("caption")
+        list_row = Gtk.ListBoxRow()
+        list_row.set_child(lbl)
+        self.clip_history_list.prepend(list_row)
 
     def _build_settings_tab(self):
         page = Adw.PreferencesPage()
@@ -1557,7 +1638,60 @@ class MainWindow:
         self.lbl_discovery_status.set_label(f"{len(devices)} cihaz bulundu.")
         return False  # Don't repeat
 
+    def _selected_devices(self):
+        """Seçili cihaz listesi (çoklu gönderim için)."""
+        devs = []
+        try:
+            for row in self.device_list.get_selected_rows():
+                dev = self._row_devices.get(row)
+                if dev is not None:
+                    devs.append(dev)
+        except Exception as e:
+            logger.debug("seçim okunamadı: %s", e)
+        return devs
+
+    def _on_manual_device_add(self, btn):
+        name = self.entry_manual_name.get_text().strip()
+        raw = self.entry_manual_ip.get_text().strip()
+        try:
+            ip, _, port_s = raw.rpartition(":")
+            if not port_s or ":" not in raw:
+                ip, port_s = raw, "8900"
+            port = int(port_s)
+            if not ip or not 1 <= port <= 65535:
+                raise ValueError("bad peer")
+        except ValueError:
+            self._show_error(_("Geçersiz adres (ör. 192.168.1.20:8900)."))
+            return
+        try:
+            self.discovery_handler.device_mgr.upsert_manual_device(
+                name or ip, ip, port
+            )
+        except Exception as e:
+            self._show_error(_("Cihaz eklenemedi:\n{error}").format(error=e))
+            return
+        self.entry_manual_name.set_text("")
+        self.entry_manual_ip.set_text("")
+        self._show_info(_("{name} listeye eklendi.").format(name=name or ip))
+
     def _on_device_selected(self, listbox, row):
+        devs = self._selected_devices()
+        if len(devs) > 1:
+            self._selected_device = devs[0]
+            names = ", ".join(d.name for d in devs[:3])
+            more = f" +{len(devs) - 3}" if len(devs) > 3 else ""
+            self.device_detail.set_label(
+                _("{n} cihaz seçildi ({names}{more}).\n"
+                  "Gönderim hepsine yapılır.").format(n=len(devs), names=names, more=more)
+            )
+            self.btn_pair_device.set_sensitive(False)
+            self.btn_share_normal.set_sensitive(True)
+            self.btn_share_secret.set_sensitive(True)
+            self.btn_share_folder.set_sensitive(True)
+            self.btn_share_clipboard.set_sensitive(False)
+            self.btn_share_screen_to.set_sensitive(False)
+            self.btn_trust_device.set_sensitive(False)
+            return
         if row and row in self._row_devices:
             dev = self._row_devices[row]
             self._selected_device = dev
@@ -1709,21 +1843,29 @@ class MainWindow:
 
         dialog.open(self.win, None, on_response)
 
-    def _remember_peer(self):
+    def _remember_peer(self, dev=None):
         """Son kullanılan cihazı config'e yazar (--send/nautilus için)."""
         try:
-            dev = self._selected_device
+            dev = dev if dev is not None else self._selected_device
             if dev is not None:
                 self.config.set("last_peer", {"address": dev.address,
                                               "port": dev.port})
         except Exception as e:
             logger.debug("son cihaz kaydedilemedi: %s", e)
 
+    def _send_targets(self):
+        """Gönderim hedefleri (seçili cihazlar; yoksa boş liste)."""
+        return [d for d in self._selected_devices()
+                if getattr(d, "address", None)]
+
     def _start_transfer(self, file_path, pin):
         import tempfile
         import threading
 
-        peer = self._selected_device.address
+        targets = self._send_targets()
+        if not targets:
+            self._show_error(_("Önce cihaz listesinden hedef seçin."))
+            return
         file_name = os.path.basename(file_path)
         try:
             size_bytes = os.path.getsize(file_path)
@@ -1731,8 +1873,8 @@ class MainWindow:
             size_bytes = 0
         is_secret = pin is not None
         clean_first = self.chk_clean_before_send.get_active()
-        sender = FileSender(self._selected_device.address, self._selected_device.port)
-        self._remember_peer()
+        for dev in targets:
+            self._remember_peer(dev)
         cancel_event = threading.Event()
         self._transfer_cancel = cancel_event
 
@@ -1752,19 +1894,33 @@ class MainWindow:
                 file_path, clean_first, tempfile.gettempdir()
             )
             try:
-                # Normal modda resume + bütünlük doğrulaması açık;
-                # secret mod zaten parça-parça AEAD ile korunur.
-                sender.send_file(
-                    send_path, pin, stats_callback=on_stats,
-                    rel_name=file_name,
-                    resume=not is_secret, verify_hash=not is_secret,
-                    cancel_event=cancel_event,
-                )
-                self._record_sent(file_name, size_bytes, peer, "ok", is_secret)
-                GLib.idle_add(self._show_info, "Dosya başarıyla gönderildi!")
-            except Exception as e:
-                self._record_sent(file_name, size_bytes, peer, "error", is_secret)
-                GLib.idle_add(self._show_error, f"Dosya gönderim hatası:\n{e}")
+                ok_count = 0
+                for dev in targets:
+                    peer = dev.address
+                    sender = FileSender(dev.address, dev.port)
+                    try:
+                        # Normal modda resume + bütünlük doğrulaması açık;
+                        # secret mod zaten parça-parça AEAD ile korunur.
+                        sender.send_file(
+                            send_path, pin, stats_callback=on_stats,
+                            rel_name=file_name,
+                            resume=not is_secret, verify_hash=not is_secret,
+                            cancel_event=cancel_event,
+                        )
+                        self._record_sent(file_name, size_bytes, peer, "ok", is_secret)
+                        ok_count += 1
+                    except Exception as e:
+                        self._record_sent(file_name, size_bytes, peer, "error", is_secret)
+                        GLib.idle_add(
+                            self._show_error,
+                            f"{dev.name}: gönderim hatası:\n{e}",
+                        )
+                if ok_count:
+                    GLib.idle_add(
+                        self._show_info,
+                        _("Dosya {ok}/{n} cihaza gönderildi.").format(
+                            ok=ok_count, n=len(targets)),
+                    )
             finally:
                 if tmp_path:
                     try:
@@ -1800,15 +1956,18 @@ class MainWindow:
             logger.debug("ilerleme güncellenemedi: %s", e)
 
     def _start_multi_transfer(self, file_paths, pin):
-        """Birden çok dosyayı arka planda sırayla gönderir; her biri geçmişe."""
+        """Seçili dosyaları seçili cihazlara gönderir; her biri geçmişe."""
         import tempfile
         import threading
 
-        peer = self._selected_device.address
+        targets = self._send_targets()
+        if not targets:
+            self._show_error(_("Önce cihaz listesinden hedef seçin."))
+            return
         is_secret = pin is not None
         clean_first = self.chk_clean_before_send.get_active()
-        sender = FileSender(self._selected_device.address, self._selected_device.port)
-        self._remember_peer()
+        for dev in targets:
+            self._remember_peer(dev)
         cancel_event = threading.Event()
         self._transfer_cancel = cancel_event
 
@@ -1825,58 +1984,71 @@ class MainWindow:
 
             GLib.idle_add(self._show_transfer_progress, True)
             sent_ok = 0
+            total_jobs = len(file_paths) * len(targets)
             try:
-                for path in file_paths:
-                    name = os.path.basename(path)
-                    try:
-                        size = os.path.getsize(path)
-                    except OSError:
-                        size = 0
-                    send_path, tmp_path = prepare_send_file(
-                        path, clean_first, tempfile.gettempdir()
-                    )
-                    try:
-                        sender.send_file(
-                            send_path, pin, stats_callback=on_stats,
-                            rel_name=name,
-                            resume=not is_secret, verify_hash=not is_secret,
-                            cancel_event=cancel_event,
+                for dev in targets:
+                    peer = dev.address
+                    sender = FileSender(dev.address, dev.port)
+                    for path in file_paths:
+                        if cancel_event.is_set():
+                            break
+                        name = os.path.basename(path)
+                        try:
+                            size = os.path.getsize(path)
+                        except OSError:
+                            size = 0
+                        send_path, tmp_path = prepare_send_file(
+                            path, clean_first, tempfile.gettempdir()
                         )
-                        self._record_sent(name, size, peer, "ok", is_secret)
-                        sent_ok += 1
-                    except Exception as e:
-                        self._record_sent(name, size, peer, "error", is_secret)
-                        GLib.idle_add(self._show_error, f"'{name}' gönderilemedi:\n{e}")
-                    finally:
-                        if tmp_path:
-                            try:
-                                os.unlink(tmp_path)
-                            except OSError:
-                                pass
+                        try:
+                            sender.send_file(
+                                send_path, pin, stats_callback=on_stats,
+                                rel_name=name,
+                                resume=not is_secret, verify_hash=not is_secret,
+                                cancel_event=cancel_event,
+                            )
+                            self._record_sent(name, size, peer, "ok", is_secret)
+                            sent_ok += 1
+                        except Exception as e:
+                            self._record_sent(name, size, peer, "error", is_secret)
+                            GLib.idle_add(
+                                self._show_error,
+                                f"{dev.name}/{name} gönderilemedi:\n{e}",
+                            )
+                        finally:
+                            if tmp_path:
+                                try:
+                                    os.unlink(tmp_path)
+                                except OSError:
+                                    pass
+                    if cancel_event.is_set():
+                        break
             finally:
                 GLib.idle_add(self._show_transfer_progress, False)
             GLib.idle_add(
                 self._show_info,
-                f"{sent_ok}/{len(file_paths)} dosya başarıyla gönderildi.",
+                _("{ok}/{n} gönderim tamamlandı ({d} cihaz).").format(
+                    ok=sent_ok, n=total_jobs, d=len(targets)),
             )
 
         threading.Thread(target=run, daemon=True).start()
 
     def _start_folder_transfer(self, folder_path, pin):
-        """Bir klasörü iç yapısını koruyarak arka planda gönderir."""
+        """Bir klasörü iç yapısını koruyarak seçili cihazlara gönderir."""
         import threading
 
-        peer = self._selected_device.address
+        targets = self._send_targets()
+        if not targets:
+            self._show_error(_("Önce cihaz listesinden hedef seçin."))
+            return
         folder_name = os.path.basename(folder_path.rstrip("/\\"))
         is_secret = pin is not None
-        clean_first = self.chk_clean_before_send.get_active()
-        sender = FileSender(self._selected_device.address, self._selected_device.port)
-        self._remember_peer()
+        for dev in targets:
+            self._remember_peer(dev)
         cancel_event = threading.Event()
         self._transfer_cancel = cancel_event
 
         def run():
-            from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
             from pardus_paylasim.progress import compute_stats, format_progress_line
 
             def on_stats(sent, total, elapsed):
@@ -1887,23 +2059,38 @@ class MainWindow:
                 )
 
             GLib.idle_add(self._show_transfer_progress, True)
+            ok_count = 0
             try:
                 try:
                     # Klasöre resume/hash/iptal bayrakları uygulanır. Not:
                     # klasör-içi tekil dosya temizliği (clean-first) yalnız
                     # tekli/çoklu gönderimde yapılır.
-                    sender.send_folder(
-                        folder_path, pin, stats_callback=on_stats,
-                        resume=not is_secret, verify_hash=not is_secret,
-                        cancel_event=cancel_event,
-                    )
-                    self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "ok", is_secret)
-                    GLib.idle_add(
-                        self._show_info,
-                        f"'{folder_name}' klasörü başarıyla gönderildi.",
-                    )
+                    for dev in targets:
+                        peer = dev.address
+                        sender = FileSender(dev.address, dev.port)
+                        try:
+                            sender.send_folder(
+                                folder_path, pin, stats_callback=on_stats,
+                                resume=not is_secret, verify_hash=not is_secret,
+                                cancel_event=cancel_event,
+                            )
+                            self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "ok", is_secret)
+                            ok_count += 1
+                        except Exception as e:
+                            self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "error", is_secret)
+                            GLib.idle_add(
+                                self._show_error,
+                                f"{dev.name}: klasör gönderilemedi:\n{e}",
+                            )
+                        if cancel_event.is_set():
+                            break
+                    if ok_count:
+                        GLib.idle_add(
+                            self._show_info,
+                            _("'{folder}' {ok}/{n} cihaza gönderildi.").format(
+                                folder=folder_name, ok=ok_count, n=len(targets)),
+                        )
                 except Exception as e:
-                    self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "error", is_secret)
                     GLib.idle_add(self._show_error, f"Klasör gönderim hatası:\n{e}")
             finally:
                 GLib.idle_add(self._show_transfer_progress, False)
@@ -2041,6 +2228,7 @@ class MainWindow:
             try:
                 client.send_text(text)
                 GLib.idle_add(self._show_info, "Pano başarıyla gönderildi!")
+                GLib.idle_add(self._record_clip_history, text, "📤")
             except Exception as e:
                 GLib.idle_add(self._show_error, f"Pano gönderim hatası:\n{e}")
 
@@ -2059,6 +2247,7 @@ class MainWindow:
                 logger.error("Pano yazılamadı: %s", e)
                 return
             preview = text[:60] + ("…" if len(text) > 60 else "")
+            self._record_clip_history(text, f"📥 {sender_ip or ''}".strip())
             self._show_info(
                 _("{sender} panonuza metin gönderdi:\n\n{preview}").format(
                     sender=sender_ip or _("Bir cihaz"), preview=preview

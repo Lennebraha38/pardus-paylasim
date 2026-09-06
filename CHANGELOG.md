@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tarayıcıdan paylaşım**: dosya yöneticisi yükleme UI (100 MB, ilerleme çubuğu) + host panelinde PIN'li dosya linki; uygulamasız cihaz tarayıcıyla alıp gönderebilir.
 - **Aktarım iptali**: ilerleme yanında İptal butonu + `cancel_event` (alıcıda resume devam eder).
 - **`--send` CLI + Nautilus**: son cihaza terminalden gönderim (`--to`, `--pin`), sağ-tık betikleri (`scripts/nautilus/`).
+- **Manuel cihaz ekleme**: mDNS'siz ağlar için IP:port ile liste girişi.
+- **Çoklu cihaza gönderim**: listeden çoklu seçim, dosya/klasör hepsine gider.
+- **Pano geçmişi**: son 20 öğe, maskeli önizleme, yalnız bellek (diske yazılmaz).
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 
 ### Changed

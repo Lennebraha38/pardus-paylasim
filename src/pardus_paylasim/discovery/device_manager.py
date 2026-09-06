@@ -256,6 +256,24 @@ class DeviceManager:
             self.devices[mac] = dev
         self.notify_listeners()
 
+    def upsert_manual_device(self, name: str, address: str, port: int) -> PardusDevice:
+        """Elle eklenen cihaz (mDNS çalışmayan ağlar için)."""
+        with self._lock:
+            dev = PardusDevice(
+                id=address,
+                name=name or address,
+                address=address,
+                port=port,
+                connection_type="Manuel",
+                os_info="Bilinmiyor",
+                capabilities=["Dosya Gönderimi", "Hassas Pano"],
+                rssi="—",
+                status="Manuel",
+            )
+            self.devices[address] = dev
+        self.notify_listeners()
+        return dev
+
     def get_devices(self) -> List[PardusDevice]:
         """Get current device list sorted by trust and proximity."""
         with self._lock:
