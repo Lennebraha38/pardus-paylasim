@@ -4,13 +4,14 @@
 PY="${1:-/tmp/pptr-test/venv/bin/python}"
 cd "$(dirname "$0")/.." || exit 1
 PASS=0; FAIL=0
+OUT_FILE="$(mktemp 2>/dev/null || echo ./.smoke_out.txt)"
 
 check() { # $1=ad $2=komut...
     local name="$1"; shift
-    if "$@" >/tmp/smoke_out.txt 2>&1; then
+    if "$@" >"$OUT_FILE" 2>&1; then
         PASS=$((PASS+1)); echo "PASS: $name"
     else
-        FAIL=$((FAIL+1)); echo "FAIL: $name (bkz. /tmp/smoke_out.txt)"
+        FAIL=$((FAIL+1)); echo "FAIL: $name (bkz. $OUT_FILE)"
     fi
 }
 
