@@ -20,7 +20,8 @@ echo "Telefon tarayicisinda ac:  http://127.0.0.1:8085"
 echo "Durdurma: Ctrl+C"
 proot-distro login debian -- bash -c "
 set -e
-pkill -f 'broadwayd :5' 2>/dev/null || true
+pkill -f '[g]tk4-broadwayd :5' 2>/dev/null || true
+pkill -f '[b]roadwayd :5' 2>/dev/null || true
 sleep 1
 (command -v gtk4-broadwayd >/dev/null && BW=gtk4-broadwayd || BW=broadwayd); setsid $BW :5 </dev/null >/tmp/broadwayd.log 2>&1 &
 for i in \$(seq 1 15); do
