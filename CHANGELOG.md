@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Resume** (0x03 modu): yarım `.part` + sidecar ile kaldığı yerden devam; boyut/mtime uyuşmazsa sıfırdan başlar.
 - **Bütünlük doğrulamalı normal mod** (0x04): gövde sonu SHA-256; tutmazsa ret + temp temizliği.
 - **Hız/ETA**: `stats_callback` + ilerleme çubuğuna bağlı `% · MB/s · ETA` satırı.
+- **Mesh mDNS keşfi** (`discovery/mesh/mdns.py`): `_pardus-mesh._tcp` duyuru + tarama; eşler otomatik eklenir/düşer, zeroconf yoksa sessiz degrade.
+- **Gönderim-öncesi temizlik**: Keşif sekmesinde seçenek (varsayılan açık); orijinal korunur, temiz kopya gönderilir.
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 
 ### Changed

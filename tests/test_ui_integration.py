@@ -88,6 +88,22 @@ def test_window_mesh_peer_add():
     assert "self._set_a11y_label(btn_peer_add" in content
 
 
+def test_window_clean_before_send():
+    """Gönderim-öncesi temizlik seçeneği ve bağlantısı var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "chk_clean_before_send" in content
+    assert "prepare_send_file" in content
+    assert "Göndermeden önce metadata temizle" in content
+
+
+def test_window_mesh_discovery_wiring():
+    """Keşif başlatma/durdurma ve eş sayaç tazeleme bağlı mı?"""
+    content = _read(WINDOW_FILE)
+    assert "start_discovery" in content
+    assert "on_peer_discovered" in content
+    assert "on_peer_lost" in content
+
+
 def test_app_has_mesh_status_arg():
     content = _read(APP_FILE)
     assert "--mesh-status" in content
@@ -131,6 +147,8 @@ if __name__ == "__main__":
         ("window_tab_names_6_entries", test_window_tab_names_6_entries),
         ("window_a11y_labels_on_buttons", test_window_a11y_labels_on_buttons),
         ("window_mesh_peer_add", test_window_mesh_peer_add),
+        ("window_clean_before_send", test_window_clean_before_send),
+        ("window_mesh_discovery_wiring", test_window_mesh_discovery_wiring),
         ("app_has_mesh_status_arg", test_app_has_mesh_status_arg),
         ("app_has_async_list_arg", test_app_has_async_list_arg),
         ("app_no_ai_scan_arg", test_app_no_ai_scan_arg),

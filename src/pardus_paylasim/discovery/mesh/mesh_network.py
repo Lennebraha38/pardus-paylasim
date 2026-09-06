@@ -134,12 +134,14 @@ class MeshNode:
         self.mesh_port = mesh_port
         self.on_transfer_complete = on_transfer_complete
         self.on_peer_discovered = on_peer_discovered
+        self.on_peer_lost = None  # Callback(peer_id) — keşif kaybında UI tazeler.
         self.peers: Dict[str, MeshPeer] = {}
         self.transfers: Dict[str, TransferJob] = {}
         self._lock = threading.RLock()
         self._running = False
         self._server: Optional[socket.socket] = None
         self._accept_thread: Optional[threading.Thread] = None
+        self._discovery = None
         self.protocol = MeshProtocol()
 
     def start(self):
@@ -165,7 +167,57 @@ class MeshNode:
         self._accept_thread = threading.Thread(target=self._accept_loop, daemon=True)
         self._accept_thread.start()
 
+    def start_discovery(self) -> bool:
+        """mDNS ile mesh eşlerini otomatik bul (node çalışıyor olmalı).
+
+        zeroconf yoksa False döner; manuel `add_peer` her zaman çalışır.
+        Bulunan eşler otomatik eklenir + `on_peer_discovered` çağrılır.
+        """
+        if not self._running:
+            return False
+        if self._discovery is not None and self._discovery.running:
+            return True
+        from pardus_paylasim.discovery.mesh.mdns import MeshDiscovery
+
+        def _on_peer(ip: str, port: int, pid: str):
+            self.add_peer(MeshPeer(id=pid, ip=ip, port=port))
+            if self.on_peer_discovered:
+                try:
+                    self.on_peer_discovered(pid)
+                except Exception as e:
+                    logger.debug("on_peer_discovered hatası: %s", e)
+
+        def _on_lost(pid: str):
+            self.remove_peer(pid)
+            if self.on_peer_lost:
+                try:
+                    self.on_peer_lost(pid)
+                except Exception as e:
+                    logger.debug("on_peer_lost hatası: %s", e)
+
+        disc = MeshDiscovery(
+            peer_id=self.peer_id, local_ip=self.local_ip,
+            mesh_port=self.mesh_port, on_peer=_on_peer, on_peer_lost=_on_lost,
+        )
+        ok = disc.start()
+        if ok:
+            self._discovery = disc
+        return ok
+
+    def stop_discovery(self):
+        disc, self._discovery = self._discovery, None
+        if disc is not None:
+            try:
+                disc.stop()
+            except Exception as e:
+                logger.debug("keşif durdurma hatası: %s", e)
+
+    @property
+    def discovery_running(self) -> bool:
+        return self._discovery is not None and self._discovery.running
+
     def stop(self):
+        self.stop_discovery()
         self._running = False
         if self._server is not None:
             try:

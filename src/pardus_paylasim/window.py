@@ -524,6 +524,18 @@ class MainWindow:
         action_box.append(self.btn_share_clipboard)
         action_box.append(self.btn_share_screen_to)
 
+        # Gönderim-öncesi gizlilik: dosya gönderilirken metadata temizlensin mi?
+        # Varsayılan AÇIK; orijinal dosyaya dokunulmaz, temiz kopya gönderilir.
+        self.chk_clean_before_send = Gtk.CheckButton(
+            label=_("Göndermeden önce metadata temizle")
+        )
+        self.chk_clean_before_send.set_active(True)
+        self.chk_clean_before_send.set_halign(Gtk.Align.START)
+        self._set_a11y_label(
+            self.chk_clean_before_send,
+            _("Göndermeden önce dosya metadata bilgisini temizle"),
+        )
+
         # Transfer ilerleme göstergesi (#23): gönderim boyunca çubuk + hız/ETA
         # altyazısı. Boşta gizli tutulur; aktarım başlayınca görünür olur.
         self.transfer_progress = Gtk.ProgressBar()
@@ -550,6 +562,7 @@ class MainWindow:
         box.append(dev_scroll)
         box.append(self.device_detail)
         box.append(action_box)
+        box.append(self.chk_clean_before_send)
         box.append(self.transfer_progress)
         box.append(self.lbl_transfer_stats)
         box.append(self.lbl_drop_hint)
@@ -1048,12 +1061,26 @@ class MainWindow:
             self._mesh_node = MeshNode(
                 peer_id=str(uuid.uuid4())[:8], local_ip=ip,
             )
+
+            def _peer_changed(pid=None):
+                node = getattr(self, "_mesh_node", None)
+                if node is not None:
+                    GLib.idle_add(
+                        self.mesh_peers_row.set_subtitle, str(len(node.peers))
+                    )
+
+            self._mesh_node.on_peer_discovered = _peer_changed
+            self._mesh_node.on_peer_lost = _peer_changed
             self._mesh_node.start()
             if not self._mesh_node._running:
                 self._mesh_node = None
                 self.mesh_status_row.set_subtitle(_("Başlatılamadı (port dolu?)"))
                 return
-            self.mesh_status_row.set_subtitle(_("Çalışıyor"))
+            disc_ok = self._mesh_node.start_discovery()
+            self.mesh_status_row.set_subtitle(
+                _("Çalışıyor (otomatik keşif açık)") if disc_ok
+                else _("Çalışıyor (manuel eş ekleyin)")
+            )
             self.mesh_peers_row.set_subtitle(str(len(self._mesh_node.peers)))
             self.btn_mesh_toggle.set_label(_("Durdur"))
         else:
@@ -1450,6 +1477,7 @@ class MainWindow:
         dialog.open(self.win, None, on_response)
 
     def _start_transfer(self, file_path, pin):
+        import tempfile
         import threading
 
         peer = self._selected_device.address
@@ -1459,9 +1487,11 @@ class MainWindow:
         except OSError:
             size_bytes = 0
         is_secret = pin is not None
+        clean_first = self.chk_clean_before_send.get_active()
         sender = FileSender(self._selected_device.address, self._selected_device.port)
 
         def run():
+            from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
             from pardus_paylasim.progress import compute_stats, format_progress_line
 
             def on_stats(sent, total, elapsed):
@@ -1472,11 +1502,15 @@ class MainWindow:
                 )
 
             GLib.idle_add(self._show_transfer_progress, True)
+            send_path, tmp_path = prepare_send_file(
+                file_path, clean_first, tempfile.gettempdir()
+            )
             try:
                 # Normal modda resume + bütünlük doğrulaması açık;
                 # secret mod zaten parça-parça AEAD ile korunur.
                 sender.send_file(
-                    file_path, pin, stats_callback=on_stats,
+                    send_path, pin, stats_callback=on_stats,
+                    rel_name=file_name,
                     resume=not is_secret, verify_hash=not is_secret,
                 )
                 self._record_sent(file_name, size_bytes, peer, "ok", is_secret)
@@ -1485,6 +1519,11 @@ class MainWindow:
                 self._record_sent(file_name, size_bytes, peer, "error", is_secret)
                 GLib.idle_add(self._show_error, f"Dosya gönderim hatası:\n{e}")
             finally:
+                if tmp_path:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
                 GLib.idle_add(self._show_transfer_progress, False)
 
         threading.Thread(target=run, daemon=True).start()
@@ -1507,13 +1546,16 @@ class MainWindow:
 
     def _start_multi_transfer(self, file_paths, pin):
         """Birden çok dosyayı arka planda sırayla gönderir; her biri geçmişe."""
+        import tempfile
         import threading
 
         peer = self._selected_device.address
         is_secret = pin is not None
+        clean_first = self.chk_clean_before_send.get_active()
         sender = FileSender(self._selected_device.address, self._selected_device.port)
 
         def run():
+            from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
             from pardus_paylasim.progress import compute_stats, format_progress_line
 
             def on_stats(sent, total, elapsed):
@@ -1532,9 +1574,13 @@ class MainWindow:
                         size = os.path.getsize(path)
                     except OSError:
                         size = 0
+                    send_path, tmp_path = prepare_send_file(
+                        path, clean_first, tempfile.gettempdir()
+                    )
                     try:
                         sender.send_file(
-                            path, pin, stats_callback=on_stats,
+                            send_path, pin, stats_callback=on_stats,
+                            rel_name=name,
                             resume=not is_secret, verify_hash=not is_secret,
                         )
                         self._record_sent(name, size, peer, "ok", is_secret)
@@ -1542,6 +1588,12 @@ class MainWindow:
                     except Exception as e:
                         self._record_sent(name, size, peer, "error", is_secret)
                         GLib.idle_add(self._show_error, f"'{name}' gönderilemedi:\n{e}")
+                    finally:
+                        if tmp_path:
+                            try:
+                                os.unlink(tmp_path)
+                            except OSError:
+                                pass
             finally:
                 GLib.idle_add(self._show_transfer_progress, False)
             GLib.idle_add(

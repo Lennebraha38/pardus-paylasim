@@ -113,15 +113,15 @@ pardus-paylasim/
 | # | Sekme | Ne İşe Yarar |
 |---|-------|--------------|
 | 1 | 🛡️ Gizlilik | Dosya seç → metadata tara → temizle |
-| 2 | 🔍 Keşif | Ağdaki cihazları bul → dosya gönder/al |
+| 2 | 🔍 Keşif | Ağdaki cihazları bul → dosya gönder/al (istersen göndermeden metadata temizlenir) |
 | 3 | 🖥️ Ekran | Ekranını paylaş veya karşı tarafı izle |
 | 4 | 📋 Pano | Hassas veriyi maskele, cihazlara senkronize et |
 | 5 | ⚙️ Ayarlar | Cihaz adı, klasör, mDNS görünürlüğü |
-| 6 | 🌐 Mesh Ağı | Mesh başlat/durdur, WebRTC durumu, asenkron kuyruk |
+| 6 | 🌐 Mesh Ağı | Mesh başlat/durdur (otomatik eş keşfi), eş ekle, WebRTC durumu, asenkron kuyruk |
 
 ### 🌐 Mesh Ağı Sekmesi — Adım Adım
 
-1. **Mesh Ağı:** "Başlat" → durum "Çalışıyor" olur, eş sayısı artar.
+1. **Mesh Ağı:** "Başlat" → durum "Çalışıyor" olur; aynı ağdaki eşler mDNS ile otomatik bulunur (yoksa "Eş Ekle"ye IP:port yazılır).
 2. **WebRTC:** Ekran paylaşımı oturum durumunu gösterir.
 3. **Asenkron:** "Yenile" → bekleyen çevrimdışı transfer sayısı görünür.
 

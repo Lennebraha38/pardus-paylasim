@@ -381,3 +381,37 @@ class MetadataCleaner:
             return True
         except Exception as e:
             return False
+
+
+def prepare_send_file(src_path: str, clean_first: bool, tmpdir: str):
+    """Gönderim öncesi hazırlık: istenirse metadata temizlenmiş kopya üretir.
+
+    Args:
+        src_path: Orijinal dosya yolu (asla değiştirilmez).
+        clean_first: True ise temizleme denenir.
+        tmpdir: Temiz kopyanın yazılacağı dizin (var olmalı).
+
+    Returns:
+        (gönderilecek_yol, silinecek_geçici_yol_veya_None).
+        Temizleme başarısız/desteksizse orijinal yol döner (gönderim
+        engellenmez; çağıran isterse kullanıcıyı bilgilendirir).
+    """
+    import tempfile
+
+    if not clean_first:
+        return src_path, None
+    try:
+        base = os.path.basename(src_path) or "dosya"
+        fd, tmp_path = tempfile.mkstemp(prefix=".pardus-temiz-", suffix="-" + base,
+                                        dir=tmpdir)
+        os.close(fd)
+        result = MetadataCleaner().clean_file(src_path, tmp_path)
+        if result.success and result.cleaned_path and os.path.exists(result.cleaned_path):
+            return result.cleaned_path, result.cleaned_path
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+    except Exception as e:
+        logger.debug("Gönderim-öncesi temizlik atlandı: %s", e)
+    return src_path, None
