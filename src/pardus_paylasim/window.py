@@ -76,12 +76,20 @@ class MainWindow:
         self.receiver.get_secret_pin_callback = self._on_get_secret_pin_callback
         self.receiver.on_file_request = self._on_file_request_callback
         self.receiver.history = self.history
-        self.receiver.start()
+        try:
+            self.receiver.start()
+        except OSError as e:
+            # Port doluysa (eski örnek çalışıyor?) arayüz yine açılmalı;
+            # dosya alma bu oturumda devre dışı kalır.
+            logger.warning("Dosya alıcısı başlatılamadı (port dolu?): %s", e)
 
         # Cihazlar arası pano paylaşımı sunucusu.
         self.clipboard_server = ClipboardSyncServer()
         self.clipboard_server.on_clipboard_received = self._on_clipboard_received_callback
-        self.clipboard_server.start()
+        try:
+            self.clipboard_server.start()
+        except OSError as e:
+            logger.warning("Pano sunucusu başlatılamadı (port dolu?): %s", e)
 
         # Internal state
         self._discovery_active = False

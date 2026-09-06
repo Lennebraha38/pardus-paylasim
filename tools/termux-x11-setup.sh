@@ -42,8 +42,12 @@ else
 fi"
 
 echo "== 5/5 X sunucusu + uygulama =="
-# Eski kalmış X sunucusu varsa kapat, :0'ı Termux tarafında başlat.
-pkill -f "termux-x11 :0" 2>/dev/null || true
+# Önce eski kalıntıları temizle: ölmüş uygulamanın tuttuğu portlar (8900/8901)
+# ve eski X sunucusu, yoksa "Address already in use" / "server already running".
+proot-distro login debian -- bash -c "pkill -f '[p]ardus_paylasim.app' 2>/dev/null || true"
+pkill -f '[t]ermux-x11' 2>/dev/null || true
+rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
+sleep 1
 termux-x11 :0 &
 sleep 3
 if [ ! -S /tmp/.X11-unix/X0 ] && [ ! -S "$PREFIX/tmp/.X11-unix/X0" ]; then
