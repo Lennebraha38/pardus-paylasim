@@ -91,9 +91,9 @@ dbus-run-session -- env DISPLAY=:0 GDK_BACKEND=x11 GSETTINGS_BACKEND=memory \
 }
 
 ensure_x
-if ! launch_app; then
-    code=$?
-    if [ "$code" = "3" ] || [ "$code" = "4" ]; then
+code=0
+launch_app || code=$?
+if [ "$code" != "0" ]; then
         echo "Display ölü — X sunucusu zorla yenileniyor…"
         pkill -9 -f 'termux-x11 :' 2>/dev/null || true
         sleep 2
@@ -109,7 +109,4 @@ if ! launch_app; then
             echo '3) betiği tekrar çalıştır.'
             exit 1
         }
-    else
-        exit "$code"
-    fi
 fi
