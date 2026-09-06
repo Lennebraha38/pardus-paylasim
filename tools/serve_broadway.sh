@@ -7,24 +7,32 @@
 # Sonra telefon tarayıcısında:  http://127.0.0.1:8085
 set -e
 
-echo "== 1/3 broadwayd kurulumu (proot Debian) =="
+echo "== 1/2 broadwayd kurulumu (proot Debian) =="
 proot-distro login debian -- bash -c "
 set -e
 apt-get update -qq
-DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends libgtk-4-bin 2>&1 | tail -1
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libgtk-4-bin
+command -v broadwayd
 echo BROADWAY-READY"
 
-echo "== 2/3 broadwayd baslatiliyor (:5 -> http://127.0.0.1:8085) =="
-pkill -f "broadwayd :5" 2>/dev/null || true
-sleep 1
-# broadwayd proot icinde calismali (GTK kutuphaneleri orada)
-proot-distro login debian -- bash -c "nohup broadwayd :5 >/tmp/broadwayd.log 2>&1 &"
-sleep 3
-
-echo "== 3/3 uygulama baslatiliyor =="
+echo "== 2/2 broadwayd + uygulama (tek oturum) =="
 echo "Telefon tarayicisinda ac:  http://127.0.0.1:8085"
-echo "Durdurma: Ctrl+C (ardindan: pkill -f 'broadwayd :5')"
+echo "Durdurma: Ctrl+C"
 proot-distro login debian -- bash -c "
+set -e
+pkill -f 'broadwayd :5' 2>/dev/null || true
+sleep 1
+setsid broadwayd :5 </dev/null >/tmp/broadwayd.log 2>&1 < /dev/null &
+for i in \$(seq 1 15); do
+    if (echo > /dev/tcp/127.0.0.1/8085) 2>/dev/null; then
+        echo 'broadwayd hazir (8085).'
+        break
+    fi
+    sleep 1
+    if [ \$i -eq 15 ]; then
+        echo 'HATA: broadwayd 8085 portunu acamadi. Log:'; tail -20 /tmp/broadwayd.log; exit 1
+    fi
+done
 export GDK_BACKEND=broadway
 export BROADWAY_DISPLAY=:5
 cd ~/pardus-paylasim
