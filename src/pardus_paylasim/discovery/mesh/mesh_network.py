@@ -195,7 +195,11 @@ class MeshNode:
         file_size: int, file_path: str, target: str
     ):
         chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
-        file_hash = hashlib.sha256(open(file_path, "rb").read()).hexdigest()[:32]
+        digest = hashlib.sha256()
+        with open(file_path, "rb") as hf:
+            for piece in iter(lambda: hf.read(1024 * 1024), b""):
+                digest.update(piece)
+        file_hash = digest.hexdigest()[:32]
         job = TransferJob(
             transfer_id=transfer_id,
             file_name=file_name,

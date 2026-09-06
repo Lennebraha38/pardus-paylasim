@@ -47,11 +47,26 @@ class AsyncTransferStore:
         self.db_path = db_path or DB_PATH
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._lock = threading.RLock()
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        try:
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA synchronous=NORMAL")
+        except sqlite3.Error:
+            pass
         self._init_db()
+
+    def close(self):
+        """Veritabanı bağlantısını kapatır."""
+        with self._lock:
+            try:
+                self._conn.commit()
+                self._conn.close()
+            except sqlite3.Error:
+                pass
 
     def _init_db(self):
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS async_transfers (
                     id TEXT PRIMARY KEY,
@@ -84,13 +99,12 @@ class AsyncTransferStore:
                 ON async_transfers(status, receiver_id)
             """)
             conn.commit()
-            conn.close()
 
     def queue_transfer(self, transfer: AsyncTransfer) -> bool:
         """Yeni bir asenkron transfer kuyruğa ekler."""
         with self._lock:
             try:
-                conn = sqlite3.connect(self.db_path)
+                conn = self._conn
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO async_transfers
@@ -115,7 +129,6 @@ class AsyncTransferStore:
                     ),
                 )
                 conn.commit()
-                conn.close()
                 self._log_event(transfer.id, "queued", {"file_name": transfer.file_name})
                 return True
             except Exception as e:
@@ -125,7 +138,7 @@ class AsyncTransferStore:
     def get_pending_for_receiver(self, receiver_id: str) -> List[AsyncTransfer]:
         """Bir alıcı için bekleyen transferleri döndürür."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             rows = conn.execute(
                 """
                 SELECT id, file_name, file_size, file_hash, sender_id,
@@ -137,13 +150,12 @@ class AsyncTransferStore:
                 """,
                 (receiver_id,),
             ).fetchall()
-            conn.close()
             return [self._row_to_transfer(r) for r in rows]
 
     def get_pending_for_sender(self, sender_id: str) -> List[AsyncTransfer]:
         """Bir gönderici tarafından yapılan bekleyen transferleri döndürür."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             rows = conn.execute(
                 """
                 SELECT id, file_name, file_size, file_hash, sender_id,
@@ -155,13 +167,12 @@ class AsyncTransferStore:
                 """,
                 (sender_id,),
             ).fetchall()
-            conn.close()
             return [self._row_to_transfer(r) for r in rows]
 
     def mark_delivered(self, transfer_id: str):
         """Transfer'i teslim edildi olarak işaretler."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             conn.execute(
                 """
                 UPDATE async_transfers
@@ -171,12 +182,11 @@ class AsyncTransferStore:
                 (time.time(), transfer_id),
             )
             conn.commit()
-            conn.close()
             self._log_event(transfer_id, "delivered", {})
 
     def mark_failed(self, transfer_id: str):
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             conn.execute(
                 """
                 UPDATE async_transfers
@@ -187,24 +197,22 @@ class AsyncTransferStore:
                 (time.time(), transfer_id),
             )
             conn.commit()
-            conn.close()
             self._log_event(transfer_id, "failed", {})
 
     def cancel_transfer(self, transfer_id: str):
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             conn.execute(
                 "UPDATE async_transfers SET status = 'cancelled' WHERE id = ?",
                 (transfer_id,),
             )
             conn.commit()
-            conn.close()
             self._log_event(transfer_id, "cancelled", {})
 
     def get_transfer_by_hash(self, file_hash: str) -> Optional[AsyncTransfer]:
         """Belirli bir hash'e sahip transferi bulur (dedup için)."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             row = conn.execute(
                 """
                 SELECT id, file_name, file_size, file_hash, sender_id,
@@ -214,7 +222,6 @@ class AsyncTransferStore:
                 """,
                 (file_hash,),
             ).fetchone()
-            conn.close()
             return self._row_to_transfer(row) if row else None
 
     def get_history(
@@ -222,7 +229,7 @@ class AsyncTransferStore:
     ) -> List[Dict]:
         """Bir transferin olay geçmişini döndürür."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             rows = conn.execute(
                 """
                 SELECT event_type, event_data, timestamp, peer_id
@@ -232,7 +239,6 @@ class AsyncTransferStore:
                 """,
                 (transfer_id, limit),
             ).fetchall()
-            conn.close()
             return [
                 {
                     "type": r[0],
@@ -262,7 +268,7 @@ class AsyncTransferStore:
 
     def _log_event(self, transfer_id: str, event_type: str, data: dict):
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._conn
             conn.execute(
                 """
                 INSERT INTO transfer_history
@@ -272,7 +278,6 @@ class AsyncTransferStore:
                 (transfer_id, event_type, json.dumps(data), time.time()),
             )
             conn.commit()
-            conn.close()
         except Exception as e:
             logger.debug("Olay günlüğü hatası: %s", e)
 
@@ -306,7 +311,11 @@ class AsyncTransferManager:
             return None
 
         file_size = os.path.getsize(file_path)
-        file_hash = hashlib.sha256(open(file_path, "rb").read()).hexdigest()
+        digest = hashlib.sha256()
+        with open(file_path, "rb") as hf:
+            for piece in iter(lambda: hf.read(1024 * 1024), b""):
+                digest.update(piece)
+        file_hash = digest.hexdigest()
 
         existing = self.store.get_transfer_by_hash(file_hash)
         if existing and existing.status == "delivered":

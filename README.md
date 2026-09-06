@@ -210,10 +210,27 @@ pytest tests/ -m docker -v
 
 # Güvenlik testleri
 pytest tests/ -m security -v
+
+# Performans ölçümleri (pytest gerektirmez)
+python3 tests/benchmarks.py
+
+# Uçtan uca mesh transferi (gerçek TCP, Docker gerektirmez)
+python3 tests/test_mesh_e2e.py
 ```
 
 > **Not:** `pytest.ini` kaldırıldı; tüm pytest ayarı `pyproject.toml`
 > içindeki `[tool.pytest.ini_options]` bölümündedir.
+
+## 📈 Kanıtlar
+
+| Belge | İçerik |
+|-------|--------|
+| [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | Ölçülen gecikme tablosu (AI 0,04 ms, mesh 3 µs) + rakip özellik matrisi |
+| [`docs/DEMO.md`](docs/DEMO.md) | Gerçek CLI çıktıları (4 komut) + E2E mesh kaydı |
+| [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) | Statik tarama: 2 bulgu düzeltildi (`secrets`), yanlış alarmlar gerekçelendirildi |
+| [`docs/LICENSES.md`](docs/LICENSES.md) | Bağımlılık lisans uyumu (GPL-3.0 ile çelişki yok) |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | v1.1 / v1.2 / v2.0 hedefleri |
+| [`docs/KULLANICI_ANKETI.md`](docs/KULLANICI_ANKETI.md) | 5 senaryoluk kullanıcı test formu |
 
 ## 🔒 Güvenlik
 

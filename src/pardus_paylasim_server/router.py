@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-import random
+import secrets
 
 import websockets
 
@@ -14,7 +14,7 @@ devices = {}
 
 def generate_id():
     while True:
-        candidate = str(random.randint(100000000, 999999999))
+        candidate = str(secrets.randbelow(900000000) + 100000000)
         if candidate not in devices:
             return candidate
 

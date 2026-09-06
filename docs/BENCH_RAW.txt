@@ -1,0 +1,8 @@
+ai_short min=0.038 p50=0.038 p95=0.057 mean=0.043 ops=23217
+ai_long_10kb min=1.434 p50=1.479 p95=2.005 mean=1.539 ops=650
+ai_clean min=0.015 p50=0.016 p95=0.016 mean=0.016 ops=62315
+mesh_pack_64kb min=0.002 p50=0.003 p95=0.003 mean=0.003 ops=363989
+mesh_unpack_64kb min=0.002 p50=0.003 p95=0.003 mean=0.003 ops=349226
+mask min=0.040 p50=0.041 p95=0.042 mean=0.042 ops=24065
+sqlite_queue min=0.454 p50=0.662 p95=1.496 mean=0.789 ops=1267
+webrtc_send_30kb min=0.001 p50=0.001 p95=0.002 mean=0.003 ops=364880

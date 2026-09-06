@@ -11,6 +11,8 @@ import logging
 import os
 import threading
 
+logger = logging.getLogger(__name__)
+
 from pardus_paylasim.config import AppConfig
 from pardus_paylasim.discovery.clipboard_sync import (
     ClipboardSyncClient,
@@ -56,11 +58,9 @@ except Exception as e:
     logger.warning("GTK import failed: %s", e)
     HAS_GTK = False
 
-logger = logging.getLogger(__name__)
-
 
 class MainWindow:
-    """Main application window with 5 functional tabs."""
+    """Main application window with 6 functional tabs."""
 
     def __init__(self, app=None):
         self.privacy_handler = PrivacyViewHandler()
@@ -1422,9 +1422,9 @@ class MainWindow:
             try:
                 f = dialog.open_finish(result)
                 if f:
-                    import random
+                    import secrets
 
-                    pin = str(random.randint(100000, 999999))
+                    pin = str(secrets.randbelow(900000) + 100000)
                     self._show_info(
                         _("Karşı tarafın dosyayı açması için gereken PIN:\n\n{pin}").format(pin=pin)
                     )
