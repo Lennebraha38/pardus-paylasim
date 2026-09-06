@@ -568,13 +568,17 @@ class FileReceiverServer:
         return 0
 
     def _write_sidecar(self, sidecar: str, total_size: int, mtime_ns: int, received: int):
+        # Atomik yazım (tmp + replace): okuyan taraf asla yarım JSON görmez,
+        # çökme anında ya eski ya yeni kayıt okunur.
         try:
             parent = os.path.dirname(sidecar)
             if parent and not os.path.exists(parent):
                 os.makedirs(parent, exist_ok=True)
-            with open(sidecar, "w", encoding="utf-8") as f:
+            tmp_path = sidecar + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump({"size": total_size, "mtime_ns": mtime_ns,
                            "received": received}, f)
+            os.replace(tmp_path, sidecar)
         except OSError as e:
             logger.warning("Sidecar yazılamadı: %s", e)
 
@@ -641,16 +645,27 @@ class FileReceiverServer:
                 received = offset
                 self._write_sidecar(sidecar, total_size, mtime_ns, received)
                 next_mark = ((offset // (1024 * 1024)) + 1) * (1024 * 1024)
-                while received < total_size:
-                    to_read = min(RESUME_IO_CHUNK, total_size - received)
-                    chunk = net_util.recv_exact(conn, to_read)
-                    if chunk is None:
-                        raise FileTransferError("Resume aktarım erken sona erdi.")
-                    f.write(chunk)
-                    received += len(chunk)
-                    if received >= next_mark:
-                        self._write_sidecar(sidecar, total_size, mtime_ns, received)
-                        next_mark += 1024 * 1024
+                try:
+                    while received < total_size:
+                        to_read = min(RESUME_IO_CHUNK, total_size - received)
+                        chunk = net_util.recv_exact(conn, to_read)
+                        if chunk is None:
+                            raise FileTransferError("Resume aktarım erken sona erdi.")
+                        f.write(chunk)
+                        received += len(chunk)
+                        if received >= next_mark:
+                            self._write_sidecar(sidecar, total_size, mtime_ns, received)
+                            next_mark += 1024 * 1024
+                except Exception:
+                    # Bağlantı koptu/kesildi: diskteki baytlar geçerli, konumu
+                    # sidecar'a işle — yoksa sonraki resume aynı baytları
+                    # TEKRAR yazar (bozulma). flush önce, kayıt sonra.
+                    try:
+                        f.flush()
+                    except OSError:
+                        pass
+                    self._write_sidecar(sidecar, total_size, mtime_ns, received)
+                    raise
             finally:
                 try:
                     f.close()

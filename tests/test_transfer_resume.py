@@ -145,6 +145,91 @@ class TestReceiverResume(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.dl, "f.bin.part.json")))
         self.assertFalse(os.path.exists(os.path.join(self.dl, "f.bin.part")))
 
+    def test_abort_then_resume_no_duplication(self):
+        """Bağlantı kopunca sidecar güncellenmeli; devamında bayt tekrarı olmamalı.
+
+        Gerçek loopback TCP üzerinden (bu sandbox çekirdeğinde socketpair
+        tampon tuhaflığı gözlendi).
+
+        NOT: kopuş 64KB sınırında yapılır; alıcı yalnızca tamamlanan
+        çerçeveleri sayar (kısmi çerçeve tamponu atılır, en fazla 64KB
+        yeniden indirilir — bozulma olmaz, sadece tekrar indirme).
+        """
+        data = os.urandom(300 * 1024)
+        mtime_ns = 777
+        cut = 64 * 1024  # tam bir çerçeve: deterministik kopma noktası
+
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(5)
+        srv.settimeout(15)
+        port = srv.getsockname()[1]
+
+        def serve_twice():
+            for _ in range(2):
+                try:
+                    conn, _ = srv.accept()
+                except OSError:
+                    return
+                conn.settimeout(15)
+                try:
+                    self.server._handle_client(conn)
+                except Exception:  # noqa: BLE001 - hata yolu testin konusu
+                    pass
+
+        server_thread = threading.Thread(target=serve_twice, daemon=True)
+        server_thread.start()
+
+        def one_attempt(send_up_to):
+            cli = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            cli.settimeout(15)
+            try:
+                cli.connect(("127.0.0.1", port))
+                nb = b"h.bin"
+                cli.sendall(MODE_RESUME)
+                cli.sendall(struct.pack("!I", len(nb)) + nb)
+                cli.sendall(struct.pack("!Q", len(data)))
+                cli.sendall(struct.pack("!Q", mtime_ns))
+                off = struct.unpack("!Q", net_util.recv_exact(cli, 8))[0]
+                cli.sendall(data[off:send_up_to])
+                # Kop: ACK beklemeden kapat. Verinin ulaşması için kısa bekle.
+                time.sleep(0.5)
+            finally:
+                cli.close()
+            return off
+
+        try:
+            off1 = one_attempt(cut)
+            self.assertEqual(off1, 0)
+            # Sidecar diskteki gerçek konumu yansıtmalı.
+            part = os.path.join(self.dl, "h.bin.part")
+            side = part + ".json"
+
+            def sidecar_matches():
+                try:
+                    on_disk = os.path.getsize(part)
+                    with open(side, encoding="utf-8") as f:
+                        recorded = json.load(f)["received"]
+                    return on_disk == cut and recorded == on_disk
+                except (OSError, ValueError):
+                    return False
+
+            self.assertTrue(_wait_for(sidecar_matches, timeout=10),
+                            "sidecar kopma noktasını yansıtmadı")
+
+            off2 = one_attempt(len(data) + 1)  # kalanın tamamı
+            self.assertEqual(off2, cut)
+            self.assertTrue(_wait_for(lambda: len(self.received) == 1))
+            with open(self.received[0], "rb") as f:
+                self.assertEqual(f.read(), data)
+        finally:
+            try:
+                srv.close()
+            except OSError:
+                pass
+            server_thread.join(timeout=10)
+
     def test_resume_fresh_when_no_part(self):
         data = os.urandom(10 * 1024)
         srv_end, cli_end = socket.socketpair()
