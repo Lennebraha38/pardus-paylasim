@@ -55,5 +55,13 @@ sleep 5
 proot-distro login debian -- bash -c "
 export DISPLAY=:0
 export GDK_BACKEND=x11
+X11_DIR=/data/data/com.termux/files/usr/tmp/.X11-unix
+if [ -S \"\$X11_DIR/X0\" ]; then
+    mkdir -p /tmp/.X11-unix
+    ln -sfn \"\$X11_DIR/X0\" /tmp/.X11-unix/X0
+    echo 'X soketi baglandi.'
+else
+    echo 'UYARI: X0 soketi yok; Termux:X11 uygulamasini acip tekrar dene.'
+fi
 cd ~/pardus-paylasim
 PYTHONPATH=src python3 -m pardus_paylasim.app"
