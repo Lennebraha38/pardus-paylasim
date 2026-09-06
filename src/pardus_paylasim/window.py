@@ -176,6 +176,9 @@ class MainWindow:
         # Tab 6: Mesh Ağı (Mesh + WebRTC + Asenkron Transfer)
         self._build_mesh_tab()
 
+        # Tab 7: Sınıf (öğretmen orkestrasyonu: liste + yayın + dağıtım)
+        self._build_classroom_tab()
+
         # View switcher in header (so tabs are always visible at the top macOS-style)
         switcher = Adw.ViewSwitcher()
         switcher.set_stack(self.view_stack)
@@ -206,7 +209,8 @@ class MainWindow:
 
     # Sekmelerin sıralı adları — Ctrl+1..6 bu sıraya göre eşlenir.
     # (view_stack'e ekleme sırasıyla birebir aynı olmalı.)
-    TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings", "mesh")
+    TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings", "mesh",
+                   "classroom")
 
     @staticmethod
     def _tab_name_for_index(index, tab_names=TAB_NAMES):
@@ -1014,6 +1018,38 @@ class MainWindow:
         row_name.add_suffix(self.entry_name)
         group1.add(row_name)
 
+        # Sınıf Modu: rol + sınıf adı (P2P; merkezi kayıt yok, kimlik =
+        # cihaz adı + parmak izi).
+        from pardus_paylasim.discovery.classroom import ROLES, ROLE_LABELS
+
+        row_role = Adw.ActionRow(
+            title=_("Sınıf Rolü"),
+            subtitle=_("Öğretmen yayın yapar, tahta yayını alır"),
+        )
+        self.combo_role = Gtk.ComboBoxText()
+        for role_key in ROLES:
+            self.combo_role.append_text(ROLE_LABELS[role_key])
+        try:
+            current_role = self.config.get("classroom_role", "")
+            self.combo_role.set_active(ROLES.index(current_role))
+        except (ValueError, TypeError):
+            self.combo_role.set_active(0)
+        self.combo_role.set_valign(Gtk.Align.CENTER)
+        self.combo_role.connect("changed", self._on_setting_changed_role)
+        row_role.add_suffix(self.combo_role)
+        group1.add(row_role)
+
+        row_class = Adw.ActionRow(
+            title=_("Sınıf Adı"), subtitle=_("Örn. 10-A Sayısal")
+        )
+        self.entry_classroom = Gtk.Entry()
+        self.entry_classroom.set_text(self.config.get("classroom_name", ""))
+        self.entry_classroom.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(self.entry_classroom, _("Sınıf Adı"))
+        self.entry_classroom.connect("changed", self._on_setting_changed, "classroom_name")
+        row_class.add_suffix(self.entry_classroom)
+        group1.add(row_class)
+
         # Security Settings Group
         group2 = Adw.PreferencesGroup(
             title=_("Güvenlik Kalkanı"), description=_("Arka planda çalışan güvenlik özellikleri")
@@ -1205,6 +1241,14 @@ class MainWindow:
         except Exception as e:
             logger.debug("pano kopyalama hatası: %s", e)
 
+    def _on_setting_changed_role(self, combo):
+        from pardus_paylasim.discovery.classroom import ROLES
+
+        try:
+            self.config.set("classroom_role", ROLES[combo.get_active()])
+        except (IndexError, TypeError, AttributeError) as e:
+            logger.debug("rol kaydedilemedi: %s", e)
+
     def _build_mesh_tab(self):
         """Mesh ağı: parça-parça P2P transfer, WebRTC ekran paylaşımı, asenkron kuyruk."""
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -1305,6 +1349,187 @@ class MainWindow:
         page = Gtk.ScrolledWindow()
         page.set_child(box)
         self.view_stack.add_titled(page, "mesh", "🌐 Mesh Ağı")
+
+    def _build_classroom_tab(self):
+        """Sınıf Modu: tahta listesi + mesaj yayını + dosya dağıtımı."""
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_top(16)
+        box.set_margin_bottom(16)
+        box.set_margin_start(16)
+        box.set_margin_end(16)
+
+        header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        lbl_title = Gtk.Label(label=_("🏫 Sınıf"))
+        lbl_title.add_css_class("title-2")
+        lbl_title.set_halign(Gtk.Align.START)
+        lbl_sub = Gtk.Label(
+            label=_(
+                "Öğretmen tahtaları görür, mesaj yayınlar, dosya dağıtır.\n"
+                "Merkezi sunucu yoktur; her şey yerel ağda P2P çalışır."
+            )
+        )
+        lbl_sub.add_css_class("body")
+        lbl_sub.set_halign(Gtk.Align.START)
+        header_box.append(lbl_title)
+        header_box.append(lbl_sub)
+        box.append(header_box)
+
+        boards_group = Adw.PreferencesGroup(
+            title=_("Tahtalar"),
+            description=_("Keşif sekmesinde tarama yapın; bulunanlar burada listelenir"),
+        )
+        self.classroom_count_row = Adw.ActionRow(
+            title=_("Bağlı Tahta"), subtitle=_("Henüz taranmadı"),
+        )
+        boards_group.add(self.classroom_count_row)
+        btn_board_refresh = Gtk.Button(label=_("🔄 Listeyi Yenile"))
+        btn_board_refresh.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_board_refresh, _("Tahta listesini yenile"))
+        btn_board_refresh.connect("clicked", self._on_classroom_refresh)
+        refresh_row = Adw.ActionRow(title=_("Yenile"))
+        refresh_row.add_suffix(btn_board_refresh)
+        boards_group.add(refresh_row)
+        self.classroom_list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        boards_group.add(self.classroom_list_box)
+        box.append(boards_group)
+
+        msg_group = Adw.PreferencesGroup(
+            title=_("Mesaj Yayını"),
+            description=_("Tüm tahtaların panosuna metin gönderir"),
+        )
+        self.entry_class_message = Gtk.Entry()
+        self.entry_class_message.set_placeholder_text(_("Duyuru metni…"))
+        self.entry_class_message.set_hexpand(True)
+        btn_broadcast = Gtk.Button(label=_("📣 Sınıfa Yayınla"))
+        btn_broadcast.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_broadcast, _("Mesajı tüm tahtalara yayınla"))
+        btn_broadcast.connect("clicked", self._on_class_broadcast)
+        msg_row = Adw.ActionRow(title=_("Duyuru"))
+        msg_row.add_prefix(self.entry_class_message)
+        msg_row.add_suffix(btn_broadcast)
+        msg_group.add(msg_row)
+        self.class_broadcast_status = Adw.ActionRow(
+            title=_("Durum"), subtitle=_("Henüz yayın yok"),
+        )
+        msg_group.add(self.class_broadcast_status)
+        box.append(msg_group)
+
+        dist_group = Adw.PreferencesGroup(
+            title=_("Dosya Dağıtımı"),
+            description=_("Seçilen dosya listedeki tüm tahtalara gider"),
+        )
+        btn_distribute = Gtk.Button(label=_("📁 Dosya Seç ve Dağıt"))
+        btn_distribute.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_distribute, _("Dosya seçip tüm tahtalara dağıt"))
+        btn_distribute.connect("clicked", self._on_class_distribute)
+        dist_row = Adw.ActionRow(title=_("Dağıt"))
+        dist_row.add_suffix(btn_distribute)
+        dist_group.add(dist_row)
+        box.append(dist_group)
+
+        screen_group = Adw.PreferencesGroup(
+            title=_("Ekran Paylaşımı"),
+            description=_("Ekran sekmesinde yayını başlatın; tahtalar istemci kipiyle izler"),
+        )
+        btn_go_screen = Gtk.Button(label=_("🖥️ Ekran Sekmesine Git"))
+        btn_go_screen.set_valign(Gtk.Align.CENTER)
+        btn_go_screen.connect(
+            "clicked",
+            lambda _b: self.view_stack.set_visible_child_name("screenshare"),
+        )
+        go_row = Adw.ActionRow(title=_("Yayın"))
+        go_row.add_suffix(btn_go_screen)
+        screen_group.add(go_row)
+        box.append(screen_group)
+
+        page = Gtk.ScrolledWindow()
+        page.set_child(box)
+        self.view_stack.add_titled(page, "classroom", "🏫 Sınıf")
+
+    def _classroom_devices(self):
+        """Yayın hedefleri: keşfedilen cihazlar (kendi hariç tutma çağırana ait)."""
+        try:
+            return self.discovery_handler.get_current_devices()
+        except Exception as e:
+            logger.debug("tahta listesi okunamadı: %s", e)
+            return []
+
+    def _refresh_classroom_list(self, devices=None):
+        if devices is None:
+            devices = self._classroom_devices()
+        while True:
+            child = self.classroom_list_box.get_first_child()
+            if child is None:
+                break
+            self.classroom_list_box.remove(child)
+        self.classroom_count_row.set_subtitle(
+            _("{n} tahta").format(n=len(devices)) if devices
+            else _("Henüz taranmadı")
+        )
+        if not devices:
+            lbl = Gtk.Label(label=_("Keşif sekmesinde Tara'ya basın."))
+            lbl.add_css_class("caption")
+            lbl.set_halign(Gtk.Align.START)
+            self.classroom_list_box.append(lbl)
+            return
+        for dev in devices[:30]:
+            lock = "🔒 " if getattr(dev, "fingerprint", "") else ""
+            lbl = Gtk.Label(label=f"{lock}{dev.name} · {dev.address}")
+            lbl.set_halign(Gtk.Align.START)
+            lbl.add_css_class("body")
+            self.classroom_list_box.append(lbl)
+
+    def _on_classroom_refresh(self, btn):
+        self._refresh_classroom_list()
+
+    def _on_class_broadcast(self, btn):
+        import threading
+
+        from pardus_paylasim.discovery.classroom import broadcast_text, summarize_broadcast
+
+        text = self.entry_class_message.get_text().strip()
+        if not text:
+            self._show_error(_("Önce duyuru metni yazın."))
+            return
+        devices = self._classroom_devices()
+        if not devices:
+            self._show_error(_("Listede tahta yok; önce Keşif sekmesinde tarayın."))
+            return
+        self.class_broadcast_status.set_subtitle(_("Gönderiliyor…"))
+
+        def run():
+            try:
+                results = broadcast_text(devices, text)
+                summary = summarize_broadcast(results)
+            except Exception as e:
+                summary = _("Hata: {e}").format(e=e)
+            GLib.idle_add(self.class_broadcast_status.set_subtitle, summary)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_class_distribute(self, btn):
+        dialog = Gtk.FileDialog()
+        dialog.set_title(_("Dağıtılacak Dosyayı Seçin"))
+        dialog.set_accept_label(_("Dağıt"))
+        dialog.set_modal(True)
+
+        def on_response(dialog, result):
+            try:
+                f = dialog.open_finish(result)
+                if not f:
+                    return
+                path = f.get_path()
+                if not path:
+                    return
+                devices = self._classroom_devices()
+                if not devices:
+                    self._show_error(_("Listede tahta yok; önce Keşif sekmesinde tarayın."))
+                    return
+                self._start_multi_transfer([path], None, devices=devices)
+            except Exception as e:
+                logger.debug("Dosya seçimi iptal edildi: %s", e)
+
+        dialog.open(self.win, None, on_response)
 
     def _on_mesh_toggle(self, btn):
         from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
@@ -1636,6 +1861,11 @@ class MainWindow:
             self.device_list.append(row)
 
         self.lbl_discovery_status.set_label(f"{len(devices)} cihaz bulundu.")
+        try:
+            if hasattr(self, "classroom_list_box"):
+                self._refresh_classroom_list(devices)
+        except Exception as e:
+            logger.debug("sınıf listesi tazelenemedi: %s", e)
         return False  # Don't repeat
 
     def _selected_devices(self):
@@ -1962,12 +2192,13 @@ class MainWindow:
         except Exception as e:
             logger.debug("ilerleme güncellenemedi: %s", e)
 
-    def _start_multi_transfer(self, file_paths, pin):
-        """Seçili dosyaları seçili cihazlara gönderir; her biri geçmişe."""
+    def _start_multi_transfer(self, file_paths, pin, devices=None):
+        """Seçili dosyaları hedef cihazlara gönderir; her biri geçmişe."""
         import tempfile
         import threading
 
-        targets = self._send_targets()
+        targets = list(devices) if devices else self._send_targets()
+        targets = [d for d in targets if getattr(d, "address", None)]
         if not targets:
             self._show_error(_("Önce cihaz listesinden hedef seçin."))
             return

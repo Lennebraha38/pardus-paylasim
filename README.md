@@ -28,8 +28,8 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    GTK4/Adw GUI (6 sekme)               │
-│  Gizlilik │ Keşif │ Ekran │ Pano │ Ayarlar │ 🌐Mesh Ağı │
+│                    GTK4/Adw GUI (7 sekme)               │
+│ Gizlilik │ Keşif │ Ekran │ Pano │ Ayar │ Mesh │ Sınıf │
 └──────┬──────────┬──────────┬──────────┬─────────┬────────┘
        │          │          │          │         │
 ┌──────▼──┐ ┌─────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌──▼──────────────┐
@@ -88,7 +88,7 @@ pardus-paylasim/
 │   ├── pardus_paylasim/           # Ana uygulama
 │   │   ├── app.py                 # Entry point (GTK4/Adw + CLI)
 │   │   ├── config.py              # GSettings + JSON fallback
-│   │   ├── window.py              # Ana pencere (6 sekme)
+│   │   ├── window.py              # Ana pencere (7 sekme)
 │   │   ├── discovery/             # mDNS, dosya transferi
 │   │   │   ├── mesh/              # 🆕 P2P mesh ağı (8920)
 │   │   │   └── async_transfer/    # 🆕 Çevrimdışı kuyruk (SQLite)
@@ -116,8 +116,9 @@ pardus-paylasim/
 | 2 | 🔍 Keşif | Ağdaki cihazları bul (veya elle ekle) → bir/çok cihaza gönder/al (istersen göndermeden metadata temizlenir) |
 | 3 | 🖥️ Ekran | Ekranını paylaş veya karşı tarafı izle; uygulamasız cihaz tarayıcıdan dosya alıp gönderebilir |
 | 4 | 📋 Pano | Hassas veriyi maskele, cihazlara senkronize et, geçmişi görüntüle |
-| 5 | ⚙️ Ayarlar | Cihaz adı, klasör, mDNS görünürlüğü, parmak izi, güvenilir cihazlar |
+| 5 | ⚙️ Ayarlar | Cihaz adı, klasör, mDNS görünürlüğü, parmak izi, güvenilir cihazlar, sınıf rolü |
 | 6 | 🌐 Mesh Ağı | Mesh başlat/durdur (otomatik eş keşfi), eş ekle, WebRTC durumu, asenkron kuyruk |
+| 7 | 🏫 Sınıf | Tahta listesi, mesaj yayını, dosya dağıtımı, ekran yayınına geçiş |
 
 ### 🌐 Mesh Ağı Sekmesi — Adım Adım
 

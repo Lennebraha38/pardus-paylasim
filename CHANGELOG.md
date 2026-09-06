@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Manuel cihaz ekleme**: mDNS'siz ağlar için IP:port ile liste girişi.
 - **Çoklu cihaza gönderim**: listeden çoklu seçim, dosya/klasör hepsine gider.
 - **Pano geçmişi**: son 20 öğe, maskeli önizleme, yalnız bellek (diske yazılmaz).
+- **Sınıf Modu**: rol seçimi (öğretmen/tahta) + 7. sekme; tahta listesi, tek tuşla mesaj yayını ve dosya dağıtımı (merkezi sunucusuz P2P).
 - **Aktarım sağlığı** (`discovery/health.py`, neural-system'den port): Z-skor anomali detektörü + hız düşüşü/duraksama uyarıları (UI satırı + CLI); bağlantıda kısa retry (mesh parça + gönderici).
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 

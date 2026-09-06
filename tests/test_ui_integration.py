@@ -62,10 +62,11 @@ def test_window_no_hype_titles():
 
 
 def test_window_tab_names_6_entries():
-    """TAB_NAMES 6 sekme içermeli (son sekme: mesh)."""
+    """TAB_NAMES 7 sekme içermeli (son sekmeler: mesh, classroom)."""
     content = _read(WINDOW_FILE)
     assert "TAB_NAMES" in content
-    for name in ("privacy", "discovery", "screenshare", "clipboard", "settings", "mesh"):
+    for name in ("privacy", "discovery", "screenshare", "clipboard", "settings", "mesh",
+                 "classroom"):
         assert f'"{name}"' in content, f"Missing tab: {name}"
     assert '"innovations"' not in content
 
@@ -125,6 +126,18 @@ def test_window_trust_from_list():
     assert "entry_trust_fp" in content
     assert "def _on_trust_add_manual" in content
     assert "🔒 " in content
+
+
+def test_window_classroom_tab():
+    """Sınıf sekmesi (liste + yayın + dağıtım + rol) bağlı mı?"""
+    content = _read(WINDOW_FILE)
+    assert "def _build_classroom_tab" in content
+    assert '"classroom"' in content
+    assert "def _on_class_broadcast" in content
+    assert "def _on_class_distribute" in content
+    assert "broadcast_text" in content
+    assert "combo_role" in content
+    assert "classroom_role" in content
 
 
 def test_window_cancel_and_last_peer():
@@ -203,6 +216,7 @@ if __name__ == "__main__":
         ("window_mesh_discovery_wiring", test_window_mesh_discovery_wiring),
         ("window_fingerprint_section", test_window_fingerprint_section),
         ("window_trust_from_list", test_window_trust_from_list),
+        ("window_classroom_tab", test_window_classroom_tab),
         ("window_cancel_and_last_peer", test_window_cancel_and_last_peer),
         ("window_manual_device_and_multi", test_window_manual_device_and_multi),
         ("window_clipboard_history", test_window_clipboard_history),
