@@ -224,6 +224,7 @@ python3 tests/test_mesh_e2e.py
 | [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) | Statik tarama: 2 bulgu düzeltildi (`secrets`), yanlış alarmlar gerekçelendirildi |
 | [`docs/LICENSES.md`](docs/LICENSES.md) | Bağımlılık lisans uyumu (GPL-3.0 ile çelişki yok) |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | v1.1 / v1.2 / v2.0 hedefleri |
+| [`docs/VIZYON_OKUL_AGI.md`](docs/VIZYON_OKUL_AGI.md) | Okul ağı vizyonu: uygunluk tablosu + fazlar + sınırlar |
 | [`docs/KULLANICI_ANKETI.md`](docs/KULLANICI_ANKETI.md) | 5 senaryoluk kullanıcı test formu |
 
 ## 🔒 Güvenlik

@@ -137,6 +137,32 @@ class FileSender:
         self.target_port = target_port
         self.ssl_context = ssl_context
 
+    def _connect(self) -> socket.socket:
+        """Bağlan (1 kez kısa retry: alıcı henüz açılıyorsa tolere et)."""
+        from pardus_paylasim.discovery.health import retry
+
+        @retry(max_attempts=2, initial_delay=0.5, backoff_factor=1.0,
+               max_delay=0.5, exceptions=(OSError,))
+        def _once():
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s.settimeout(10)
+                if self.ssl_context:
+                    conn = self.ssl_context.wrap_socket(
+                        s, server_hostname=self.target_ip)
+                else:
+                    conn = s
+                conn.connect((self.target_ip, self.target_port))
+                return conn
+            except Exception:
+                try:
+                    s.close()
+                except OSError:
+                    pass
+                raise
+
+        return _once()
+
     def send_file(self, file_path, secret_pin=None, progress_callback=None, rel_name=None,
                   stats_callback: Optional[Callable[[int, int, float], None]] = None,
                   resume=False, verify_hash=False,
@@ -174,13 +200,7 @@ class FileSender:
                               cancel_event)
             return
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(10)
-            if self.ssl_context:
-                conn = self.ssl_context.wrap_socket(s, server_hostname=self.target_ip)
-            else:
-                conn = s
-            conn.connect((self.target_ip, self.target_port))
+        with self._connect() as conn:
             t0 = time.monotonic()
 
             def report(sent):
@@ -267,13 +287,7 @@ class FileSender:
         if file_size > MAX_PAYLOAD_SIZE:
             raise FileTransferError("Dosya boyutu aktarım sınırını aşıyor.")
         mtime_ns = os.stat(file_path).st_mtime_ns
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(10)
-            if self.ssl_context:
-                conn = self.ssl_context.wrap_socket(s, server_hostname=self.target_ip)
-            else:
-                conn = s
-            conn.connect((self.target_ip, self.target_port))
+        with self._connect() as conn:
             t0 = time.monotonic()
 
             def report(sent):

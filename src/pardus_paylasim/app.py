@@ -155,6 +155,8 @@ class PardusPaylasimApp:
                 )
                 try:
                     # Her dosya tek satırla özetlenir (çok sık yazılmaz).
+                    from pardus_paylasim.discovery.health import TransferHealth
+                    health = TransferHealth()
                     last_line = {"pct": -1}
 
                     def on_stats_throttled(sent, total, elapsed, _n=name):
@@ -163,7 +165,11 @@ class PardusPaylasimApp:
                         pct = int(round(s.percent * 100))
                         if pct != last_line["pct"]:
                             last_line["pct"] = pct
-                            sys.stdout.write(f"\r  {_n}: {format_progress_line(s)}   ")
+                            line = format_progress_line(s)
+                            health.check(sent, total, elapsed)
+                            if health.active_warning:
+                                line += "  " + health.active_warning
+                            sys.stdout.write(f"\r  {_n}: {line}   ")
                             sys.stdout.flush()
                     sender.send_file(
                         send_path, secret_pin, stats_callback=on_stats_throttled,

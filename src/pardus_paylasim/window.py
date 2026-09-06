@@ -1880,13 +1880,20 @@ class MainWindow:
 
         def run():
             from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
+            from pardus_paylasim.discovery.health import TransferHealth
             from pardus_paylasim.progress import compute_stats, format_progress_line
+
+            health = TransferHealth()
 
             def on_stats(sent, total, elapsed):
                 stats = compute_stats(sent, total, elapsed)
+                line = format_progress_line(stats)
+                health.check(sent, total, elapsed)
+                if health.active_warning:
+                    line += "  " + health.active_warning
                 GLib.idle_add(
                     self._update_transfer_progress,
-                    stats.percent, format_progress_line(stats),
+                    stats.percent, line,
                 )
 
             GLib.idle_add(self._show_transfer_progress, True)
@@ -1973,13 +1980,20 @@ class MainWindow:
 
         def run():
             from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
+            from pardus_paylasim.discovery.health import TransferHealth
             from pardus_paylasim.progress import compute_stats, format_progress_line
+
+            health = TransferHealth()
 
             def on_stats(sent, total, elapsed):
                 stats = compute_stats(sent, total, elapsed)
+                line = format_progress_line(stats)
+                health.check(sent, total, elapsed)
+                if health.active_warning:
+                    line += "  " + health.active_warning
                 GLib.idle_add(
                     self._update_transfer_progress,
-                    stats.percent, format_progress_line(stats),
+                    stats.percent, line,
                 )
 
             GLib.idle_add(self._show_transfer_progress, True)
@@ -2049,13 +2063,20 @@ class MainWindow:
         self._transfer_cancel = cancel_event
 
         def run():
+            from pardus_paylasim.discovery.health import TransferHealth
             from pardus_paylasim.progress import compute_stats, format_progress_line
+
+            health = TransferHealth()
 
             def on_stats(sent, total, elapsed):
                 stats = compute_stats(sent, total, elapsed)
+                line = format_progress_line(stats)
+                health.check(sent, total, elapsed)
+                if health.active_warning:
+                    line += "  " + health.active_warning
                 GLib.idle_add(
                     self._update_transfer_progress,
-                    stats.percent, format_progress_line(stats),
+                    stats.percent, line,
                 )
 
             GLib.idle_add(self._show_transfer_progress, True)

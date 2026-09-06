@@ -284,15 +284,24 @@ class MeshNode:
             peer = self.peers[target]
         self._send_raw(peer.ip, peer.port, packed)
 
-    def _send_raw(self, ip: str, port: int, data: bytes):
-        try:
+    def _send_raw(self, ip: str, port: int, data: bytes) -> bool:
+        # Kısa retry: anlık takılmalar tolere edilir, ölü eş hızlı geçilir.
+        from pardus_paylasim.discovery.health import retry
+
+        @retry(max_attempts=2, initial_delay=0.1, backoff_factor=2.0,
+               max_delay=0.5, exceptions=(OSError,))
+        def _once():
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(5.0)
                 s.connect((ip, port))
                 s.sendall(struct.pack("!I", len(data)))
                 s.sendall(data)
+
+        try:
+            _once()
+            return True
         except OSError:
-            pass
+            return False
 
     def _accept_loop(self):
         while self._running:
