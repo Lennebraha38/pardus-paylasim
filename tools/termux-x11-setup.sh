@@ -44,18 +44,21 @@ fi"
 echo "== 5/5 X sunucusu + uygulama =="
 # Eski app kalıntısını temizle (portları tutar).
 proot-distro login debian -- bash -c "pkill -f '[p]ardus_paylasim.app' 2>/dev/null || true"
-# Çalışan X sunucusuyla savaşma: soket varsa yeniden kullan, yoksa başlat.
-if [ -S "$PREFIX/tmp/.X11-unix/X0" ]; then
-    echo "Mevcut X soketi kullanılıyor."
-else
-    rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
-    termux-x11 :0 &
-    sleep 3
-fi
-if [ ! -S "$PREFIX/tmp/.X11-unix/X0" ]; then
-    echo "UYARI: X soketi oluşmadı. Termux:X11 uygulamasını manuel açıp tekrar dene."
-fi
 
+# X sunucusu: önce mevcut soketi dene; ölü çıkarsa gerçekten öldürüp tazele.
+# NOT: pkill deseni 'termux-x11 :' olmalı (sonda boşluk) — yoksa betiğin
+# kendi adı (termux-x11-setup.sh) eşleşip betik kendini öldürür.
+ensure_x() {
+    if [ -S "$PREFIX/tmp/.X11-unix/X0" ]; then
+        echo "Mevcut X soketi deneniyor."
+    else
+        rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
+        termux-x11 :0 &
+        sleep 3
+    fi
+}
+
+launch_app() {
 proot-distro login debian -- bash -c "
 export DISPLAY=:0
 export GDK_BACKEND=x11
@@ -65,11 +68,9 @@ if [ -S \"\$X11_DIR/X0\" ]; then
     ln -sfn \"\$X11_DIR/X0\" /tmp/.X11-unix/X0
     echo 'X soketi baglandi.'
 else
-    echo 'UYARI: X0 soketi yok; Termux:X11 uygulamasini acip tekrar dene.'
+    echo 'UYARI: X0 soketi yok.'
+    exit 3
 fi
-# Preflight: display gerçekten kullanılabilir mi? Değilse uygulamayı
-# çökertmek yerine teşhis yazdır. NOT: init_check() True dönse bile
-# default display None olabilir — asıl kriter display'in varlığı.
 python3 -c \"
 import gi
 gi.require_version('Gtk', '4.0')
@@ -83,9 +84,32 @@ print('display:', d.get_name() if d else None)
 ok = init_ok and d is not None
 print('preflight:', 'OK' if ok else 'FAIL')
 raise SystemExit(0 if ok else 1)
-\" || { echo 'HATA: display açılamıyor — Termux:X11 uygulamasını aç (Display 0) ve tekrar dene.'; exit 1; }
+\" || exit 4
 cd ~/pardus-paylasim
-# D-Bus oturumu ŞART: Adw uygulaması bus olmadan pencere açmıyor.
-# GSETTINGS_BACKEND=memory + GTK_A11Y=none proot'taki eksik servisleri susturur.
 dbus-run-session -- env DISPLAY=:0 GDK_BACKEND=x11 GSETTINGS_BACKEND=memory \
     GTK_A11Y=none PYTHONPATH=src python3 -m pardus_paylasim.app"
+}
+
+ensure_x
+if ! launch_app; then
+    code=$?
+    if [ "$code" = "3" ] || [ "$code" = "4" ]; then
+        echo "Display ölü — X sunucusu zorla yenileniyor…"
+        pkill -9 -f 'termux-x11 :' 2>/dev/null || true
+        sleep 2
+        rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
+        termux-x11 :0 &
+        sleep 3
+        echo "Termux:X11 uygulamasını açıp 5 sn bekleyin, yeniden deneniyor…"
+        sleep 5
+        launch_app || {
+            echo 'HATA: display hâlâ açılamıyor.'
+            echo 'Yapılacaklar: 1) Termux:X11 uygulamasını aç (Display 0),'
+            echo '2) telefon Ayarlar > Uygulamalar > Termux:X11 > Durdurmaya zorla,'
+            echo '3) betiği tekrar çalıştır.'
+            exit 1
+        }
+    else
+        exit "$code"
+    fi
+fi
