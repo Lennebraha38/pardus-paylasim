@@ -21,9 +21,14 @@ echo "Durdurma: Ctrl+C"
 proot-distro login debian -- bash -c "
 set -e
 pkill -f '[g]tk4-broadwayd :5' 2>/dev/null || true
-pkill -f '[b]roadwayd :5' 2>/dev/null || true
 sleep 1
-(command -v gtk4-broadwayd >/dev/null && BW=gtk4-broadwayd || BW=broadwayd); setsid $BW :5 </dev/null >/tmp/broadwayd.log 2>&1 &
+if command -v gtk4-broadwayd >/dev/null 2>&1; then
+    BW=gtk4-broadwayd
+else
+    BW=broadwayd
+fi
+echo \"Kullanilan sunucu: \$BW\"
+setsid \"\$BW\" :5 </dev/null >/tmp/broadwayd.log 2>&1 &
 for i in \$(seq 1 15); do
     if (echo > /dev/tcp/127.0.0.1/8085) 2>/dev/null; then
         echo 'broadwayd hazir (8085).'
@@ -31,7 +36,9 @@ for i in \$(seq 1 15); do
     fi
     sleep 1
     if [ \$i -eq 15 ]; then
-        echo 'HATA: broadwayd 8085 portunu acamadi. Log:'; tail -20 /tmp/broadwayd.log; exit 1
+        echo 'HATA: broadwayd 8085 portunu acamadi. Log:'
+        cat /tmp/broadwayd.log
+        exit 1
     fi
 done
 export GDK_BACKEND=broadway
