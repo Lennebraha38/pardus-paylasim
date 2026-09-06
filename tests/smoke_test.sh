@@ -23,6 +23,15 @@ echo "== 2. CLI komutları =="
 check "mask" "$PY" -m pardus_paylasim.app --mask "Kartim 4532015112830366"
 check "mesh-status" "$PY" -m pardus_paylasim.app --mesh-status
 check "async-list" "$PY" -m pardus_paylasim.app --async-list
+echo "== 2b. Parmak izi çıktısı (0=crypto var, 1=yok; ikisi de sağlıklı) =="
+fp_out=$("$PY" -m pardus_paylasim.app --fingerprint 2>&1)
+fp_code=$?
+if [ -n "$fp_out" ] && [ "$fp_code" -le 1 ]; then
+    PASS=$((PASS+1)); echo "PASS: fingerprint-output ($fp_code)"
+    echo "  -> $(echo "$fp_out" | tail -1 | cut -c1-60)"
+else
+    FAIL=$((FAIL+1)); echo "FAIL: fingerprint-output"
+fi
 
 echo "== 3. E2E mesh (gerçek TCP) =="
 check "mesh-e2e" "$PY" tests/test_mesh_e2e.py

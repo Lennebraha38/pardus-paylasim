@@ -17,7 +17,9 @@ from urllib.parse import parse_qs, quote, unquote, urlencode, urlparse
 
 logger = logging.getLogger(__name__)
 
-# URI şeması: pardus://pair?name=...&ip=...&file_port=...&clip_port=...&caps=...
+# URI şeması: pardus://pair?name=...&ip=...&file_port=...&clip_port=...&caps=...&fp=...
+# fp: cihaz sertifikasının SHA-256 parmak izi (hex, 64). Opsiyonel; eski
+# istemciler bilmediği alanı görmezden gelir (geriye uyum).
 PAIR_SCHEME = "pardus"
 PAIR_HOST = "pair"
 
@@ -55,6 +57,7 @@ def build_pairing_uri(
     file_port: int = 8900,
     clip_port: int = 8901,
     capabilities: Optional[List[str]] = None,
+    fingerprint: str = "",
 ) -> str:
     """Yerel cihaz için eşleştirme URI'si üretir."""
     if ip is None:
@@ -68,6 +71,8 @@ def build_pairing_uri(
     if capabilities:
         # Yetenekleri virgülle birleştir (URI-kodlaması urlencode'da yapılır).
         params["caps"] = ",".join(capabilities)
+    if fingerprint:
+        params["fp"] = fingerprint.lower()
     query = urlencode(params, quote_via=quote)
     return f"{PAIR_SCHEME}://{PAIR_HOST}?{query}"
 
@@ -76,7 +81,8 @@ def parse_pairing_uri(uri: str) -> Optional[Dict]:
     """Eşleştirme URI'sini ayrıştırır. Geçersizse None döner.
 
     Returns:
-        {name, ip, file_port(int), clip_port(int), capabilities(list)} veya None.
+        {name, ip, file_port(int), clip_port(int), capabilities(list),
+         fingerprint(str, yoksa "")} veya None.
     """
     try:
         parsed = urlparse(uri)
@@ -106,12 +112,17 @@ def parse_pairing_uri(uri: str) -> Optional[Dict]:
     caps_raw = _first("caps")
     capabilities = [c for c in caps_raw.split(",") if c] if caps_raw else []
 
+    fp = _first("fp").lower()
+    if fp and (len(fp) != 64 or any(c not in "0123456789abcdef" for c in fp)):
+        fp = ""  # bozuk parmak izi yok sayılır
+
     return {
         "name": name,
         "ip": ip,
         "file_port": _port("file_port", 8900),
         "clip_port": _port("clip_port", 8901),
         "capabilities": capabilities,
+        "fingerprint": fp,
     }
 
 

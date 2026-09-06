@@ -44,6 +44,7 @@ class PardusPaylasimApp:
         parser.add_argument("--mask", help=_("Maskelenecek metin"))
         parser.add_argument("--mesh-status", action="store_true", help=_("Mesh ağı durumunu göster"))
         parser.add_argument("--async-list", action="store_true", help=_("Bekleyen asenkron transferleri listele"))
+        parser.add_argument("--fingerprint", action="store_true", help=_("Bu cihazın parmak izini göster"))
         parser.add_argument("--out", help=_("Çıktı dosya yolu"))
         cli_args, extra = parser.parse_known_args(args)
 
@@ -98,6 +99,15 @@ class PardusPaylasimApp:
                 print("  " + _("(yok)"))
             for t in pending:
                 print(f"  {t.file_name} ({t.file_size} B) -> {t.receiver_id}")
+            return 0
+
+        if cli_args.fingerprint:
+            from pardus_paylasim.auth.trust_store import group_fingerprint, own_fingerprint
+            fp = own_fingerprint()
+            if not fp:
+                print(_("Parmak izi üretilemedi (cryptography gerekli)."))
+                return 1
+            print(group_fingerprint(fp))
             return 0
 
         if HAS_GTK and self.app:

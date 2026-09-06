@@ -104,6 +104,18 @@ def test_window_mesh_discovery_wiring():
     assert "on_peer_lost" in content
 
 
+def test_window_fingerprint_section():
+    """Parmak izi bölümü (kendi fp + güven listesi + oto-kabul) var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "row_fingerprint" in content
+    assert "_refresh_trusted_rows" in content
+    assert "_on_untrust_device" in content
+    assert "_on_copy_fingerprint" in content
+    assert "auto_accept_trusted" in content
+    assert "should_auto_accept" in content
+    assert "_device_fingerprint" in content
+
+
 def test_app_has_mesh_status_arg():
     content = _read(APP_FILE)
     assert "--mesh-status" in content
@@ -149,6 +161,7 @@ if __name__ == "__main__":
         ("window_mesh_peer_add", test_window_mesh_peer_add),
         ("window_clean_before_send", test_window_clean_before_send),
         ("window_mesh_discovery_wiring", test_window_mesh_discovery_wiring),
+        ("window_fingerprint_section", test_window_fingerprint_section),
         ("app_has_mesh_status_arg", test_app_has_mesh_status_arg),
         ("app_has_async_list_arg", test_app_has_async_list_arg),
         ("app_no_ai_scan_arg", test_app_no_ai_scan_arg),

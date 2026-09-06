@@ -943,7 +943,110 @@ class MainWindow:
         self.row_dir.add_suffix(btn_dir)
         group3.add(self.row_dir)
 
+        # Parmak İzi ve Güvenilir Cihazlar
+        group4 = Adw.PreferencesGroup(
+            title=_("Parmak İzi ve Güven"),
+            description=_("Cihaz kimliği ve eşleşmiş cihazlar"),
+        )
+        page.add(group4)
+
+        from pardus_paylasim.auth.trust_store import group_fingerprint, own_fingerprint
+
+        own_fp = own_fingerprint()
+        self.row_fingerprint = Adw.ActionRow(
+            title=_("Bu Cihazın Parmak İzi"),
+            subtitle=group_fingerprint(own_fp) if own_fp else _("Kullanılamıyor"),
+        )
+        btn_fp_copy = Gtk.Button(label=_("Kopyala"))
+        btn_fp_copy.set_valign(Gtk.Align.CENTER)
+        btn_fp_copy.set_sensitive(bool(own_fp))
+        self._set_a11y_label(btn_fp_copy, _("Parmak izini panoya kopyala"))
+        btn_fp_copy.connect("clicked", self._on_copy_fingerprint)
+        self.row_fingerprint.add_suffix(btn_fp_copy)
+        group4.add(self.row_fingerprint)
+
+        row_auto = Adw.ActionRow(
+            title=_("Güvenilir Cihazlardan Otomatik Kabul"),
+            subtitle=_(
+                "Kapalı tutulması önerilir: IP tek başına zayıf kimliktir, "
+                "yerel ağda taklit edilebilir."
+            ),
+        )
+        self.switch_auto_accept = Gtk.Switch()
+        self.switch_auto_accept.set_active(self.config.get("auto_accept_trusted", False))
+        self.switch_auto_accept.set_valign(Gtk.Align.CENTER)
+        self.switch_auto_accept.connect(
+            "notify::active", self._on_setting_changed, "auto_accept_trusted"
+        )
+        row_auto.add_suffix(self.switch_auto_accept)
+        group4.add(row_auto)
+
+        self.trusted_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        group4.add(self.trusted_box)
+        self._refresh_trusted_rows()
+
         self.view_stack.add_titled(page, "settings", "⚙️ Ayarlar")
+
+    @staticmethod
+    def _device_fingerprint() -> str:
+        from pardus_paylasim.auth.trust_store import own_fingerprint
+
+        return own_fingerprint()
+
+    def _refresh_trusted_rows(self):
+        """Güvenilir cihaz listesini yeniden çizer (GTK thread)."""
+        from pardus_paylasim.auth.trust_store import TrustStore, group_fingerprint
+
+        while True:
+            child = self.trusted_box.get_first_child()
+            if child is None:
+                break
+            self.trusted_box.remove(child)
+        try:
+            devices = TrustStore().get_all()
+        except Exception as e:
+            logger.debug("güven listesi okunamadı: %s", e)
+            devices = []
+        if not devices:
+            lbl = Gtk.Label(label=_("Henüz güvenilir cihaz yok (QR ile eşleşin)."))
+            lbl.add_css_class("caption")
+            lbl.set_halign(Gtk.Align.START)
+            self.trusted_box.append(lbl)
+            return
+        for dev in sorted(devices, key=lambda d: d.device_name.lower()):
+            short_fp = group_fingerprint(dev.public_key)
+            short_fp = short_fp[:23] + "…" if len(short_fp) > 24 else short_fp
+            row = Adw.ActionRow(
+                title=dev.device_name,
+                subtitle=f"{short_fp}" + (f" · {dev.last_ip}" if dev.last_ip else ""),
+            )
+            btn_rm = Gtk.Button(label=_("Kaldır"))
+            btn_rm.set_valign(Gtk.Align.CENTER)
+            self._set_a11y_label(btn_rm, _("Güveni kaldır") + f": {dev.device_name}")
+            btn_rm.connect("clicked", self._on_untrust_device, dev.public_key)
+            row.add_suffix(btn_rm)
+            self.trusted_box.append(row)
+
+    def _on_untrust_device(self, btn, fingerprint):
+        from pardus_paylasim.auth.trust_store import TrustStore
+
+        try:
+            TrustStore().remove_trusted_device(fingerprint)
+        except Exception as e:
+            logger.debug("güven kaldırılamadı: %s", e)
+        self._refresh_trusted_rows()
+
+    def _on_copy_fingerprint(self, btn):
+        from pardus_paylasim.auth.trust_store import group_fingerprint
+
+        fp = self._device_fingerprint()
+        if not fp:
+            return
+        try:
+            Gdk.Display.get_default().get_clipboard().set(group_fingerprint(fp))
+            self._show_info(_("Parmak izi panoya kopyalandı."))
+        except Exception as e:
+            logger.debug("pano kopyalama hatası: %s", e)
 
     def _build_mesh_tab(self):
         """Mesh ağı: parça-parça P2P transfer, WebRTC ekran paylaşımı, asenkron kuyruk."""
@@ -1638,6 +1741,7 @@ class MainWindow:
             file_port=self.receiver.port,
             clip_port=self.clipboard_server.port,
             capabilities=caps,
+            fingerprint=self._device_fingerprint(),
         )
 
         dialog = Adw.MessageDialog(
@@ -1700,8 +1804,18 @@ class MainWindow:
             self._show_error(_("Geçersiz eşleştirme bağlantısı."))
             return
         # Keşfedilen cihaz gibi seçili hale getir (dosya/ekran gönderimi için).
+        from pardus_paylasim.auth.trust_store import TrustStore
         from pardus_paylasim.discovery.device_manager import PardusDevice
 
+        fp_note = ""
+        if info.get("fingerprint"):
+            try:
+                if TrustStore().record_pairing(
+                    info["fingerprint"], info["name"], info["ip"]
+                ):
+                    fp_note = _(" (parmak izi doğrulandı, güvenilirlere eklendi)")
+            except Exception as e:
+                logger.debug("güven kaydı yazılamadı: %s", e)
         dev = PardusDevice(
             id=info["ip"],
             name=info["name"],
@@ -1713,10 +1827,14 @@ class MainWindow:
         )
         self._selected_device = dev
         self._show_info(
-            _("{name} ({ip}) eşleştirildi.\nArtık dosya ve pano gönderebilirsiniz.").format(
-                name=info["name"], ip=info["ip"]
+            _("{name} ({ip}) eşleştirildi.\nArtık dosya ve pano gönderebilirsiniz.{fp}").format(
+                name=info["name"], ip=info["ip"], fp=fp_note
             )
         )
+        try:
+            self._refresh_trusted_rows()
+        except Exception as e:
+            logger.debug("güven listesi tazelenemedi: %s", e)
 
     def _on_share_clipboard(self, btn):
         """Sistem panosundaki metni okur ve seçili cihaza gönderir."""
@@ -1792,13 +1910,30 @@ class MainWindow:
         if not HAS_GTK or not self.win:
             return False
 
+        # Güvenilir cihaz + kullanıcı onayı varsa sessiz kabul.
+        from pardus_paylasim.auth.trust_store import TrustStore, should_auto_accept
+
+        try:
+            auto = bool(self.config.get("auto_accept_trusted", False))
+            if should_auto_accept(sender_ip, TrustStore(), auto):
+                logger.info("Güvenilir cihazdan otomatik kabul: %s (%s)",
+                            file_name, sender_ip)
+                return True
+        except Exception as e:
+            logger.debug("oto-kabul kontrolü atlandı: %s", e)
+
         decision = {"accepted": False}
         answered = threading.Event()
 
         def ask():
             size_str = self._format_size(size_bytes)
+            try:
+                trusted = TrustStore().is_ip_trusted(sender_ip)
+            except Exception:
+                trusted = False
+            badge = _(" [güvenilir cihaz]") if trusted else ""
             body = (
-                f"{sender_ip or 'Bilinmeyen cihaz'} bir dosya göndermek "
+                f"{sender_ip or 'Bilinmeyen cihaz'}{badge} bir dosya göndermek "
                 f"istiyor:\n\n{file_name}  ({size_str})\n\nKabul edilsin mi?"
             )
             dialog = Adw.MessageDialog(

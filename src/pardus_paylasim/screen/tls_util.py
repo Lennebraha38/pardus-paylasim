@@ -40,6 +40,57 @@ def fingerprint_from_der(der_bytes: bytes) -> str:
     return hashlib.sha256(der_bytes).hexdigest()
 
 
+DEVICE_ID_DIR = os.path.expanduser("~/.local/share/pardus-paylasim")
+DEVICE_CERT_PATH = os.path.join(DEVICE_ID_DIR, "device_cert.pem")
+DEVICE_KEY_PATH = os.path.join(DEVICE_ID_DIR, "device_key.pem")
+
+
+def get_or_create_device_cert() -> Tuple[str, str, str]:
+    """Kalıcı cihaz kimliği: ilk çalışta üretilir, sonra yeniden kullanılır.
+
+    Returns:
+        (cert_path, key_path, fingerprint_hex). Dosyalar 0600 izinlidir.
+
+    Ephemeral `generate_self_signed_cert` her çağrıda değişir; parmak izinin
+    cihaz kimliği olması için bu kalıcı kopya kullanılır.
+    """
+    if not HAS_TLS:
+        raise RuntimeError("cryptography kütüphanesi TLS için gerekli.")
+    from cryptography import x509 as _x509
+    from cryptography.hazmat.primitives import serialization as _serial
+
+    try:
+        if os.path.exists(DEVICE_CERT_PATH) and os.path.exists(DEVICE_KEY_PATH):
+            with open(DEVICE_CERT_PATH, "rb") as f:
+                cert_pem = f.read()
+            cert = _x509.load_pem_x509_certificate(cert_pem)
+            fp = fingerprint_from_der(
+                cert.public_bytes(_serial.Encoding.DER)
+            )
+            os.chmod(DEVICE_CERT_PATH, 0o600)
+            os.chmod(DEVICE_KEY_PATH, 0o600)
+            return DEVICE_CERT_PATH, DEVICE_KEY_PATH, fp
+    except Exception as e:
+        logger.debug("Kayıtlı cihaz sertifikası okunamadı, yenisi üretilecek: %s", e)
+
+    cert_path, key_path, fp = generate_self_signed_cert()
+    try:
+        os.makedirs(DEVICE_ID_DIR, exist_ok=True)
+        import shutil
+
+        shutil.copyfile(cert_path, DEVICE_CERT_PATH)
+        shutil.copyfile(key_path, DEVICE_KEY_PATH)
+        os.chmod(DEVICE_CERT_PATH, 0o600)
+        os.chmod(DEVICE_KEY_PATH, 0o600)
+    finally:
+        for p in (cert_path, key_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+    return DEVICE_CERT_PATH, DEVICE_KEY_PATH, fp
+
+
 def generate_self_signed_cert() -> Tuple[str, str, str]:
     """Ephemeral self-signed sertifika + anahtar üretir.
 
