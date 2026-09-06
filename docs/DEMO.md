@@ -5,17 +5,7 @@
 > komutlarıyla **gerçekten çalıştırılarak** alınmıştır (2026-09-06).
 > GUI ekran görüntüleri GTK4 kurulu bir Pardus iş istasyonunda alınmalıdır.
 
-## 1. Yapay zeka ile hassas veri taraması (`--ai-scan`)
-
-```
-$ pardus-paylasim --ai-scan "Toplanti: TCKN 10000000146, IBAN TR963456789012345678901234, mail a@b.com"
-Tespit edilen hassas veriler:
-  [tckn] KRİTİK: 10000000146... (100%)
-  [iban_tr] KRİTİK: TR963456789012345678901234... (100%)
-  [email] ORTA: a@b.com... (100%)
-```
-
-## 2. Klasik maskeleme (`--mask`)
+## 1. Hassas veri maskeleme (`--mask`)
 
 ```
 $ pardus-paylasim --mask "Kartim 4532015112830366"
@@ -23,7 +13,7 @@ Maskelenmiş Metin:
 Kartim 4532 **** **** 0366
 ```
 
-## 3. Mesh ağı durumu (`--mesh-status`)
+## 2. Mesh ağı durumu (`--mesh-status`)
 
 ```
 $ pardus-paylasim --mesh-status
@@ -33,7 +23,7 @@ Mesh ağı başlatıldı.
   Bağlı eşler: 0
 ```
 
-## 4. Asenkron kuyruk (`--async-list`)
+## 3. Asenkron kuyruk (`--async-list`)
 
 ```
 $ pardus-paylasim --async-list
@@ -41,7 +31,7 @@ Bekleyen asenkron transferler:
   (Veritabanı: ~/.local/share/pardus-paylasim/async_transfers.db)
 ```
 
-## 5. Uçtan uca mesh transferi (programatik, gerçek TCP)
+## 4. Uçtan uca mesh transferi (programatik, gerçek TCP)
 
 ```
 $ python3 tests/test_mesh_e2e.py

@@ -9,7 +9,6 @@ import sys
 from pardus_paylasim.cleaner.metadata_cleaner import MetadataCleaner
 from pardus_paylasim.cleaner.report_builder import ReportBuilder
 from pardus_paylasim.clipboard.sensitive_masker import SensitiveMasker
-from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
 from pardus_paylasim.i18n import _, setup_i18n
 from pardus_paylasim.logging_setup import setup_logging
 from pardus_paylasim.window import MainWindow
@@ -43,7 +42,6 @@ class PardusPaylasimApp:
         )
         parser.add_argument("--clean", nargs="+", help=_("Temizlenecek dosya yol(lar)ı"))
         parser.add_argument("--mask", help=_("Maskelenecek metin"))
-        parser.add_argument("--ai-scan", help=_("AI ile hassas veri tara"))
         parser.add_argument("--mesh-status", action="store_true", help=_("Mesh ağı durumunu göster"))
         parser.add_argument("--async-list", action="store_true", help=_("Bekleyen asenkron transferleri listele"))
         parser.add_argument("--out", help=_("Çıktı dosya yolu"))
@@ -59,17 +57,6 @@ class PardusPaylasimApp:
         if cli_args.mask:
             masked = SensitiveMasker.mask_text(cli_args.mask)
             print(_("Maskelenmiş Metin:") + f"\n{masked}")
-            return 0
-
-        if cli_args.ai_scan:
-            det = LocalSensitiveDetector()
-            result = det.detect(cli_args.ai_scan)
-            if result.has_sensitive:
-                print(_("Tespit edilen hassas veriler:"))
-                for d in result.detections:
-                    print(f"  [{d.label}] {d.severity}: {d.text[:50]}... (%.0f%%)" % (d.confidence * 100))
-            else:
-                print(_("Hassas veri bulunamadı."))
             return 0
 
         if cli_args.mesh_status:
@@ -115,7 +102,6 @@ class PardusPaylasimApp:
             print(_("Kullanım:"))
             print("  pardus-paylasim --clean <dosya>")
             print("  pardus-paylasim --mask <metin>")
-            print("  pardus-paylasim --ai-scan <metin>")
             print("  pardus-paylasim --mesh-status")
             print("  pardus-paylasim --async-list")
             return 0

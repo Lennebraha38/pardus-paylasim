@@ -37,32 +37,22 @@ def bench(fn, iterations=1000, warmup=50):
 
 
 def main():
-    from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
     from pardus_paylasim.discovery.mesh.mesh_network import FRAG_DATA, MeshProtocol
+    from pardus_paylasim.clipboard.sensitive_masker import SensitiveMasker
 
-    det = LocalSensitiveDetector()
+    # Senaryo 1: pano maskeleme (tipik metin, ~150 karakter)
+    sample = "Toplantı notu: Ahmet Yılmaz (a.yilmaz@ornek.com), TCKN 10000000146, tel 0532 123 45 67."
 
-    # Senaryo 1: AI tespiti (tipik clipboard metni, 200 karakter)
-    sample = "Toplantı notu: Ahmet Yılmaz (a.yilmaz@ornek.com), TCKN 10000000146, IBAN TR963456789012345678901234, tel 0532 123 45 67."
-
-    # Senaryo 2: AI tespiti (uzun metin, 10KB rapor)
-    long_text = (sample + " Lorem ipsum dolor sit amet. ") * 40
-
-    # Senaryo 3: Mesh parça paketleme (64KB)
+    # Senaryo 2: Mesh parça paketleme (64KB)
     chunk = os.urandom(64 * 1024)
     packed = MeshProtocol.pack_fragment(
         FRAG_DATA, "bench001", 0, 1, chunk, "peer_bench", hop_count=0,
         file_hash="b" * 32,
     )
 
-    # Senaryo 4: maskeleme
-    # Senaryo 5: temiz metin (negatif vaka — en yaygın gerçek kullanım)
-    clean = "Bugün hava güzel, toplantı saat 14:00'te başlayacak."
-
     results = {}
-    results["ai_short"] = bench(lambda: det.detect(sample), iterations=2000)
-    results["ai_long_10kb"] = bench(lambda: det.detect(long_text), iterations=200)
-    results["ai_clean"] = bench(lambda: det.detect(clean), iterations=2000)
+    results["mask"] = bench(
+        lambda: SensitiveMasker.mask_text(sample), iterations=2000)
     results["mesh_pack_64kb"] = bench(
         lambda: MeshProtocol.pack_fragment(
             FRAG_DATA, "bench001", 0, 1, chunk, "peer_bench",
@@ -70,10 +60,8 @@ def main():
         iterations=2000)
     results["mesh_unpack_64kb"] = bench(
         lambda: MeshProtocol.unpack_fragment(packed), iterations=2000)
-    results["mask"] = bench(
-        lambda: det.mask_with_ai(sample), iterations=2000)
 
-    # Senaryo 5: SQLite kuyruk yazma (tmpfs)
+    # Senaryo 3: SQLite kuyruk yazma (tmpfs)
     from pardus_paylasim.discovery.async_transfer.manager import (
         AsyncTransfer,
         AsyncTransferStore,
@@ -91,7 +79,7 @@ def main():
 
         results["sqlite_queue"] = bench(queue_one, iterations=500, warmup=20)
 
-    # Senaryo 6: WebRTC frame gönderimi (30KB JPEG benzeri — kanal limiti 64KB)
+    # Senaryo 4: WebRTC frame gönderimi (30KB JPEG benzeri — kanal limiti 64KB)
     from pardus_paylasim.screen.webrtc.data_channel import DataChannel
     import threading
     frame = os.urandom(30 * 1024)

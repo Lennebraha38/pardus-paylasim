@@ -14,9 +14,8 @@
 |---------|----------|
 | **mDNS Keşfi** | Yerel ağda cihazları otomatik bulma (Zeroconf) |
 | **P2P Dosya Transferi** | AES-256-GCM ile PIN korumalı uçtan uca aktarım |
-| **Mesh Ağı** 🆕 | Parça-parça (64KB) P2P transfer, 3 hop'a kadar relay, SHA-256 parça doğrulama |
-| **Yerel AI Hassas Veri Tespiti** 🆕 | TCKN (Mod-10), IBAN (Mod-97), kredi kartı (Luhn), JWT, SSH/API key, private key — çevrimdışı |
-| **WebRTC Data Channel** 🆕 | SCTP benzeri güvenilir kanal, zlib sıkıştırma, sıralı mesaj |
+| **Mesh Ağı** | Parça-parça (64KB) P2P transfer, 3 hop'a kadar relay, SHA-256 parça doğrulama |
+| **WebRTC Data Channel** | SCTP benzeri güvenilir kanal, zlib sıkıştırma, sıralı mesaj |
 | **Asenkron Transfer** 🆕 | Çevrimdışı cihazlara kuyruk, hash dedup, SQLite tabanlı geçmiş |
 | **Ekran Yayını** | GStreamer/PipeWire ile düşük gecikmeli MJPEG streaming |
 | **Pano Senkronizasyonu** | Cihazlar arası hassas veri maskeleme |
@@ -30,15 +29,15 @@
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    GTK4/Adw GUI (6 sekme)               │
-│  Gizlilik │ Keşif │ Ekran │ Pano │ Ayarlar │ 🚀Yenilikler│
+│  Gizlilik │ Keşif │ Ekran │ Pano │ Ayarlar │ 🌐Mesh Ağı │
 └──────┬──────────┬──────────┬──────────┬─────────┬────────┘
        │          │          │          │         │
 ┌──────▼──┐ ┌─────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌──▼──────────────┐
-│ Cleaner │ │Discovery │ │ Screen │ │Clipbrd │ │ 🆕 Yenilikler  │
+│ Cleaner │ │Discovery │ │ Screen │ │Clipbrd │ │ Mesh Ağı       │
 │ EXIF/PDF│ │ mDNS     │ │ MJPEG  │ │Masker  │ │ • Mesh (8920)  │
-│ Office  │ │ P2P:8900 │ │ :52345 │ │:8901   │ │ • AI (yerel)   │
-│         │ │ Mesh     │ │ WebRTC │ │ AI     │ │ • WebRTC(8921) │
-│         │ │ Async    │ │ :8921  │ │        │ │ • Async(SQLite)│
+│ Office  │ │ P2P:8900 │ │ :52345 │ │:8901   │ │ • WebRTC(8921) │
+│         │ │ Mesh     │ │ WebRTC │ │        │ │ • Async(SQLite)│
+│         │ │ Async    │ │ :8921  │ │        │ │                │
 └─────────┴─┴──────────┴─┴────────┴─┴────────┴─┴───────────────┘
        │          │          │          │
        └──────────┴──────────┴──────────┘
@@ -96,7 +95,6 @@ pardus-paylasim/
 │   │   ├── screen/                # Ekran yayınlama ve kontrol
 │   │   │   └── webrtc/            # 🆕 Data channel (8921)
 │   │   ├── clipboard/             # Pano maskeleme
-│   │   │   └── ai/                # 🆕 Yerel AI tespiti
 │   │   ├── cleaner/               # Metadata temizleme
 │   │   └── auth/                  # Güvenlik ve audit log
 │   ├── pardus_paylasim_agent/     # Arka plan agentı
@@ -119,12 +117,12 @@ pardus-paylasim/
 | 3 | 🖥️ Ekran | Ekranını paylaş veya karşı tarafı izle |
 | 4 | 📋 Pano | Hassas veriyi maskele, cihazlara senkronize et |
 | 5 | ⚙️ Ayarlar | Cihaz adı, klasör, mDNS görünürlüğü |
-| 6 | 🚀 Yenilikler | Mesh başlat/durdur, AI tara, asenkron kuyruk |
+| 6 | 🌐 Mesh Ağı | Mesh başlat/durdur, WebRTC durumu, asenkron kuyruk |
 
-### 🚀 Yenilikler Sekmesi — Adım Adım
+### 🌐 Mesh Ağı Sekmesi — Adım Adım
 
 1. **Mesh Ağı:** "Başlat" → durum "Çalışıyor" olur, eş sayısı artar.
-2. **AI Taraması:** "Tara" → örnek metindeki TCKN/e-posta/kart listelenir.
+2. **WebRTC:** Ekran paylaşımı oturum durumunu gösterir.
 3. **Asenkron:** "Yenile" → bekleyen çevrimdışı transfer sayısı görünür.
 
 ### 🔧 Kullanım
@@ -135,16 +133,13 @@ pardus-paylasim/
 # Dosya temizleme
 pardus-paylasim --clean dosya1.jpg dosya2.pdf
 
-# Klasik maskeleme (regex)
+# Maskeleme (TCKN, IBAN, kredi kartı, e-posta, telefon)
 pardus-paylasim --mask "TCKN: 10000000146"
 
-# 🆕 AI ile hassas veri tara (TCKN/IBAN/kart/JWT/API key/SSH key)
-pardus-paylasim --ai-scan "Kartım 4532-0151-1283-0366 ve mail a@b.com"
-
-# 🆕 Mesh ağı durumu
+# Mesh ağı durumu
 pardus-paylasim --mesh-status
 
-# 🆕 Bekleyen asenkron transferler
+# Bekleyen asenkron transferler
 pardus-paylasim --async-list
 
 # Çıktı ile temizleme
@@ -157,7 +152,7 @@ pardus-paylasim --clean foto.jpg --out temiz_foto.jpg
 pardus-paylasim
 ```
 
-#### Python API (4 yeni modül)
+#### Python API (Mesh, WebRTC, Asenkron Transfer)
 
 ```python
 # 1. Mesh — parça-parça transfer
@@ -166,20 +161,13 @@ node = MeshNode(peer_id="benim-id", local_ip="192.168.1.10")
 node.start()   # 8920 portunda dinler
 node.stop()
 
-# 2. Yerel AI — hassas veri tespiti (çevrimdışı)
-from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
-det = LocalSensitiveDetector()
-sonuc = det.detect("TCKN: 10000000146")
-print(sonuc.detections[0].label)  # "tckn"
-print(det.mask_with_ai("Mail: a@b.com"))  # maskelenmiş metin
-
-# 3. WebRTC — SDP teklifi oluştur
+# 2. WebRTC — SDP teklifi oluştur
 from pardus_paylasim.screen.webrtc.data_channel import SDPMessage, WebRTCScreenNode
 teklif = SDPMessage.create_offer("oturum-1", {"codecs": ["jpeg"]})
 node = WebRTCScreenNode(peer_id="ben", port=8921)
 node.start()
 
-# 4. Asenkron — çevrimdışı kuyruk
+# 3. Asenkron — çevrimdışı kuyruk
 from pardus_paylasim.discovery.async_transfer.manager import AsyncTransferManager
 mgr = AsyncTransferManager(device_id="ben", device_name="Ofis PC")
 tid = mgr.queue_offline("/home/kullanici/rapor.pdf", receiver_id="ev-pc", receiver_name="Ev")
@@ -225,7 +213,7 @@ python3 tests/test_mesh_e2e.py
 
 | Belge | İçerik |
 |-------|--------|
-| [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | Ölçülen gecikme tablosu (AI 0,04 ms, mesh 3 µs) + rakip özellik matrisi |
+| [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | Ölçülen gecikme tablosu (maskeleme 0,04 ms, mesh 3 µs) + rakip özellik matrisi |
 | [`docs/DEMO.md`](docs/DEMO.md) | Gerçek CLI çıktıları (4 komut) + E2E mesh kaydı |
 | [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) | Statik tarama: 2 bulgu düzeltildi (`secrets`), yanlış alarmlar gerekçelendirildi |
 | [`docs/LICENSES.md`](docs/LICENSES.md) | Bağımlılık lisans uyumu (GPL-3.0 ile çelişki yok) |

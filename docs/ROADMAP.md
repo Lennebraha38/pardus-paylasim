@@ -3,8 +3,8 @@
 ## v1.0 — Mevcut (2026-09)
 
 - mDNS keşfi, PIN korumalı P2P transfer (AES-256-GCM, streaming)
-- Mesh relay (3 hop, parça SHA-256), yerel AI tespiti (10 tip),
-  WebRTC data channel, SQLite asenkron kuyruk
+- Mesh relay (3 hop, parça SHA-256), WebRTC data channel,
+  SQLite asenkron kuyruk
 - GTK4/Adw 6 sekmeli arayüz, CLI, i18n (tr/en)
 - ~550 test, benchmarklar, güvenlik denetimi
 
@@ -25,6 +25,5 @@
 
 ## v2.0 — Vizyon (hedef: +6 ay)
 
-- [ ] Eğitilmiş ONNX pano modeli (şu an kural tabanlı + iskelet)
 - [ ] Uçtan uca şifreli grup paylaşımı
 - [ ] Bağımsız güvenlik denetimi (penetrasyon testi)

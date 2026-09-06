@@ -39,7 +39,7 @@
 - Temizleme sonrası dosya açılıyor mu? (Evet/Hayır)
 - Güven hissi (1-5):
 
-## Senaryo 4 — Çevrimdışı Kuyruk (Yenilikler sekmesi)
+## Senaryo 4 — Çevrimdışı Kuyruk (Mesh Ağı sekmesi)
 
 1. Karşı cihaz kapalıyken bir dosya kuyruğa ekleyin.
 2. Cihazı açın, dosyanın geldiğini doğrulayın.

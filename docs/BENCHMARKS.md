@@ -10,19 +10,16 @@
 
 | Senaryo | p50 | p95 | Ortalama | İşlem/s |
 |---------|-----|-----|----------|---------|
-| AI tespiti — kısa metin (~200 karakter) | 0,038 ms | 0,057 ms | 0,043 ms | ~23.000 |
-| AI tespiti — uzun rapor (~10 KB) | 1,48 ms | 2,01 ms | 1,54 ms | ~650 |
-| AI tespiti — temiz metin (negatif vaka) | 0,016 ms | 0,016 ms | 0,016 ms | ~62.000 |
-| AI maskeleme (mask_with_ai) | 0,041 ms | 0,042 ms | 0,042 ms | ~24.000 |
-| Mesh parça paketleme (64 KB) | 0,003 ms | 0,003 ms | 0,003 ms | ~364.000 |
-| Mesh parça açma + doğrulama (64 KB) | 0,003 ms | 0,003 ms | 0,003 ms | ~349.000 |
-| SQLite kuyruğa yazma (WAL, kalıcı bağlantı) | 0,66 ms | 1,50 ms | 0,79 ms | ~1.270 |
-| WebRTC kanal kuyruğuna yazma (30 KB) | 0,001 ms | 0,002 ms | 0,003 ms | ~365.000 |
+| Pano maskeleme — tipik metin (~150 karakter) | 0,028 ms | 0,037 ms | 0,029 ms | ~34.500 |
+| Mesh parça paketleme (64 KB) | 0,003 ms | 0,003 ms | 0,003 ms | ~371.000 |
+| Mesh parça açma + doğrulama (64 KB) | 0,003 ms | 0,004 ms | 0,003 ms | ~335.000 |
+| SQLite kuyruğa yazma (WAL, kalıcı bağlantı) | 0,74 ms | 1,38 ms | 0,84 ms | ~1.200 |
+| WebRTC kanal kuyruğuna yazma (30 KB) | 0,002 ms | 0,003 ms | 0,002 ms | ~479.000 |
 
 ## Yorum
 
-- **Pano senkronizasyonu gerçek zamanlıdır:** tipik bir pano metni
-  0,05 ms altında taranır; kullanıcı yazarken bile hissedilmez.
+- **Pano maskeleme gerçek zamanlıdır:** tipik bir metin 0,03 ms altında
+  taranıp maskelenir; kullanıcı yazarken bile hissedilmez.
 - **Mesh ek yükü ihmal edilebilir:** 64 KB parçanın paketlenmesi
   3 µs sürer; darboğaz ağ hızıdır, protokol değildir.
 - **SQLite optimizasyonu (v1.0):** her yazışta bağlantı açmak yerine
@@ -46,7 +43,7 @@
 | Açık kaynak | ✅ (GPL-3.0) | ✅ (GPL) | ✅ (MIT) | ❌ |
 | Hesapsız yerel çalışma | ✅ | ✅ | ✅ | ❌ (ID/sunucu) |
 | Uçtan uca şifreleme (AES-256-GCM) | ✅ | ✅ (TLS) | ✅ (TLS) | ✅ |
-| Çevrimdışı hassas veri tespiti (yerel AI) | ✅ | ❌ | ❌ | ❌ |
+| Pano hassas veri maskeleme (TCKN/IBAN/kart/e-posta) | ✅ | ❌ | ❌ | ❌ |
 | Metadata temizleme (EXIF/PDF/Office) | ✅ | ❌ | ❌ | ❌ |
 | Mesh relay (dolaylı P2P) | ✅ | ❌ | ❌ | ❌ (sunucu) |
 | Çevrimdışı kuyruk (asenkron transfer) | ✅ | ❌ | ❌ | ❌ |
@@ -54,5 +51,5 @@
 | Pardus/DEB + Flatpak paketi | ✅ | ✅ | ✅ | ✅ |
 
 **Fark:** Rakipler dosya paylaşımında güçlüdür; bu proje **gizlilik
-katmanını** (tespit + maskeleme + temizleme + çevrimdışı kuyruk)
+katmanını** (maskeleme + temizleme + çevrimdışı kuyruk)
 aynı çatı altında toplar.

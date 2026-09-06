@@ -165,8 +165,8 @@ class MainWindow:
         # Tab 5: Settings / Dashboard
         self._build_settings_tab()
 
-        # Tab 6: 🆕 Innovations (Mesh + AI + WebRTC + Async)
-        self._build_innovations_tab()
+        # Tab 6: Mesh Ağı (Mesh + WebRTC + Asenkron Transfer)
+        self._build_mesh_tab()
 
         # View switcher in header (so tabs are always visible at the top macOS-style)
         switcher = Adw.ViewSwitcher()
@@ -198,7 +198,7 @@ class MainWindow:
 
     # Sekmelerin sıralı adları — Ctrl+1..6 bu sıraya göre eşlenir.
     # (view_stack'e ekleme sırasıyla birebir aynı olmalı.)
-    TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings", "innovations")
+    TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings", "mesh")
 
     @staticmethod
     def _tab_name_for_index(index, tab_names=TAB_NAMES):
@@ -924,8 +924,8 @@ class MainWindow:
 
         self.view_stack.add_titled(page, "settings", "⚙️ Ayarlar")
 
-    def _build_innovations_tab(self):
-        """🆕 Devrim Niteliğinde Yenilikler: Mesh, AI, WebRTC, Asenkron Transfer."""
+    def _build_mesh_tab(self):
+        """Mesh ağı: parça-parça P2P transfer, WebRTC ekran paylaşımı, asenkron kuyruk."""
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box.set_margin_top(16)
         box.set_margin_bottom(16)
@@ -933,12 +933,12 @@ class MainWindow:
         box.set_margin_end(16)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("🚀 Devrim Niteliğinde Yenilikler"))
+        lbl_title = Gtk.Label(label=_("🌐 Mesh Ağı"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_sub = Gtk.Label(
             label=_(
-                "Mesh ağı, yerel yapay zeka, WebRTC ekran paylaşımı ve asenkron transfer.\n"
+                "Parça-parça P2P transfer, WebRTC ekran paylaşımı ve çevrimdışı kuyruk.\n"
                 "Tüm veriler cihazınızda kalır — buluta gönderilmez."
             )
         )
@@ -970,28 +970,6 @@ class MainWindow:
         )
         mesh_group.add(self.mesh_peers_row)
         box.append(mesh_group)
-
-        # AI Hassas Veri Tespiti
-        ai_group = Adw.PreferencesGroup(
-            title=_("🤖 Yerel Yapay Zeka"),
-            description=_("TCKN, IBAN, kredi kartı, JWT, API/SSH key tespiti"),
-        )
-        ai_input_row = Adw.ActionRow(
-            title=_("AI Taraması Test"),
-            subtitle=_("Örnek metin tara: TCKN, IBAN, API key..."),
-        )
-        btn_ai_scan = Gtk.Button(label=_("Tara"))
-        btn_ai_scan.set_valign(Gtk.Align.CENTER)
-        self._set_a11y_label(btn_ai_scan, _("Yerel AI ile tara"))
-        btn_ai_scan.connect("clicked", self._on_ai_scan_demo)
-        ai_input_row.add_suffix(btn_ai_scan)
-        ai_group.add(ai_input_row)
-
-        self.ai_result_row = Adw.ActionRow(
-            title=_("Sonuç"), subtitle=_("Henüz taranmadı"),
-        )
-        ai_group.add(self.ai_result_row)
-        box.append(ai_group)
 
         # WebRTC Data Channel
         webrtc_group = Adw.PreferencesGroup(
@@ -1029,7 +1007,7 @@ class MainWindow:
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "innovations", "🚀 Yenilikler")
+        self.view_stack.add_titled(page, "mesh", "🌐 Mesh Ağı")
 
     def _on_mesh_toggle(self, btn):
         from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
@@ -1054,19 +1032,6 @@ class MainWindow:
             self._mesh_node = None
             self.mesh_status_row.set_subtitle(_("Başlatılmadı"))
             self.btn_mesh_toggle.set_label(_("Başlat"))
-
-    def _on_ai_scan_demo(self, btn):
-        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
-        sample = "TCKN: 10000000146, Email: ahmet@example.com, Kart: 4532015112830366"
-        det = LocalSensitiveDetector()
-        result = det.detect(sample)
-        if result.has_sensitive:
-            labels = ", ".join(d.label for d in result.detections)
-            self.ai_result_row.set_subtitle(
-                f"{len(result.detections)} bulgu: {labels}"
-            )
-        else:
-            self.ai_result_row.set_subtitle(_("Hassas veri bulunamadı."))
 
     def _on_async_refresh(self, btn):
         from pardus_paylasim.discovery.async_transfer.manager import AsyncTransferStore

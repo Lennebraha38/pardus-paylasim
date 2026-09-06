@@ -1,5 +1,5 @@
 """
-Tüm 4 yeni modül için basit, doğrudan çalıştırılabilir testler.
+Mesh, WebRTC ve Asenkron Transfer modülleri için basit testler.
 pytest gerekmez, doğrudan python3 ile çalıştırılabilir.
 """
 
@@ -57,69 +57,6 @@ def test_mesh():
     assert 32 * 1024 <= CHUNK_SIZE <= 1024 * 1024
     assert 1 <= MAX_RELAY_HOPS <= 5
     print("  constants valid: PASS")
-
-
-def test_ai():
-    print("\n--- LOCAL AI DETECTOR ---")
-    from pardus_paylasim.clipboard.ai.local_detector import (
-        LocalSensitiveDetector, AIDetection, AIResult,
-    )
-
-    det = LocalSensitiveDetector()
-
-    r = det.detect("TCKN: 10000000146")
-    assert any(d.label == "tckn" for d in r.detections)
-    print("  TCKN detection: PASS")
-
-    r = det.detect("00000000000")
-    assert all(d.label != "tckn" for d in r.detections)
-    print("  invalid TCKN rejected: PASS")
-
-    r = det.detect("4532015112830366")
-    assert any(d.label == "credit_card" for d in r.detections)
-    print("  credit card Luhn: PASS")
-
-    r = det.detect("TR96 3456 7890 1234 5678 9012 34")
-    assert any(d.label == "iban_tr" for d in r.detections)
-    print("  IBAN: PASS")
-
-    r = det.detect("ahmet@example.com")
-    assert any(d.label == "email" for d in r.detections)
-    print("  email: PASS")
-
-    jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-    r = det.detect(jwt)
-    assert any(d.label == "jwt" for d in r.detections)
-    print("  JWT: PASS")
-
-    r = det.detect("sk-1234567890abcdefghijklmnop")
-    assert any(d.label == "api_key" for d in r.detections)
-    print("  API key: PASS")
-
-    r = det.detect("ssh-rsa AAAAAB3NzaC1yc2EAAAA user@host")
-    assert any(d.label == "ssh_key" for d in r.detections)
-    print("  SSH key: PASS")
-
-    r = det.detect("-----BEGIN PRIVATE KEY-----")
-    assert any(d.label == "private_key" for d in r.detections)
-    print("  Private key: PASS")
-
-    r = det.detect("TCKN: 10000000146 ve mail: a@b.com")
-    assert r.max_severity == "KRİTİK"
-    print("  max severity: PASS")
-
-    r = det.detect("Bugün hava güzel")
-    assert r.inference_time_ms >= 0
-    print("  inference time: PASS")
-
-    masked = det.mask_with_ai("Email: ahmet@example.com")
-    assert "ahmet@example.com" not in masked
-    assert "@example.com" in masked
-    print("  masking: PASS")
-
-    r = det.detect("")
-    assert not r.has_sensitive
-    print("  empty input: PASS")
 
 
 def test_webrtc():
@@ -251,9 +188,8 @@ def test_async_transfer():
 
 if __name__ == "__main__":
     test_mesh()
-    test_ai()
     test_webrtc()
     test_async_transfer()
     print("\n" + "=" * 40)
-    print("ALL 4 INNOVATION MODULES: PASS")
+    print("ALL MODULE TESTS: PASS")
     print("=" * 40)
