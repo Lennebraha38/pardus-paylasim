@@ -85,4 +85,7 @@ print('preflight:', 'OK' if ok else 'FAIL')
 raise SystemExit(0 if ok else 1)
 \" || { echo 'HATA: display açılamıyor — Termux:X11 uygulamasını aç (Display 0) ve tekrar dene.'; exit 1; }
 cd ~/pardus-paylasim
-PYTHONPATH=src python3 -m pardus_paylasim.app"
+# D-Bus oturumu ŞART: Adw uygulaması bus olmadan pencere açmıyor.
+# GSETTINGS_BACKEND=memory + GTK_A11Y=none proot'taki eksik servisleri susturur.
+dbus-run-session -- env DISPLAY=:0 GDK_BACKEND=x11 GSETTINGS_BACKEND=memory \
+    GTK_A11Y=none PYTHONPATH=src python3 -m pardus_paylasim.app"
