@@ -1,10 +1,10 @@
 """
 Main GTK4 + Libadwaita Window for Pardus Güvenli Paylaşım.
 Provides 4-tab interface:
-1. 🛡️ Dosya Gizliliği ve Meta Veri Temizleme
-2. 📲 Wi-Fi / Bluetooth Cihaz Tanıma (Ecosystem Continuity)
-3. 🖥️ macOS Tarzı Ekran Paylaşımı (AirPlay/Sidecar)
-4. 📋 Hassas Metin & Pano Maskeleme
+1.  Dosya Gizliliği ve Meta Veri Temizleme
+2.  Wi-Fi / Bluetooth Cihaz Tanıma
+3.  Ekran Paylaşımı
+4.  Hassas Metin & Pano Maskeleme
 """
 
 import logging
@@ -179,7 +179,7 @@ class MainWindow:
         # Tab 7: Sınıf (öğretmen orkestrasyonu: liste + yayın + dağıtım)
         self._build_classroom_tab()
 
-        # View switcher in header (so tabs are always visible at the top macOS-style)
+        # View switcher in header (sekmeler üstte her zaman görünür)
         switcher = Adw.ViewSwitcher()
         switcher.set_stack(self.view_stack)
         switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
@@ -318,7 +318,7 @@ class MainWindow:
 
         # Header area
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("🛡️ Dosya Gizliliği ve Meta Veri Temizleyici"))
+        lbl_title = Gtk.Label(label=_("Dosya Gizliliği ve Meta Veri Temizleyici"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_desc = Gtk.Label(
@@ -391,13 +391,13 @@ class MainWindow:
 
         # Report buttons
         report_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_report_md = Gtk.Button(label=_("📄 Rapor (Markdown)"))
+        self.btn_report_md = Gtk.Button(label=_("Rapor (Markdown)"))
         self.btn_report_md.set_sensitive(False)
         self.btn_report_md.connect("clicked", self._on_export_report_md)
-        self.btn_report_txt = Gtk.Button(label=_("📝 Rapor (Metin)"))
+        self.btn_report_txt = Gtk.Button(label=_("Rapor (Metin)"))
         self.btn_report_txt.set_sensitive(False)
         self.btn_report_txt.connect("clicked", self._on_export_report_txt)
-        self.btn_report_json = Gtk.Button(label=_("📊 Rapor (JSON)"))
+        self.btn_report_json = Gtk.Button(label=_("Rapor (JSON)"))
         self.btn_report_json.set_sensitive(False)
         self.btn_report_json.connect("clicked", self._on_export_report_json)
         report_box.append(self.btn_report_md)
@@ -418,7 +418,7 @@ class MainWindow:
         # Wrap in a scrolled page
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "privacy", "🛡️ Dosya Gizliliği")
+        self.view_stack.add_titled(page, "privacy", " Dosya Gizliliği")
 
     # ──────────────────────────────────────────────
     #  TAB 2: Cihaz Tanıma
@@ -432,12 +432,12 @@ class MainWindow:
         box.set_margin_end(16)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("📲 Wi-Fi ve Bluetooth Cihaz Tanıma"))
+        lbl_title = Gtk.Label(label=_("Wi-Fi ve Bluetooth Cihaz Tanıma"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_sub = Gtk.Label(
             label=_(
-                "Yerel ağda ve Bluetooth üzerinden Pardus ekosistemindeki \n cihazları keşfedin. macOS Continuity tarzı cihaz tanıma."
+                "Yerel ağda ve Bluetooth üzerinden Pardus cihazlarını keşfedin."
             )
         )
         lbl_sub.add_css_class("body")
@@ -447,7 +447,7 @@ class MainWindow:
 
         # Control bar
         ctrl_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_discover = Gtk.Button(label=_("🔍 Cihazları Tara"))
+        self.btn_discover = Gtk.Button(label=_("Cihazları Tara"))
         self.btn_discover.add_css_class("pill")
         self.btn_discover.add_css_class("suggested-action")
         self.btn_discover.connect("clicked", self._on_toggle_discovery)
@@ -458,7 +458,7 @@ class MainWindow:
         self.lbl_discovery_status = Gtk.Label(label=_("Tarama başlatılmadı."))
         self.lbl_discovery_status.add_css_class("caption")
 
-        self.btn_qr_pair = Gtk.Button(label=_("🔗 QR Eşleştir"))
+        self.btn_qr_pair = Gtk.Button(label=_("QR Eşleştir"))
         self.btn_qr_pair.add_css_class("pill")
         self.btn_qr_pair.set_tooltip_text(
             _("Bu cihazın QR kodunu göster veya bir QR/URI ile eşleş.")
@@ -509,7 +509,7 @@ class MainWindow:
 
         # Action buttons for selected device
         action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_pair_device = Gtk.Button(label=_("🤝 Eşleştir"))
+        self.btn_pair_device = Gtk.Button(label=_("Eşleştir"))
         self.btn_pair_device.add_css_class("pill")
         self.btn_pair_device.set_sensitive(False)
         self.btn_pair_device.connect("clicked", self._on_pair_device)
@@ -522,32 +522,32 @@ class MainWindow:
         )
         self.btn_trust_device.connect("clicked", self._on_trust_device)
 
-        self.btn_share_normal = Gtk.Button(label=_("📁 Normal Gönder"))
+        self.btn_share_normal = Gtk.Button(label=_("Normal Gönder"))
         self.btn_share_normal.add_css_class("pill")
         self.btn_share_normal.set_sensitive(False)
         self.btn_share_normal.set_tooltip_text(_("Dosyayı yerel ağ üzerinden hızlıca gönder."))
         self.btn_share_normal.connect("clicked", self._on_share_normal)
 
-        self.btn_share_secret = Gtk.Button(label=_("🔒 Güvenli (Secret) Gönder"))
+        self.btn_share_secret = Gtk.Button(label=_("Güvenli (Secret) Gönder"))
         self.btn_share_secret.add_css_class("pill")
         self.btn_share_secret.add_css_class("suggested-action")
         self.btn_share_secret.set_sensitive(False)
         self.btn_share_secret.set_tooltip_text(_("Dosyayı AES-256 ile şifreleyerek P2P gönder."))
         self.btn_share_secret.connect("clicked", self._on_share_secret)
 
-        self.btn_share_folder = Gtk.Button(label=_("🗂️ Klasör Gönder"))
+        self.btn_share_folder = Gtk.Button(label=_("Klasör Gönder"))
         self.btn_share_folder.add_css_class("pill")
         self.btn_share_folder.set_sensitive(False)
         self.btn_share_folder.set_tooltip_text(_("Bir klasörü iç yapısını koruyarak gönder."))
         self.btn_share_folder.connect("clicked", self._on_share_folder)
 
-        self.btn_share_clipboard = Gtk.Button(label=_("📋 Panoyu Gönder"))
+        self.btn_share_clipboard = Gtk.Button(label=_("Panoyu Gönder"))
         self.btn_share_clipboard.add_css_class("pill")
         self.btn_share_clipboard.set_sensitive(False)
         self.btn_share_clipboard.set_tooltip_text(_("Sistem panosundaki metni bu cihaza gönder."))
         self.btn_share_clipboard.connect("clicked", self._on_share_clipboard)
 
-        self.btn_share_screen_to = Gtk.Button(label=_("🖥️ Ekran Yansıt"))
+        self.btn_share_screen_to = Gtk.Button(label=_("Ekran Yansıt"))
         self.btn_share_screen_to.add_css_class("pill")
         self.btn_share_screen_to.set_sensitive(False)
         self.btn_share_screen_to.connect("clicked", self._on_share_screen_to_device)
@@ -583,7 +583,7 @@ class MainWindow:
         self.lbl_transfer_stats.set_halign(Gtk.Align.START)
         self.lbl_transfer_stats.set_visible(False)
 
-        self.btn_cancel_transfer = Gtk.Button(label=_("⏹️ İptal"))
+        self.btn_cancel_transfer = Gtk.Button(label=_("⏹ İptal"))
         self.btn_cancel_transfer.add_css_class("pill")
         self.btn_cancel_transfer.add_css_class("destructive-action")
         self.btn_cancel_transfer.set_halign(Gtk.Align.START)
@@ -596,7 +596,7 @@ class MainWindow:
         # Sürükle-bırak ipucu: seçili cihaza dosya atarak gönderme.
         self.lbl_drop_hint = Gtk.Label(
             label=_(
-                "💡 İpucu: Dosyaları buraya sürükleyip bırakarak seçili cihaza gönderebilirsiniz."
+                "İpucu: Dosyaları buraya sürükleyip bırakarak seçili cihaza gönderebilirsiniz."
             )
         )
         self.lbl_drop_hint.add_css_class("caption")
@@ -627,7 +627,7 @@ class MainWindow:
         send_drop.connect("drop", self._on_drop_files_to_send)
         page.add_controller(send_drop)
 
-        self.view_stack.add_titled(page, "discovery", "📲 Cihaz Tanıma")
+        self.view_stack.add_titled(page, "discovery", " Cihaz Tanıma")
 
     # ──────────────────────────────────────────────
     #  TAB 3: Ekran Paylaşımı
@@ -641,12 +641,12 @@ class MainWindow:
         box.set_margin_end(16)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("🖥️ Wi-Fi / Bluetooth Ekran Paylaşımı"))
+        lbl_title = Gtk.Label(label=_("Wi-Fi / Bluetooth Ekran Paylaşımı"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_sub = Gtk.Label(
             label=_(
-                "macOS AirPlay / Sidecar tarzı düşük gecikmeli ekran paylaşımı. \n Yerel ağdaki Pardus cihazları arasında güvenli ekran yayını."
+                "Yerel ağdaki Pardus cihazları arasında güvenli, düşük gecikmeli ekran yayını."
             )
         )
         lbl_sub.add_css_class("body")
@@ -656,10 +656,10 @@ class MainWindow:
 
         # Mode selector
         mode_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_host_mode = Gtk.ToggleButton(label=_("📡 Ekranımı Yayınla (Sunucu)"))
+        self.btn_host_mode = Gtk.ToggleButton(label=_("Ekranımı Yayınla (Sunucu)"))
         self.btn_host_mode.add_css_class("pill")
         self.btn_host_mode.connect("toggled", self._on_host_mode_toggled)
-        self.btn_client_mode = Gtk.ToggleButton(label=_("📺 Uzak Ekrana Bağlan (İstemci)"))
+        self.btn_client_mode = Gtk.ToggleButton(label=_("Uzak Ekrana Bağlan (İstemci)"))
         self.btn_client_mode.add_css_class("pill")
         self.btn_client_mode.connect("toggled", self._on_client_mode_toggled)
         mode_box.append(self.btn_host_mode)
@@ -671,7 +671,7 @@ class MainWindow:
         host_box.add_css_class("card")
         host_box.set_margin_top(8)
 
-        self.btn_start_host = Gtk.Button(label=_("▶️ Ekran Yayınını Başlat"))
+        self.btn_start_host = Gtk.Button(label=_("Ekran Yayınını Başlat"))
         self.btn_start_host.add_css_class("pill")
         self.btn_start_host.add_css_class("suggested-action")
         self.btn_start_host.connect("clicked", self._on_start_hosting)
@@ -707,7 +707,7 @@ class MainWindow:
         # 1.2) → sürüm-güvenli olması için kırmızı markup Gtk.Label + Revealer.
         ctrl_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         ctrl_row.set_margin_top(6)
-        lbl_ctrl_allow = Gtk.Label(label=_("🖱️ Uzaktan Kontrole İzin Ver"))
+        lbl_ctrl_allow = Gtk.Label(label=_("Uzaktan Kontrole İzin Ver"))
         lbl_ctrl_allow.add_css_class("body")
         lbl_ctrl_allow.set_halign(Gtk.Align.START)
         lbl_ctrl_allow.set_hexpand(True)
@@ -735,7 +735,7 @@ class MainWindow:
 
         # Anında iptal — daima erişilebilir "Kontrolü Durdur" (kill-switch
         # eşi; Ctrl+Alt+K aynı yolu koşar). Kontrol kapalıyken duyarsız.
-        self.btn_stop_control = Gtk.Button(label=_("🛑 Kontrolü Durdur"))
+        self.btn_stop_control = Gtk.Button(label=_("Kontrolü Durdur"))
         self.btn_stop_control.add_css_class("pill")
         self.btn_stop_control.add_css_class("destructive-action")
         self.btn_stop_control.set_sensitive(False)
@@ -763,12 +763,12 @@ class MainWindow:
         self.entry_pin.set_placeholder_text(_("6 haneli PIN kodu"))
         self._set_a11y_label(self.entry_pin, _("PIN Kodu"))
 
-        self.btn_connect_remote = Gtk.Button(label=_("🔗 Uzak Ekrana Bağlan"))
+        self.btn_connect_remote = Gtk.Button(label=_("Uzak Ekrana Bağlan"))
         self.btn_connect_remote.add_css_class("pill")
         self.btn_connect_remote.add_css_class("suggested-action")
         self.btn_connect_remote.connect("clicked", self._on_connect_remote)
 
-        self.btn_disconnect_remote = Gtk.Button(label=_("⏹️ Bağlantıyı Kes"))
+        self.btn_disconnect_remote = Gtk.Button(label=_("⏹ Bağlantıyı Kes"))
         self.btn_disconnect_remote.add_css_class("pill")
         self.btn_disconnect_remote.add_css_class("destructive-action")
         self.btn_disconnect_remote.set_sensitive(False)
@@ -809,7 +809,7 @@ class MainWindow:
 
         # Uzaktan kontrol iste (1.8 — C6). Yalnız ekran bağlıyken duyarlı;
         # basınca ayrı TLS `/control` kanalı açılır (host consent verirse).
-        self.btn_request_control = Gtk.Button(label=_("🖱️ Kontrolü İste"))
+        self.btn_request_control = Gtk.Button(label=_("Kontrolü İste"))
         self.btn_request_control.add_css_class("pill")
         self.btn_request_control.set_sensitive(False)
         self.btn_request_control.connect("clicked", self._on_request_control)
@@ -830,7 +830,7 @@ class MainWindow:
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "screenshare", "🖥️ Ekran Paylaşımı")
+        self.view_stack.add_titled(page, "screenshare", " Ekran Paylaşımı")
 
     # ──────────────────────────────────────────────
     #  TAB 4: Hassas Pano
@@ -844,7 +844,7 @@ class MainWindow:
         box.set_margin_end(16)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("📋 Hassas Metin ve Pano Maskeleyici"))
+        lbl_title = Gtk.Label(label=_("Hassas Metin ve Pano Maskeleyici"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_sub = Gtk.Label(
@@ -871,16 +871,16 @@ class MainWindow:
 
         # Button row
         btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_scan_text = Gtk.Button(label=_("🔍 Hassas Veri Tara"))
+        self.btn_scan_text = Gtk.Button(label=_("Hassas Veri Tara"))
         self.btn_scan_text.add_css_class("pill")
         self.btn_scan_text.add_css_class("suggested-action")
         self.btn_scan_text.connect("clicked", self._on_scan_text)
 
-        self.btn_mask_text = Gtk.Button(label=_("🎭 Otomatik Maskele"))
+        self.btn_mask_text = Gtk.Button(label=_("Otomatik Maskele"))
         self.btn_mask_text.add_css_class("pill")
         self.btn_mask_text.connect("clicked", self._on_mask_text)
 
-        self.btn_paste_clip = Gtk.Button(label=_("📋 Panodan Yapıştır"))
+        self.btn_paste_clip = Gtk.Button(label=_("Panodan Yapıştır"))
         self.btn_paste_clip.add_css_class("pill")
         self.btn_paste_clip.connect("clicked", self._on_paste_from_clipboard)
 
@@ -920,7 +920,7 @@ class MainWindow:
         history_scroll.set_min_content_height(80)
         history_scroll.set_child(self.clip_history_list)
         btn_history_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_clip_history_clear = Gtk.Button(label=_("🗑️ Geçmişi Temizle"))
+        self.btn_clip_history_clear = Gtk.Button(label=_("Geçmişi Temizle"))
         self.btn_clip_history_clear.add_css_class("pill")
         self.btn_clip_history_clear.connect("clicked", self._on_clip_history_clear)
         btn_history_row.append(self.btn_clip_history_clear)
@@ -933,7 +933,7 @@ class MainWindow:
 
         # Clipboard monitor toggle
         self.btn_monitor_clip = Gtk.ToggleButton(
-            label=_("🔄 Panoyu Sürekli İzle (Otomatik Maskele)")
+            label=_("Panoyu Sürekli İzle (Otomatik Maskele)")
         )
         self.btn_monitor_clip.add_css_class("pill")
         self.btn_monitor_clip.connect("toggled", self._on_toggle_clipboard_monitor)
@@ -953,7 +953,7 @@ class MainWindow:
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "clipboard", "📋 Hassas Pano")
+        self.view_stack.add_titled(page, "clipboard", " Hassas Pano")
 
     def _on_clip_history_clear(self, btn):
         from collections import deque
@@ -1160,7 +1160,7 @@ class MainWindow:
         add_row.add_suffix(add_box)
         group4.add(add_row)
 
-        self.view_stack.add_titled(page, "settings", "⚙️ Ayarlar")
+        self.view_stack.add_titled(page, "settings", " Ayarlar")
 
     @staticmethod
     def _device_fingerprint() -> str:
@@ -1257,7 +1257,7 @@ class MainWindow:
         self._apply_role_ui()
 
     def _build_mesh_tab(self):
-        """Mesh ağı: parça-parça P2P transfer, WebRTC ekran paylaşımı, asenkron kuyruk."""
+        """Mesh ağı: parça-parça P2P transfer ve çevrimdışı kuyruk."""
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box.set_margin_top(16)
         box.set_margin_bottom(16)
@@ -1265,12 +1265,12 @@ class MainWindow:
         box.set_margin_end(16)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("🌐 Mesh Ağı"))
+        lbl_title = Gtk.Label(label=_("Mesh Ağı"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_sub = Gtk.Label(
             label=_(
-                "Parça-parça P2P transfer, WebRTC ekran paylaşımı ve çevrimdışı kuyruk.\n"
+                "Parça-parça P2P transfer ve çevrimdışı kuyruk.\n"
                 "Tüm veriler cihazınızda kalır — buluta gönderilmez."
             )
         )
@@ -1282,7 +1282,7 @@ class MainWindow:
 
         # Mesh Ağı durumu
         mesh_group = Adw.PreferencesGroup(
-            title=_("🌐 Mesh Ağı"),
+            title=_("Mesh Ağı"),
             description=_("Cihazlar arası parça-parça P2P transfer"),
         )
         self.mesh_status_row = Adw.ActionRow(
@@ -1319,21 +1319,9 @@ class MainWindow:
         mesh_group.add(peer_row)
         box.append(mesh_group)
 
-        # WebRTC Data Channel
-        webrtc_group = Adw.PreferencesGroup(
-            title=_("📡 WebRTC Ekran Paylaşımı"),
-            description=_("Düşük gecikmeli SCTP-benzeri data channel"),
-        )
-        webrtc_status_row = Adw.ActionRow(
-            title=_("WebRTC Durumu"), subtitle=_("Devre dışı"),
-        )
-        webrtc_group.add(webrtc_status_row)
-        self.webrtc_status_row = webrtc_status_row
-        box.append(webrtc_group)
-
         # Asenkron Transfer
         async_group = Adw.PreferencesGroup(
-            title=_("📬 Asenkron Transfer"),
+            title=_("Asenkron Transfer"),
             description=_("Çevrimdışı cihazlara kuyruklanmış gönderim"),
         )
         async_status_row = Adw.ActionRow(
@@ -1355,7 +1343,7 @@ class MainWindow:
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "mesh", "🌐 Mesh Ağı")
+        self.view_stack.add_titled(page, "mesh", "Mesh Ağı")
 
     def _show_role_onboarding(self):
         """İlk açılışta rol seçimi (bir kez; sonra Ayarlar'dan değişir)."""
@@ -1420,7 +1408,7 @@ class MainWindow:
         box.set_margin_end(16)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        lbl_title = Gtk.Label(label=_("🏫 Sınıf"))
+        lbl_title = Gtk.Label(label=_("Sınıf"))
         lbl_title.add_css_class("title-2")
         lbl_title.set_halign(Gtk.Align.START)
         lbl_sub = Gtk.Label(
@@ -1443,7 +1431,7 @@ class MainWindow:
             title=_("Bağlı Tahta"), subtitle=_("Henüz taranmadı"),
         )
         boards_group.add(self.classroom_count_row)
-        btn_board_refresh = Gtk.Button(label=_("🔄 Listeyi Yenile"))
+        btn_board_refresh = Gtk.Button(label=_("Listeyi Yenile"))
         btn_board_refresh.set_valign(Gtk.Align.CENTER)
         self._set_a11y_label(btn_board_refresh, _("Tahta listesini yenile"))
         btn_board_refresh.connect("clicked", self._on_classroom_refresh)
@@ -1462,7 +1450,7 @@ class MainWindow:
         self.entry_class_message = Gtk.Entry()
         self.entry_class_message.set_placeholder_text(_("Duyuru metni…"))
         self.entry_class_message.set_hexpand(True)
-        btn_broadcast = Gtk.Button(label=_("📣 Sınıfa Yayınla"))
+        btn_broadcast = Gtk.Button(label=_("Sınıfa Yayınla"))
         btn_broadcast.set_valign(Gtk.Align.CENTER)
         self._set_a11y_label(btn_broadcast, _("Mesajı tüm tahtalara yayınla"))
         btn_broadcast.connect("clicked", self._on_class_broadcast)
@@ -1481,7 +1469,7 @@ class MainWindow:
             description=_("Seçilen dosya seçili tahtalara gider"),
         )
         self.classroom_dist_group = dist_group
-        btn_distribute = Gtk.Button(label=_("📁 Dosya Seç ve Dağıt"))
+        btn_distribute = Gtk.Button(label=_("Dosya Seç ve Dağıt"))
         btn_distribute.set_valign(Gtk.Align.CENTER)
         self._set_a11y_label(btn_distribute, _("Dosya seçip tüm tahtalara dağıt"))
         btn_distribute.connect("clicked", self._on_class_distribute)
@@ -1494,7 +1482,7 @@ class MainWindow:
             title=_("Ekran Paylaşımı"),
             description=_("Ekran sekmesinde yayını başlatın; tahtalar istemci kipiyle izler"),
         )
-        btn_go_screen = Gtk.Button(label=_("🖥️ Ekran Sekmesine Git"))
+        btn_go_screen = Gtk.Button(label=_("Ekran Sekmesine Git"))
         btn_go_screen.set_valign(Gtk.Align.CENTER)
         btn_go_screen.connect(
             "clicked",
@@ -1507,7 +1495,7 @@ class MainWindow:
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "classroom", "🏫 Sınıf")
+        self.view_stack.add_titled(page, "classroom", " Sınıf")
 
     def _classroom_devices(self):
         """Yayın hedefleri: keşfedilen cihazlar (kendi hariç tutma çağırana ait)."""
@@ -1541,10 +1529,10 @@ class MainWindow:
             self.classroom_list_box.append(lbl)
             return
         for dev in devices[:30]:
-            lock = "🔒 " if getattr(dev, "fingerprint", "") else ""
+            lock = " [güvenilir]" if getattr(dev, "fingerprint", "") else ""
             mark = old_status.get(dev.address, "")
             mark = f" {mark}" if mark else ""
-            check = Gtk.CheckButton(label=f"{lock}{dev.name} · {dev.address}{mark}")
+            check = Gtk.CheckButton(label=f"{dev.name}{lock} · {dev.address}{mark}")
             check.set_halign(Gtk.Align.START)
             self._set_a11y_label(check, _("Yayın hedefi olarak seç") + f": {dev.name}")
             prev = old_checks.get(dev.address)
@@ -1570,9 +1558,9 @@ class MainWindow:
         return [d for d in self._classroom_devices() if d.address in selected]
 
     def _mark_broadcast_results(self, results):
-        """Satırlara ✓/✗ işareti (ağ hissi); seçimler korunur."""
+        """Satırlara / işareti (ağ hissi); seçimler korunur."""
         try:
-            status = {addr: ("✓" if ok else "✗") for addr, ok in results.items()}
+            status = {addr: ("ulaştı" if ok else "ulaşmadı") for addr, ok in results.items()}
             self._classroom_last_status = status
             devices = self._classroom_devices()
             if devices:
@@ -1747,9 +1735,9 @@ class MainWindow:
         except Exception as e:
             self._show_error(_("Klasör seçimi hatası: {error}").format(error=e))
 
-    # ═══════════════════════════════════════════════
+    # 
     #  EVENT HANDLERS – Privacy Tab
-    # ═══════════════════════════════════════════════
+    # 
 
     def _on_choose_file(self, btn):
         dialog = Gtk.FileDialog()
@@ -1783,7 +1771,7 @@ class MainWindow:
             row_box.set_margin_top(4)
             row_box.set_margin_bottom(4)
 
-            lbl = Gtk.Label(label=f"📄 {fname}")
+            lbl = Gtk.Label(label=f" {fname}")
             lbl.set_halign(Gtk.Align.START)
             lbl.set_hexpand(True)
 
@@ -1847,10 +1835,10 @@ class MainWindow:
                     status_lbl = children[1]
                     if res.success:
                         status_lbl.set_label(
-                            _("✅ Temizlendi ({engine})").format(engine=res.engine_used)
+                            _("Temizlendi ({engine})").format(engine=res.engine_used)
                         )
                     else:
-                        status_lbl.set_label(_("❌ Hata: {message}").format(message=res.message))
+                        status_lbl.set_label(_("Hata: {message}").format(message=res.message))
             row = row.get_next_sibling()
             idx += 1
 
@@ -1899,9 +1887,9 @@ class MainWindow:
         except Exception as e:
             self._show_error(f"Rapor kaydedilemedi: {e}")
 
-    # ═══════════════════════════════════════════════
+    # 
     #  EVENT HANDLERS – Discovery Tab
-    # ═══════════════════════════════════════════════
+    # 
 
     def _on_toggle_discovery(self, btn):
         if self._discovery_active:
@@ -1911,7 +1899,7 @@ class MainWindow:
 
     def _start_discovery(self):
         self._discovery_active = True
-        self.btn_discover.set_label(_("⏹️ Taramayı Durdur"))
+        self.btn_discover.set_label(_("⏹ Taramayı Durdur"))
         self.btn_discover.remove_css_class("suggested-action")
         self.discovery_spinner.set_visible(True)
         self.discovery_spinner.start()
@@ -1924,7 +1912,7 @@ class MainWindow:
 
     def _stop_discovery(self):
         self._discovery_active = False
-        self.btn_discover.set_label(_("🔍 Cihazları Tara"))
+        self.btn_discover.set_label(_("Cihazları Tara"))
         self.btn_discover.add_css_class("suggested-action")
         self.discovery_spinner.stop()
         self.discovery_spinner.set_visible(False)
@@ -1947,10 +1935,10 @@ class MainWindow:
             row_box.set_margin_top(4)
             row_box.set_margin_bottom(4)
 
-            icon = "📶" if "Wi-Fi" in dev.connection_type else "📡"
-            lock = "🔒 " if getattr(dev, "fingerprint", "") else ""
+            conn = "Wi-Fi" if "Wi-Fi" in dev.connection_type else "BT"
+            lock = " [güvenilir]" if getattr(dev, "fingerprint", "") else ""
             lbl = Gtk.Label(
-                label=f"{icon} {lock}{dev.name}\n"
+                label=f"{conn} · {dev.name}{lock}\n"
                 f"<small>{dev.connection_type} · {dev.address} · "
                 f"RSSI: {dev.rssi} · {dev.status}</small>"
             )
@@ -2035,15 +2023,15 @@ class MainWindow:
 
                 short_fp = group_fingerprint(peer_fp)
                 short_fp = short_fp[:35] + "…" if len(short_fp) > 36 else short_fp
-                fp_line = f"\n🔑 Parmak İzi: {short_fp}"
+                fp_line = f"\nParmak İzi: {short_fp}"
             detail = (
                 f"**{dev.name}**\n"
-                f"🖥️ İşletim Sistemi: {dev.os_info}\n"
-                f"🔗 Bağlantı: {dev.connection_type}\n"
-                f"📍 Adres: {dev.address}:{dev.port}\n"
-                f"📶 Sinyal: {dev.rssi}\n"
-                f"📋 Durum: {dev.status}\n"
-                f"🛠️ Yetenekler: {', '.join(dev.capabilities)}"
+                f" İşletim Sistemi: {dev.os_info}\n"
+                f" Bağlantı: {dev.connection_type}\n"
+                f" Adres: {dev.address}:{dev.port}\n"
+                f" Sinyal: {dev.rssi}\n"
+                f" Durum: {dev.status}\n"
+                f" Yetenekler: {', '.join(dev.capabilities)}"
                 f"{fp_line}"
             )
             self.device_detail.set_label(detail)
@@ -2079,7 +2067,7 @@ class MainWindow:
         has_fp = bool(dev) and bool(getattr(dev, "fingerprint", ""))
         self.btn_trust_device.set_sensitive(has_fp and not trusted)
         self.btn_trust_device.set_label(
-            _("Güvenilir ✓") if trusted else _("Güven")
+            _("Güvenilir") if trusted else _("Güven")
         )
 
     def _on_trust_device(self, btn):
@@ -2536,7 +2524,7 @@ class MainWindow:
                 if TrustStore().record_pairing(
                     info["fingerprint"], info["name"], info["ip"]
                 ):
-                    fp_note = _(" (parmak izi doğrulandı, güvenilirlere eklendi)")
+                    fp_note = _("(parmak izi doğrulandı, güvenilirlere eklendi)")
             except Exception as e:
                 logger.debug("güven kaydı yazılamadı: %s", e)
         dev = PardusDevice(
@@ -2583,7 +2571,7 @@ class MainWindow:
             try:
                 client.send_text(text)
                 GLib.idle_add(self._show_info, "Pano başarıyla gönderildi!")
-                GLib.idle_add(self._record_clip_history, text, "📤")
+                GLib.idle_add(self._record_clip_history, text, "Giden")
             except Exception as e:
                 GLib.idle_add(self._show_error, f"Pano gönderim hatası:\n{e}")
 
@@ -2602,7 +2590,7 @@ class MainWindow:
                 logger.error("Pano yazılamadı: %s", e)
                 return
             preview = text[:60] + ("…" if len(text) > 60 else "")
-            self._record_clip_history(text, f"📥 {sender_ip or ''}".strip())
+            self._record_clip_history(text, f"Gelen ({sender_ip})" if sender_ip else "Gelen")
             self._show_info(
                 _("{sender} panonuza metin gönderdi:\n\n{preview}").format(
                     sender=sender_ip or _("Bir cihaz"), preview=preview
@@ -2656,7 +2644,7 @@ class MainWindow:
                 trusted = TrustStore().is_ip_trusted(sender_ip)
             except Exception:
                 trusted = False
-            badge = _(" [güvenilir cihaz]") if trusted else ""
+            badge = _("[güvenilir cihaz]") if trusted else ""
             body = (
                 f"{sender_ip or 'Bilinmeyen cihaz'}{badge} bir dosya göndermek "
                 f"istiyor:\n\n{file_name}  ({size_str})\n\nKabul edilsin mi?"
@@ -2730,9 +2718,9 @@ class MainWindow:
             self.entry_remote_ip.set_text(self._selected_device.address)
             self.entry_remote_port.set_text(str(self._selected_device.port))
 
-    # ═══════════════════════════════════════════════
+    # 
     #  EVENT HANDLERS – Screen Share Tab
-    # ═══════════════════════════════════════════════
+    # 
 
     def _on_host_mode_toggled(self, btn):
         if self._guard_toggle:
@@ -2773,7 +2761,7 @@ class MainWindow:
             return
 
         self._screen_hosting = True
-        self.btn_start_host.set_label(_("⏹️ Yayını Durdur"))
+        self.btn_start_host.set_label(_("⏹ Yayını Durdur"))
         self.btn_start_host.remove_css_class("suggested-action")
         self.btn_start_host.add_css_class("destructive-action")
         self.lbl_host_status.set_label(_("⏳ Yayın başlatılıyor..."))
@@ -2788,7 +2776,7 @@ class MainWindow:
 
     def _stop_hosting(self):
         self._screen_hosting = False
-        self.btn_start_host.set_label(_("▶️ Ekran Yayınını Başlat"))
+        self.btn_start_host.set_label(_("Ekran Yayınını Başlat"))
         self.btn_start_host.add_css_class("suggested-action")
         self.btn_start_host.remove_css_class("destructive-action")
         self.lbl_host_pin.set_label(_("PIN Kodu: —"))
@@ -2817,10 +2805,10 @@ class MainWindow:
         host_port = self.screen_handler.host_port
         self.lbl_host_ip.set_label(_("Sunucu IP: {ip}:{port}").format(ip=local_ip, port=host_port))
         self.lbl_host_status.set_label(
-            _("✅ Yayın aktif! Karşı cihaz bu IP ve PIN ile bağlanabilir.")
+            _("Yayın aktif! Karşı cihaz bu IP ve PIN ile bağlanabilir.")
         )
         self.lbl_host_files.set_label(
-            _("🌐 Uygulamasız cihaz: https://{ip}:{port}/file-manager.html "
+            _("Uygulamasız cihaz: https://{ip}:{port}/file-manager.html "
               "adresinden PIN ile dosya alıp gönderebilir.").format(
                 ip=local_ip, port=host_port)
         )
@@ -2888,7 +2876,7 @@ class MainWindow:
     def _on_connect_result(self, ok, ip=None, port=DEFAULT_PORT):
         if ok:
             self._screen_connected = True
-            self.lbl_client_status.set_label(_("✅ Uzak ekrana bağlandı — canlı görüntü aşağıda."))
+            self.lbl_client_status.set_label(_("Uzak ekrana bağlandı — canlı görüntü aşağıda."))
             self.remote_picture_revealer.set_reveal_child(True)
             self.btn_disconnect_remote.set_sensitive(True)
             self.btn_connect_remote.set_sensitive(False)
@@ -2896,7 +2884,7 @@ class MainWindow:
             self.btn_request_control.set_sensitive(True)
         else:
             self.lbl_client_status.set_label(
-                _("❌ Bağlantı başarısız. IP, port ve PIN'i kontrol edin.")
+                _("Bağlantı başarısız. IP, port ve PIN'i kontrol edin.")
             )
             self.btn_connect_remote.set_sensitive(True)
 
@@ -2918,9 +2906,9 @@ class MainWindow:
         # Ekran koptu → kontrol istenemez.
         self.btn_request_control.set_sensitive(False)
 
-    # ═══════════════════════════════════════════════
+    # 
     #  UZAKTAN KONTROL – Girdi Yakalama (1.7 — C5)
-    # ═══════════════════════════════════════════════
+    # 
     #
     # GTK4 EventController'lar canlı görüntü Picture'ına (fare) ve pencereye
     # (klavye) bağlanır; olaylar nötr protokol biçimine çevrilip kontrol
@@ -3038,9 +3026,9 @@ class MainWindow:
         self._control_client.send_key(code, down, mods)
         return True  # Kontrol aktif: olayı tüket (yerel çift-işlem yok).
 
-    # ═══════════════════════════════════════════════
+    # 
     #  UZAKTAN KONTROL – Consent / Yaşam Döngüsü (1.8 — C6)
-    # ═══════════════════════════════════════════════
+    # 
     #
     # Sunucu tarafı (`ControlChannelServer.handle_upgrade`) consent açıkken +
     # PIN geçerli + enjeksiyon backend'i varsa token'ı OTOMATİK verir; ayrı bir
@@ -3104,7 +3092,7 @@ class MainWindow:
         self.screen_handler.set_control_allowed(True)
         self._set_control_switch_visual(True)
         self.lbl_control_banner.set_markup(
-            _("<b>⚠️ Uzaktan kontrol ETKİN</b> — yetkili istemci ekranınızı kontrol edebilir.")
+            _("<b> Uzaktan kontrol ETKİN</b> — yetkili istemci ekranınızı kontrol edebilir.")
         )
         self.control_banner_revealer.set_reveal_child(True)
         self.btn_stop_control.set_sensitive(True)
@@ -3188,9 +3176,9 @@ class MainWindow:
             self._control_client = self.screen_handler.control_client
             self._control_active = True
             self.lbl_control_client_status.set_label(
-                _("🖱️ Kontrol: ETKİN — fare/klavye uzak ekrana gidiyor.")
+                _("Kontrol: ETKİN — fare/klavye uzak ekrana gidiyor.")
             )
-            self.btn_request_control.set_label(_("🖱️ Kontrolü Bırak"))
+            self.btn_request_control.set_label(_("Kontrolü Bırak"))
             self.btn_request_control.set_sensitive(True)
             # Butonu artık "bırak" olarak yeniden kabla.
             self._rewire_request_button(release=True)
@@ -3234,7 +3222,7 @@ class MainWindow:
             pass
         # Düğme geri "İste" durumuna (yalnız GTK'de widget varsa).
         if HAS_GTK and getattr(self, "btn_request_control", None) is not None:
-            self.btn_request_control.set_label(_("🖱️ Kontrolü İste"))
+            self.btn_request_control.set_label(_("Kontrolü İste"))
             self.btn_request_control.set_sensitive(self._screen_connected)
             self._rewire_request_button(release=False)
             self.lbl_control_client_status.set_label(_("Kontrol: Kapalı"))
@@ -3243,9 +3231,9 @@ class MainWindow:
                 "(uzak host)", STATUS_CONTROL_STOP, detail="client kontrolü bıraktı"
             )
 
-    # ═══════════════════════════════════════════════
+    # 
     #  EVENT HANDLERS – Clipboard Tab
-    # ═══════════════════════════════════════════════
+    # 
 
     def _get_textview_text(self, textview):
         buf = textview.get_buffer()
@@ -3340,7 +3328,7 @@ class MainWindow:
 
         if not matches:
             row = Gtk.ListBoxRow()
-            lbl = Gtk.Label(label=_("✅ Hassas veri tespit edilmedi."))
+            lbl = Gtk.Label(label=_("Hassas veri tespit edilmedi."))
             lbl.set_halign(Gtk.Align.START)
             lbl.set_margin_top(4)
             lbl.set_margin_bottom(4)
@@ -3351,7 +3339,7 @@ class MainWindow:
         for m in matches:
             row = Gtk.ListBoxRow()
             label = Gtk.Label(
-                label=f'⚠️ [{m.match_type}] Bulunan: "{m.original[:30]}..." → Maskeli: "{m.masked}"'
+                label=f' [{m.match_type}] Bulunan: "{m.original[:30]}..." → Maskeli: "{m.masked}"'
             )
             label.set_halign(Gtk.Align.START)
             label.set_wrap(True)
@@ -3360,9 +3348,9 @@ class MainWindow:
             row.set_child(label)
             self.clip_findings_list.append(row)
 
-    # ═══════════════════════════════════════════════
+    # 
     #  TRANSFER HISTORY
-    # ═══════════════════════════════════════════════
+    # 
 
     def _on_show_history(self, btn):
         """Transfer geçmişini kaydırılabilir liste diyaloğunda gösterir."""
@@ -3411,21 +3399,21 @@ class MainWindow:
         status = entry.get("status", "")
         secret = entry.get("secret", False)
 
-        icon = "⬆️" if direction == "sent" else "⬇️"
+        direction_txt = _("Gönderildi") if direction == "sent" else _("Alındı")
         if status == "rejected":
-            state = " ⛔"
+            state = _(" — reddedildi")
         elif status == "error":
-            state = " ⚠️"
+            state = _(" — hata")
         else:
             state = ""
-        lock = " 🔒" if secret else ""
+        lock = _(" [şifreli]") if secret else ""
 
         name = entry.get("file_name", "?")
         size = self._format_size(entry.get("size_bytes", 0))
         peer = entry.get("peer", "")
         when = self._format_timestamp(entry.get("timestamp", ""))
 
-        text = f"{icon}{lock} {name}  ({size}){state}\n{peer} · {when}"
+        text = f"{direction_txt}{lock}: {name} ({size}){state}\n{peer} · {when}"
         label = Gtk.Label(label=text)
         label.set_halign(Gtk.Align.START)
         label.set_xalign(0.0)
@@ -3452,9 +3440,9 @@ class MainWindow:
         except (ValueError, TypeError):
             return iso_str
 
-    # ═══════════════════════════════════════════════
+    # 
     #  UTILITY
-    # ═══════════════════════════════════════════════
+    # 
 
     def _on_window_close(self, window):
         """Clean up background operations when window is closed."""

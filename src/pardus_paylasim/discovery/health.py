@@ -229,7 +229,7 @@ class TransferHealth:
         if (n_base >= 5 and baseline > 0 and not self._slow_warned
                 and bps < 0.5 * baseline):
             self._slow_warned = True
-            self.active_warning = "⚠️ hız olağandışı düştü"
+            self.active_warning = "Hız olağandışı düştü (uyarı)"
             return self.active_warning
         if self._slow_warned and bps >= 0.8 * baseline:
             self._slow_warned = False
@@ -238,6 +238,6 @@ class TransferHealth:
                 and not self._stall_warned
                 and elapsed - self._last_progress_t >= self._stall_after):
             self._stall_warned = True
-            self.active_warning = "⚠️ aktarım duraksadı"
+            self.active_warning = "Aktarım duraksadı (uyarı)"
             return self.active_warning
         return None

@@ -44,14 +44,14 @@ def test_window_async_handler():
 
 
 def test_window_webrtc_section():
-    """Mesh sekmesinde WebRTC bölümü var mı?"""
+    """Ölü WebRTC satırı kaldırıldı (modül kütüphane olarak durur)."""
     content = _read(WINDOW_FILE)
-    assert "WebRTC" in content
-    assert "webrtc_status_row" in content
+    assert "webrtc_status_row" not in content
+    assert '"Devre dışı"' not in content
 
 
 def test_window_no_hype_titles():
-    """Abartılı başlıklar kullanılmamalı (Yenilikler/Devrim/AI)."""
+    """Abartılı başlıklar ve emoji kullanılmamalı."""
     content = _read(WINDOW_FILE)
     assert "Yenilik" not in content
     assert "Devrim" not in content
@@ -59,6 +59,11 @@ def test_window_no_hype_titles():
     assert "Yapay Zeka" not in content
     assert "_on_ai_scan_demo" not in content
     assert "clipboard.ai" not in content
+    import unicodedata
+    for line in content.split("\n"):
+        for c in line:
+            if ord(c) > 0x2500 and unicodedata.category(c).startswith("So"):
+                assert c == "═", f"emoji kaldı: {c} ({line.strip()[:60]})"
 
 
 def test_window_tab_names_6_entries():
@@ -125,7 +130,7 @@ def test_window_trust_from_list():
     assert "_update_trust_button" in content
     assert "entry_trust_fp" in content
     assert "def _on_trust_add_manual" in content
-    assert "🔒 " in content
+    assert "[güvenilir]" in content
 
 
 def test_window_classroom_tab():
