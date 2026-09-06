@@ -12,7 +12,7 @@ set -e
 
 echo "== 1/5 Termux paketleri =="
 pkg update -y
-pkg install -y x11-repo proot-distro git
+pkg install -y x11-repo proot-distro git termux-x11
 
 echo "== 2/5 Debian proot =="
 if ! proot-distro list 2>/dev/null | grep -q "debian.*Installed"; then
@@ -39,9 +39,15 @@ else
     cd ~/pardus-paylasim && git pull --ff-only || true
 fi"
 
-echo "== 5/5 Başlatılıyor =="
-echo "Termux:X11 uygulamasını ŞİMDİ aç (tercihler: Display 0, 1280x720)."
-echo "5 saniye bekleniyor..."
+echo "== 5/5 X sunucusu + uygulama =="
+# Eski kalmış X sunucusu varsa kapat, :0'ı Termux tarafında başlat.
+pkill -f "termux-x11 :0" 2>/dev/null || true
+termux-x11 :0 &
+sleep 3
+if [ ! -S /tmp/.X11-unix/X0 ] && [ ! -S "$PREFIX/tmp/.X11-unix/X0" ]; then
+    echo "UYARI: X soketi bulunamadı. Termux:X11 uygulamasını manuel açıp tekrar dene."
+fi
+echo "Termux:X11 uygulamasını ŞİMDİ aç (Display 0). Uygulama 5 sn sonra başlıyor..."
 sleep 5
 
 proot-distro login debian -- bash -c "
