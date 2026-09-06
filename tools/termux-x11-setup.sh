@@ -52,11 +52,9 @@ rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
 sleep 1
 termux-x11 :0 &
 sleep 3
-if [ ! -S /tmp/.X11-unix/X0 ] && [ ! -S "$PREFIX/tmp/.X11-unix/X0" ]; then
-    echo "UYARI: X soketi bulunamadı. Termux:X11 uygulamasını manuel açıp tekrar dene."
+if [ ! -S "$PREFIX/tmp/.X11-unix/X0" ]; then
+    echo "UYARI: X soketi oluşmadı. Termux:X11 uygulamasını manuel açıp tekrar dene."
 fi
-echo "Termux:X11 uygulamasını ŞİMDİ aç (Display 0). Uygulama 5 sn sonra başlıyor..."
-sleep 5
 
 proot-distro login debian -- bash -c "
 export DISPLAY=:0
@@ -69,5 +67,19 @@ if [ -S \"\$X11_DIR/X0\" ]; then
 else
     echo 'UYARI: X0 soketi yok; Termux:X11 uygulamasini acip tekrar dene.'
 fi
+# Preflight: display gerçekten kullanılabilir mi? Değilse uygulamayı
+# çökertmek yerine teşhis yazdır.
+python3 -c \"
+import gi
+gi.require_version('Gtk', '4.0')
+from gi.repository import Gtk
+ok, _ = Gtk.init_check()
+import os
+print('DISPLAY=' + os.environ.get('DISPLAY', ''))
+print('init_check:', ok)
+d = __import__('gi.repository', fromlist=['Gdk']).Gdk.Display.get_default()
+print('display:', d.get_name() if d else None)
+raise SystemExit(0 if ok else 1)
+\" || { echo 'HATA: display açılamıyor — Termux:X11 uygulaması açık mı? (Display 0)'; exit 1; }
 cd ~/pardus-paylasim
 PYTHONPATH=src python3 -m pardus_paylasim.app"
