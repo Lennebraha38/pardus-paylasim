@@ -42,16 +42,16 @@ else
 fi"
 
 echo "== 5/5 X sunucusu + uygulama =="
-# Önce eski kalıntıları temizle: ölmüş uygulamanın tuttuğu portlar (8900/8901)
-# ve eski X sunucusu, yoksa "Address already in use" / "server already running".
+# Eski app kalıntısını temizle (portları tutar).
 proot-distro login debian -- bash -c "pkill -f '[p]ardus_paylasim.app' 2>/dev/null || true"
-# NOT: desen 'termux-x11 :' (sonda boşluk+display) olmalı; yoksa betiğin
-# kendi adı (termux-x11-setup.sh) eşleşip betik kendini öldürür.
-pkill -f 'termux-x11 :' 2>/dev/null || true
-rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
-sleep 1
-termux-x11 :0 &
-sleep 3
+# Çalışan X sunucusuyla savaşma: soket varsa yeniden kullan, yoksa başlat.
+if [ -S "$PREFIX/tmp/.X11-unix/X0" ]; then
+    echo "Mevcut X soketi kullanılıyor."
+else
+    rm -f "$PREFIX/tmp/.X11-unix/X0" 2>/dev/null || true
+    termux-x11 :0 &
+    sleep 3
+fi
 if [ ! -S "$PREFIX/tmp/.X11-unix/X0" ]; then
     echo "UYARI: X soketi oluşmadı. Termux:X11 uygulamasını manuel açıp tekrar dene."
 fi
@@ -72,14 +72,15 @@ fi
 python3 -c \"
 import gi
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk
-ok, _ = Gtk.init_check()
+from gi.repository import Gtk, Gdk
+r = Gtk.init_check()
+ok = r[0] if isinstance(r, tuple) else bool(r)
 import os
 print('DISPLAY=' + os.environ.get('DISPLAY', ''))
 print('init_check:', ok)
-d = __import__('gi.repository', fromlist=['Gdk']).Gdk.Display.get_default()
+d = Gdk.Display.get_default()
 print('display:', d.get_name() if d else None)
 raise SystemExit(0 if ok else 1)
-\" || { echo 'HATA: display açılamıyor — Termux:X11 uygulaması açık mı? (Display 0)'; exit 1; }
+\" || { echo 'HATA: display açılamıyor — Termux:X11 uygulamasını aç (Display 0) ve tekrar dene.'; exit 1; }
 cd ~/pardus-paylasim
 PYTHONPATH=src python3 -m pardus_paylasim.app"
