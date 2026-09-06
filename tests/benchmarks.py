@@ -122,6 +122,63 @@ def main():
     cdc.close()
     t.join(timeout=3.0)
 
+    # Senaryo 5: 200KB çerçeve uçtan uca (parçalama + birleştirme dahil)
+    big_frame = os.urandom(200 * 1024)
+    srv2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv2.bind(("127.0.0.1", 0))
+    srv2.listen(1)
+    srv2.settimeout(15.0)
+    port2 = srv2.getsockname()[1]
+    arrived = threading.Event()
+
+    def serve2():
+        try:
+            conn, _ = srv2.accept()
+            dc = DataChannel(conn)
+            dc.on_message = lambda d: arrived.set()
+            dc.start()
+            arrived.wait(timeout=60.0)
+            time.sleep(0.5)
+            dc.close()
+        except OSError:
+            pass
+        finally:
+            try:
+                srv2.close()
+            except OSError:
+                pass
+
+    t2 = threading.Thread(target=serve2, daemon=True)
+    t2.start()
+    cli2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    cli2.connect(("127.0.0.1", port2))
+    cdc2 = DataChannel(cli2)
+    cdc2.start()
+    time.sleep(0.2)
+
+    e2e_times = []
+    for _ in range(5):  # ısınma
+        arrived.clear()
+        cdc2.send(big_frame)
+        assert arrived.wait(timeout=15.0), "ısınma çerçevesi alınamadı"
+    for _ in range(20):
+        arrived.clear()
+        t0 = time.perf_counter()
+        cdc2.send(big_frame)
+        ok = arrived.wait(timeout=15.0)
+        assert ok, "parçalı çerçeve alınamadı"
+        e2e_times.append((time.perf_counter() - t0) * 1000)
+    e2e_times.sort()
+    n2 = len(e2e_times)
+    results["webrtc_e2e_200kb"] = {
+        "min": e2e_times[0], "p50": e2e_times[n2 // 2],
+        "p95": e2e_times[int(n2 * 0.95)], "mean": sum(e2e_times) / n2,
+        "ops": 1000.0 / (sum(e2e_times) / n2),
+    }
+    cdc2.close()
+    t2.join(timeout=3.0)
+
     print(f"{'senaryo':<20} {'min':>9} {'p50':>9} {'p95':>9} {'mean':>9} {'ops/s':>10}")
     print("-" * 72)
     for name, r in results.items():

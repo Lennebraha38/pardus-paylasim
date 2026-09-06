@@ -94,6 +94,13 @@ class DataChannel:
 
     DATA_HEADER = "!4s B Q I H H"
     MAX_PAYLOAD = 65535
+    # Parçalama: tek kare 64KB'ı aşarsa parçalara bölünür (v1.1).
+    FLAG_COMPRESSED = 0x01
+    FLAG_FRAGMENT = 0x02
+    FRAG_HEADER = "!I H H"  # msg_id, parça no, toplam parça
+    FRAG_SIZE = 60000
+    FRAG_TTL = 30.0  # yarım mesajın tutulma süresi (s)
+    MAX_PARTIALS = 64  # eşzamanlı yarım mesaj üst sınırı (bellek koruması)
 
     def __init__(
         self,
@@ -109,6 +116,9 @@ class DataChannel:
 
         self._send_seq = 0
         self._recv_seq = 0
+        self._frag_msg_id = 0
+        # msg_id -> {"total": int, "flags": int, "at": float, "parts": {idx: bytes}}
+        self._frag_buf: Dict[int, dict] = {}
         self._out_queue: List[bytes] = []
         self._send_lock = threading.Lock()
         self._running = False
@@ -172,19 +182,37 @@ class DataChannel:
 
     def _send_frame(self, data: bytes, seq: int):
         compressed = zlib.compress(data, 1)
-        flags = 0x01  # compressed
-        header = struct.pack(
-            self.DATA_HEADER,
-            WEBRTC_MAGIC,
-            flags,
-            seq,
-            len(compressed),
-            0,  # stream id
-            0,  # padding
-        )
-        if len(compressed) > self.MAX_PAYLOAD:
+        if len(compressed) <= self.MAX_PAYLOAD:
+            header = struct.pack(
+                self.DATA_HEADER,
+                WEBRTC_MAGIC,
+                self.FLAG_COMPRESSED,
+                seq,
+                len(compressed),
+                0,  # stream id
+                0,  # padding
+            )
+            self.socket.sendall(header + compressed)
+            return
+        # Büyük mesaj: parçala. Sınır, kare üst sınırıyla aynı (16MB).
+        if len(compressed) > MAX_FRAME_SIZE:
             raise ValueError("Çok büyük data channel mesajı")
-        self.socket.sendall(header + compressed)
+        self._frag_msg_id = (self._frag_msg_id + 1) & 0xFFFFFFFF
+        msg_id = self._frag_msg_id
+        total = (len(compressed) + self.FRAG_SIZE - 1) // self.FRAG_SIZE
+        for idx in range(total):
+            piece = compressed[idx * self.FRAG_SIZE:(idx + 1) * self.FRAG_SIZE]
+            body = struct.pack(self.FRAG_HEADER, msg_id, idx, total) + piece
+            header = struct.pack(
+                self.DATA_HEADER,
+                WEBRTC_MAGIC,
+                self.FLAG_COMPRESSED | self.FLAG_FRAGMENT,
+                seq,
+                len(body),
+                0,
+                0,
+            )
+            self.socket.sendall(header + body)
 
     def _recv_loop(self):
         while self._running and not self._closed:
@@ -204,7 +232,16 @@ class DataChannel:
                 payload = self._recv_exact(length)
                 if payload is None:
                     continue
-                if flags & 0x01:
+                if flags & self.FLAG_FRAGMENT:
+                    # Parçalı mesaj: tamamlanınca çözülmüş hali döner.
+                    message = self._handle_fragment(flags, seq, payload)
+                    if message is None:
+                        continue
+                    self._recv_seq = max(self._recv_seq, seq + 1)
+                    if self.on_message:
+                        self.on_message(message)
+                    continue
+                if flags & self.FLAG_COMPRESSED:
                     payload = zlib.decompress(payload)
                 self._recv_seq = max(self._recv_seq, seq + 1)
                 if self.on_message:
@@ -215,6 +252,42 @@ class DataChannel:
                 logger.debug("DataChannel recv hatası: %s", e)
                 break
         self.close()
+
+    def _handle_fragment(self, flags: int, seq: int, payload: bytes) -> Optional[bytes]:
+        """Bir parça işler; mesaj tamamlanınca çözülmüş baytı döndürür."""
+        hdr_len = struct.calcsize(self.FRAG_HEADER)
+        if len(payload) < hdr_len:
+            return None
+        msg_id, idx, total = struct.unpack(self.FRAG_HEADER, payload[:hdr_len])
+        if not 1 <= total <= 4096 or idx >= total:
+            return None
+        now = time.time()
+        # Bayat yarım mesajları temizle (bellek koruması).
+        stale = [mid for mid, e in self._frag_buf.items() if now - e["at"] > self.FRAG_TTL]
+        for mid in stale:
+            del self._frag_buf[mid]
+        entry = self._frag_buf.get(msg_id)
+        if entry is None:
+            if len(self._frag_buf) >= self.MAX_PARTIALS:
+                # En eski yarımı düşür, yenisine yer aç.
+                oldest = min(self._frag_buf, key=lambda m: self._frag_buf[m]["at"])
+                del self._frag_buf[oldest]
+            # Toplam boyut üst sınırı aşarsa bu mesajı reddet.
+            if total * self.FRAG_SIZE > MAX_FRAME_SIZE:
+                return None
+            entry = {"total": total, "flags": flags, "at": now, "parts": {}}
+            self._frag_buf[msg_id] = entry
+        elif entry["total"] != total:
+            return None
+        entry["at"] = now
+        entry["parts"][idx] = payload[hdr_len:]
+        if len(entry["parts"]) < entry["total"]:
+            return None
+        ordered = b"".join(entry["parts"][i] for i in range(entry["total"]))
+        del self._frag_buf[msg_id]
+        if entry["flags"] & self.FLAG_COMPRESSED:
+            ordered = zlib.decompress(ordered)
+        return ordered
 
     def _recv_exact(self, n: int) -> Optional[bytes]:
         buf = bytearray()

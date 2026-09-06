@@ -1412,15 +1412,48 @@ class MainWindow:
         sender = FileSender(self._selected_device.address, self._selected_device.port)
 
         def run():
+            from pardus_paylasim.progress import compute_stats, format_progress_line
+
+            def on_stats(sent, total, elapsed):
+                stats = compute_stats(sent, total, elapsed)
+                GLib.idle_add(
+                    self._update_transfer_progress,
+                    stats.percent, format_progress_line(stats),
+                )
+
+            GLib.idle_add(self._show_transfer_progress, True)
             try:
-                sender.send_file(file_path, pin)
+                # Normal modda resume + bütünlük doğrulaması açık;
+                # secret mod zaten parça-parça AEAD ile korunur.
+                sender.send_file(
+                    file_path, pin, stats_callback=on_stats,
+                    resume=not is_secret, verify_hash=not is_secret,
+                )
                 self._record_sent(file_name, size_bytes, peer, "ok", is_secret)
                 GLib.idle_add(self._show_info, "Dosya başarıyla gönderildi!")
             except Exception as e:
                 self._record_sent(file_name, size_bytes, peer, "error", is_secret)
                 GLib.idle_add(self._show_error, f"Dosya gönderim hatası:\n{e}")
+            finally:
+                GLib.idle_add(self._show_transfer_progress, False)
 
         threading.Thread(target=run, daemon=True).start()
+
+    def _show_transfer_progress(self, visible):
+        """İlerleme çubuğu + hız/ETA satırını gösterir/gizler (GTK thread)."""
+        self.transfer_progress.set_visible(visible)
+        self.lbl_transfer_stats.set_visible(visible)
+        if visible:
+            self.transfer_progress.set_fraction(0.0)
+            self.lbl_transfer_stats.set_label("")
+
+    def _update_transfer_progress(self, fraction, text):
+        """Aktarım çubuğunu ve hız/ETA yazısını günceller (GTK thread)."""
+        try:
+            self.transfer_progress.set_fraction(max(0.0, min(1.0, fraction)))
+            self.lbl_transfer_stats.set_label(text)
+        except Exception as e:
+            logger.debug("ilerleme güncellenemedi: %s", e)
 
     def _start_multi_transfer(self, file_paths, pin):
         """Birden çok dosyayı arka planda sırayla gönderir; her biri geçmişe."""
@@ -1431,20 +1464,36 @@ class MainWindow:
         sender = FileSender(self._selected_device.address, self._selected_device.port)
 
         def run():
+            from pardus_paylasim.progress import compute_stats, format_progress_line
+
+            def on_stats(sent, total, elapsed):
+                stats = compute_stats(sent, total, elapsed)
+                GLib.idle_add(
+                    self._update_transfer_progress,
+                    stats.percent, format_progress_line(stats),
+                )
+
+            GLib.idle_add(self._show_transfer_progress, True)
             sent_ok = 0
-            for path in file_paths:
-                name = os.path.basename(path)
-                try:
-                    size = os.path.getsize(path)
-                except OSError:
-                    size = 0
-                try:
-                    sender.send_file(path, pin)
-                    self._record_sent(name, size, peer, "ok", is_secret)
-                    sent_ok += 1
-                except Exception as e:
-                    self._record_sent(name, size, peer, "error", is_secret)
-                    GLib.idle_add(self._show_error, f"'{name}' gönderilemedi:\n{e}")
+            try:
+                for path in file_paths:
+                    name = os.path.basename(path)
+                    try:
+                        size = os.path.getsize(path)
+                    except OSError:
+                        size = 0
+                    try:
+                        sender.send_file(
+                            path, pin, stats_callback=on_stats,
+                            resume=not is_secret, verify_hash=not is_secret,
+                        )
+                        self._record_sent(name, size, peer, "ok", is_secret)
+                        sent_ok += 1
+                    except Exception as e:
+                        self._record_sent(name, size, peer, "error", is_secret)
+                        GLib.idle_add(self._show_error, f"'{name}' gönderilemedi:\n{e}")
+            finally:
+                GLib.idle_add(self._show_transfer_progress, False)
             GLib.idle_add(
                 self._show_info,
                 f"{sent_ok}/{len(file_paths)} dosya başarıyla gönderildi.",

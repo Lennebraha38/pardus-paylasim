@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mesh Network** (`discovery/mesh/mesh_network.py`): P2P parça-parça dosya transferi. Cihazlar doğrudan erişilemediğinde mesh ağı üzerinden relay yapılır. 64KB chunk, SHA-256 hash doğrulama, 3 hop relay limit.
 - **WebRTC Data Channel** (`screen/webrtc/data_channel.py`): SCTP benzeri güvenilir veri kanalı. JSON SDP/ICE sinyali, zlib sıkıştırma, sıralı mesaj gönderimi.
 - **Async Transfer Manager** (`discovery/async_transfer/manager.py`): SQLite destekli asenkron transfer. Çevrimdışı cihazlara gönderim kuyruğu, hash tabanlı dedup, olay geçmişi.
+- **Resume** (0x03 modu): yarım `.part` + sidecar ile kaldığı yerden devam; boyut/mtime uyuşmazsa sıfırdan başlar.
+- **Bütünlük doğrulamalı normal mod** (0x04): gövde sonu SHA-256; tutmazsa ret + temp temizliği.
+- **Hız/ETA**: `stats_callback` + ilerleme çubuğuna bağlı `% · MB/s · ETA` satırı.
+- **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 
 ### Changed
 - Logging: replaced f-string logger calls with %-formatting (security best practice)

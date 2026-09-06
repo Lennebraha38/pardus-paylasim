@@ -8,9 +8,14 @@
 - GTK4/Adw 6 sekmeli arayüz, CLI, i18n (tr/en)
 - ~550 test, benchmarklar, güvenlik denetimi
 
-## v1.1 — Performans ve Sağlamlık (hedef: +1 ay)
+## v1.1 — Tamamlananlar (2026-09)
 
-- [ ] WebRTC çerçeve parçalama (64 KB üstü kareler, bilinen sınırın çözümü)
+- [x] WebRTC çerçeve parçalama (64 KB üstü kareler; 200 KB ~19 ms)
+- [x] Kaldığı yerden devam eden dosya transferi (resume, 0x03 modu)
+- [x] Bütünlük doğrulamalı normal mod (SHA-256, 0x04 modu)
+- [x] Hız/ETA göstergesi (ilerleme çubuğuna bağlı)
+
+## v1.1 — Kalan (hedef: +1 ay)
 - [ ] Mesh otomatik yol seçimi (en düşük gecikmeli relay)
 - [ ] `pip-licenses` CI kapısı + `debian/copyright` tamamlama
 - [ ] pytest-benchmark ile regresyon takibi (CI'da eşik)

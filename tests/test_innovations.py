@@ -499,3 +499,66 @@ class TestDataChannelProtocol:
         dc.close()
         dc.close()
         assert dc._closed is True
+
+    def test_large_frame_fragmented_and_reassembled(self):
+        """64KB üstü kare parçalanıp alıcıda birebir birleşmeli."""
+        import os
+        import socket
+        import threading
+        import time as _time
+        from pardus_paylasim.screen.webrtc.data_channel import DataChannel
+
+        server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_sock.bind(("127.0.0.1", 0))
+        server_sock.listen(1)
+        server_sock.settimeout(10.0)
+        port = server_sock.getsockname()[1]
+
+        received = []
+        holder: list = []
+
+        def serve():
+            try:
+                conn, _ = server_sock.accept()
+                dc = DataChannel(conn)
+                dc.on_message = lambda data: received.append(data)
+                dc.start()
+                holder.append(dc)
+            except OSError:
+                pass
+
+        t = threading.Thread(target=serve, daemon=True)
+        t.start()
+
+        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_sock.settimeout(10.0)
+        client_dc = DataChannel(client_sock)
+        try:
+            client_sock.connect(("127.0.0.1", port))
+            client_dc.start()
+            deadline = _time.time() + 5.0
+            while not holder and _time.time() < deadline:
+                _time.sleep(0.05)
+            assert holder, "sunucu tarafı bağlanamadı"
+
+            big = os.urandom(200 * 1024)
+            assert len(big) > 65535
+            client_dc.send(big)
+            deadline = _time.time() + 10.0
+            while not received and _time.time() < deadline:
+                _time.sleep(0.05)
+            assert len(received) == 1
+            assert received[0] == big
+        finally:
+            client_dc.close()
+            for dc in holder:
+                try:
+                    dc.close()
+                except OSError:
+                    pass
+            try:
+                server_sock.close()
+            except OSError:
+                pass
+            t.join(timeout=2.0)

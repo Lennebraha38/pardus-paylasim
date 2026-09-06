@@ -15,6 +15,7 @@
 | Mesh parça açma + doğrulama (64 KB) | 0,003 ms | 0,004 ms | 0,003 ms | ~335.000 |
 | SQLite kuyruğa yazma (WAL, kalıcı bağlantı) | 0,74 ms | 1,38 ms | 0,84 ms | ~1.200 |
 | WebRTC kanal kuyruğuna yazma (30 KB) | 0,002 ms | 0,003 ms | 0,002 ms | ~479.000 |
+| WebRTC 200 KB çerçeve uçtan uca (parçalı, loopback) | 19,4 ms | 23,8 ms | 18,6 ms | ~54 |
 
 ## Yorum
 
@@ -28,8 +29,9 @@
 
 ## Bilinen Sınırlar
 
-- WebRTC data channel tek mesaj limiti **64 KB**'tır; daha büyük
-  ekran kareleri gönderilmeden önce parçalanmalıdır (yol haritası: v1.1).
+- WebRTC data channel 64 KB üstü mesajları otomatik parçalar (v1.1);
+  200 KB çerçeve loopback'te ~19 ms'de birleşir (~54 kare/s).
+  Tek parça üst sınırı 64 KB, mesaj üst sınırı 16 MB'tır.
 - Mesh transferinde parça başına SHA-256 doğrulanır; bu, CPU'da
   ~350.000 parça/s hızında çalışır ve pratikte ağı yavaşlatmaz.
 
