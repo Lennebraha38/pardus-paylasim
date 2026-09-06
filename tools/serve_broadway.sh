@@ -5,13 +5,15 @@
 # Telefonda (Termux):
 #   cd ~/pardus-paylasim && git pull && bash tools/serve_broadway.sh
 # Sonra telefon tarayıcısında:  http://127.0.0.1:8085
+#
+# Çalışmazsa: ÇIKTININ TAMAMINI yapıştır (teşhis satırları dahildir).
 set -e
 
 echo "== 1/2 broadwayd kurulumu (proot Debian) =="
 proot-distro login debian -- bash -c "
 set -e
 apt-get update -qq
-DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libgtk-4-bin
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libgtk-4-bin curl procps
 command -v gtk4-broadwayd || command -v broadwayd
 echo BROADWAY-READY"
 
@@ -27,16 +29,24 @@ if command -v gtk4-broadwayd >/dev/null 2>&1; then
 else
     BW=broadwayd
 fi
-echo \"Kullanilan sunucu: \$BW\"
+echo \"DIAG: sunucu binary = \$BW\"
+\"\$BW\" --help 2>&1 | head -5 || true
 setsid \"\$BW\" :5 </dev/null >/tmp/broadwayd.log 2>&1 &
+sleep 2
+echo 'DIAG: broadway islemleri:'
+ps aux | grep '[b]roadwayd' || echo 'DIAG: islem YOK!'
+echo 'DIAG: dinlenen portlar (8085 beklenir):'
+(cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | awk 'NR>1 {split(\$2,a,\":\"); print strtonum(\"0x\" a[2])}' | sort -un | tr '\n' ' '; echo) || true
 for i in \$(seq 1 15); do
-    if (echo > /dev/tcp/127.0.0.1/8085) 2>/dev/null; then
+    CODE=\$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://127.0.0.1:8085/ || echo FAIL)
+    echo \"DIAG: deneme \$i -> HTTP \$CODE\"
+    if [ \"\$CODE\" = '200' ]; then
         echo 'broadwayd hazir (8085).'
         break
     fi
     sleep 1
     if [ \$i -eq 15 ]; then
-        echo 'HATA: broadwayd 8085 portunu acamadi. Log:'
+        echo 'HATA: broadwayd cevap vermiyor. Log:'
         cat /tmp/broadwayd.log
         exit 1
     fi
