@@ -79,6 +79,15 @@ def test_window_a11y_labels_on_buttons():
     assert "self._set_a11y_label(btn_async_refresh" in content
 
 
+def test_window_mesh_peer_add():
+    """Eş ekleme UI'ı (girdi + Ekle + handler) var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "entry_mesh_peer" in content
+    assert "def _on_mesh_peer_add" in content
+    assert "add_peer" in content
+    assert "self._set_a11y_label(btn_peer_add" in content
+
+
 def test_app_has_mesh_status_arg():
     content = _read(APP_FILE)
     assert "--mesh-status" in content
@@ -121,6 +130,7 @@ if __name__ == "__main__":
         ("window_no_hype_titles", test_window_no_hype_titles),
         ("window_tab_names_6_entries", test_window_tab_names_6_entries),
         ("window_a11y_labels_on_buttons", test_window_a11y_labels_on_buttons),
+        ("window_mesh_peer_add", test_window_mesh_peer_add),
         ("app_has_mesh_status_arg", test_app_has_mesh_status_arg),
         ("app_has_async_list_arg", test_app_has_async_list_arg),
         ("app_no_ai_scan_arg", test_app_no_ai_scan_arg),

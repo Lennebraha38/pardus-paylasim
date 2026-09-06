@@ -152,6 +152,31 @@ class AsyncTransferStore:
             ).fetchall()
             return [self._row_to_transfer(r) for r in rows]
 
+    def get_all_pending(self) -> List[AsyncTransfer]:
+        """Tüm bekleyen transferler (alıcıdan bağımsız özet için)."""
+        with self._lock:
+            conn = self._conn
+            rows = conn.execute(
+                """
+                SELECT id, file_name, file_size, file_hash, sender_id,
+                       sender_name, receiver_id, status, file_path,
+                       created_at, delivered_at, attempts, last_attempt
+                FROM async_transfers
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+                """,
+            ).fetchall()
+            return [self._row_to_transfer(r) for r in rows]
+
+    def count_pending(self) -> int:
+        """Bekleyen transfer sayısı."""
+        with self._lock:
+            conn = self._conn
+            row = conn.execute(
+                "SELECT COUNT(*) FROM async_transfers WHERE status = 'pending'"
+            ).fetchone()
+            return int(row[0]) if row else 0
+
     def get_pending_for_sender(self, sender_id: str) -> List[AsyncTransfer]:
         """Bir gönderici tarafından yapılan bekleyen transferleri döndürür."""
         with self._lock:

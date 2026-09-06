@@ -89,9 +89,15 @@ class PardusPaylasimApp:
         if cli_args.async_list:
             from pardus_paylasim.discovery.async_transfer.manager import AsyncTransferStore
             store = AsyncTransferStore()
+            try:
+                pending = store.get_all_pending()
+            finally:
+                store.close()
             print(_("Bekleyen asenkron transferler:"))
-            # List all pending transfers
-            print("  (Veritabanı: ~/.local/share/pardus-paylasim/async_transfers.db)")
+            if not pending:
+                print("  " + _("(yok)"))
+            for t in pending:
+                print(f"  {t.file_name} ({t.file_size} B) -> {t.receiver_id}")
             return 0
 
         if HAS_GTK and self.app:

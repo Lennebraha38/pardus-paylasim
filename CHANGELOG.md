@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Workflow YAML path nesting issue in `.github/workflows/`
+- Resume: kopma anında sidecar güncelleniyor (bayt tekrarı/bozulma giderildi); sidecar atomik yazılıyor
+- Mesh sekmesi: port doluyken "Çalışıyor" yalanı giderildi; dolu port uygulamayı öldürmüyor
+- Asenkron sayaç/CLI artık gerçek bekleyen sayısını gösteriyor (`count_pending`/`get_all_pending`)
+- `_peer_ip()`: UNIX/socketpair soketlerde çökme giderildi
 
 ### Removed
 - **Local AI Sensitive Detection** (`clipboard/ai/`): Deneysel modül geri çekildi; hassas veri koruması klasik maskeleme (`clipboard/sensitive_masker.py`: TCKN, IBAN, kredi kartı, e-posta, telefon) ile devam ediyor. İlgili `--ai-scan` CLI komutu ve arayüz bölümü kaldırıldı; "Yenilikler" sekmesi "Mesh Ağı" adıyla sadeleştirildi.

@@ -168,11 +168,11 @@ class DataChannel:
     def _send_loop(self):
         while self._running and not self._closed:
             with self._send_lock:
-                if not self._out_queue:
-                    time.sleep(0.001)
-                    continue
-                data = self._out_queue.pop(0)
-                seq = self._send_seq - len(self._out_queue) - 1
+                data = self._out_queue.pop(0) if self._out_queue else None
+                seq = self._send_seq - len(self._out_queue) - 1 if data is not None else 0
+            if data is None:
+                time.sleep(0.001)
+                continue
             try:
                 self._send_frame(data, seq)
             except OSError as e:

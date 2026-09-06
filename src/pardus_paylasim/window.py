@@ -977,6 +977,22 @@ class MainWindow:
             title=_("Bağlı Eşler"), subtitle="0",
         )
         mesh_group.add(self.mesh_peers_row)
+
+        peer_row = Adw.ActionRow(
+            title=_("Eş Ekle"),
+            subtitle=_("Biçim: 192.168.1.20:8920"),
+        )
+        self.entry_mesh_peer = Gtk.Entry()
+        self.entry_mesh_peer.set_placeholder_text("192.168.1.20:8920")
+        self.entry_mesh_peer.set_valign(Gtk.Align.CENTER)
+        self.entry_mesh_peer.set_width_chars(21)
+        btn_peer_add = Gtk.Button(label=_("Ekle"))
+        btn_peer_add.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_peer_add, _("Mesh eşini ekle"))
+        btn_peer_add.connect("clicked", self._on_mesh_peer_add)
+        peer_row.add_prefix(self.entry_mesh_peer)
+        peer_row.add_suffix(btn_peer_add)
+        mesh_group.add(peer_row)
         box.append(mesh_group)
 
         # WebRTC Data Channel
@@ -1033,20 +1049,46 @@ class MainWindow:
                 peer_id=str(uuid.uuid4())[:8], local_ip=ip,
             )
             self._mesh_node.start()
+            if not self._mesh_node._running:
+                self._mesh_node = None
+                self.mesh_status_row.set_subtitle(_("Başlatılamadı (port dolu?)"))
+                return
             self.mesh_status_row.set_subtitle(_("Çalışıyor"))
+            self.mesh_peers_row.set_subtitle(str(len(self._mesh_node.peers)))
             self.btn_mesh_toggle.set_label(_("Durdur"))
         else:
             self._mesh_node.stop()
             self._mesh_node = None
             self.mesh_status_row.set_subtitle(_("Başlatılmadı"))
+            self.mesh_peers_row.set_subtitle("0")
             self.btn_mesh_toggle.set_label(_("Başlat"))
+
+    def _on_mesh_peer_add(self, btn):
+        from pardus_paylasim.discovery.mesh.mesh_network import MeshPeer
+        if not getattr(self, "_mesh_node", None):
+            self.mesh_peers_row.set_subtitle(_("Önce mesh ağını başlatın"))
+            return
+        raw = self.entry_mesh_peer.get_text().strip()
+        try:
+            ip, _, port_s = raw.rpartition(":")
+            port = int(port_s)
+            if not ip or not 1 <= port <= 65535:
+                raise ValueError("bad peer")
+        except ValueError:
+            self.mesh_peers_row.set_subtitle(_("Geçersiz adres (ör. 192.168.1.20:8920)"))
+            return
+        self._mesh_node.add_peer(MeshPeer(id=f"{ip}:{port}", ip=ip, port=port))
+        self.mesh_peers_row.set_subtitle(str(len(self._mesh_node.peers)))
+        self.entry_mesh_peer.set_text("")
 
     def _on_async_refresh(self, btn):
         from pardus_paylasim.discovery.async_transfer.manager import AsyncTransferStore
         try:
             store = AsyncTransferStore()
-            pending = store.get_pending_for_receiver("")
-            self.async_count_row.set_subtitle(str(len(pending)))
+            try:
+                self.async_count_row.set_subtitle(str(store.count_pending()))
+            finally:
+                store.close()
         except Exception as e:
             self.async_count_row.set_subtitle(_("Hata: ") + str(e))
 
