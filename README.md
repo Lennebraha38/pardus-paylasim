@@ -142,6 +142,12 @@ pardus-paylasim --mesh-status
 # Bekleyen asenkron transferler
 pardus-paylasim --async-list
 
+# Son cihaza dosya gönder (hedef yoksa --to IP:PORT)
+pardus-paylasim --send rapor.pdf
+
+# Nautilus sağ-tık (bir kez kur):
+bash scripts/nautilus/install.sh
+
 # Çıktı ile temizleme
 pardus-paylasim --clean foto.jpg --out temiz_foto.jpg
 ```

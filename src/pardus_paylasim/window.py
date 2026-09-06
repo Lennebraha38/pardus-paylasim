@@ -556,6 +556,16 @@ class MainWindow:
         self.lbl_transfer_stats.set_halign(Gtk.Align.START)
         self.lbl_transfer_stats.set_visible(False)
 
+        self.btn_cancel_transfer = Gtk.Button(label=_("⏹️ İptal"))
+        self.btn_cancel_transfer.add_css_class("pill")
+        self.btn_cancel_transfer.add_css_class("destructive-action")
+        self.btn_cancel_transfer.set_halign(Gtk.Align.START)
+        self.btn_cancel_transfer.set_visible(False)
+        self.btn_cancel_transfer.connect("clicked", self._on_cancel_transfer)
+        self._set_a11y_label(self.btn_cancel_transfer,
+                             _("Devam eden aktarımı iptal et"))
+        self._transfer_cancel = None
+
         # Sürükle-bırak ipucu: seçili cihaza dosya atarak gönderme.
         self.lbl_drop_hint = Gtk.Label(
             label=_(
@@ -573,6 +583,7 @@ class MainWindow:
         box.append(action_box)
         box.append(self.chk_clean_before_send)
         box.append(self.transfer_progress)
+        box.append(self.btn_cancel_transfer)
         box.append(self.lbl_transfer_stats)
         box.append(self.lbl_drop_hint)
 
@@ -1698,6 +1709,16 @@ class MainWindow:
 
         dialog.open(self.win, None, on_response)
 
+    def _remember_peer(self):
+        """Son kullanılan cihazı config'e yazar (--send/nautilus için)."""
+        try:
+            dev = self._selected_device
+            if dev is not None:
+                self.config.set("last_peer", {"address": dev.address,
+                                              "port": dev.port})
+        except Exception as e:
+            logger.debug("son cihaz kaydedilemedi: %s", e)
+
     def _start_transfer(self, file_path, pin):
         import tempfile
         import threading
@@ -1711,6 +1732,9 @@ class MainWindow:
         is_secret = pin is not None
         clean_first = self.chk_clean_before_send.get_active()
         sender = FileSender(self._selected_device.address, self._selected_device.port)
+        self._remember_peer()
+        cancel_event = threading.Event()
+        self._transfer_cancel = cancel_event
 
         def run():
             from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
@@ -1734,6 +1758,7 @@ class MainWindow:
                     send_path, pin, stats_callback=on_stats,
                     rel_name=file_name,
                     resume=not is_secret, verify_hash=not is_secret,
+                    cancel_event=cancel_event,
                 )
                 self._record_sent(file_name, size_bytes, peer, "ok", is_secret)
                 GLib.idle_add(self._show_info, "Dosya başarıyla gönderildi!")
@@ -1754,9 +1779,17 @@ class MainWindow:
         """İlerleme çubuğu + hız/ETA satırını gösterir/gizler (GTK thread)."""
         self.transfer_progress.set_visible(visible)
         self.lbl_transfer_stats.set_visible(visible)
+        self.btn_cancel_transfer.set_visible(visible)
         if visible:
             self.transfer_progress.set_fraction(0.0)
             self.lbl_transfer_stats.set_label("")
+
+    def _on_cancel_transfer(self, btn):
+        """Devam eden gönderime iptal bayrağı koyar (alıcıda resume devam eder)."""
+        ev = self._transfer_cancel
+        if ev is not None and not ev.is_set():
+            ev.set()
+            self.lbl_transfer_stats.set_label(_("İptal ediliyor…"))
 
     def _update_transfer_progress(self, fraction, text):
         """Aktarım çubuğunu ve hız/ETA yazısını günceller (GTK thread)."""
@@ -1775,6 +1808,9 @@ class MainWindow:
         is_secret = pin is not None
         clean_first = self.chk_clean_before_send.get_active()
         sender = FileSender(self._selected_device.address, self._selected_device.port)
+        self._remember_peer()
+        cancel_event = threading.Event()
+        self._transfer_cancel = cancel_event
 
         def run():
             from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
@@ -1804,6 +1840,7 @@ class MainWindow:
                             send_path, pin, stats_callback=on_stats,
                             rel_name=name,
                             resume=not is_secret, verify_hash=not is_secret,
+                            cancel_event=cancel_event,
                         )
                         self._record_sent(name, size, peer, "ok", is_secret)
                         sent_ok += 1
@@ -1832,19 +1869,44 @@ class MainWindow:
         peer = self._selected_device.address
         folder_name = os.path.basename(folder_path.rstrip("/\\"))
         is_secret = pin is not None
+        clean_first = self.chk_clean_before_send.get_active()
         sender = FileSender(self._selected_device.address, self._selected_device.port)
+        self._remember_peer()
+        cancel_event = threading.Event()
+        self._transfer_cancel = cancel_event
 
         def run():
-            try:
-                sender.send_folder(folder_path, pin)
-                self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "ok", is_secret)
+            from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
+            from pardus_paylasim.progress import compute_stats, format_progress_line
+
+            def on_stats(sent, total, elapsed):
+                stats = compute_stats(sent, total, elapsed)
                 GLib.idle_add(
-                    self._show_info,
-                    f"'{folder_name}' klasörü başarıyla gönderildi.",
+                    self._update_transfer_progress,
+                    stats.percent, format_progress_line(stats),
                 )
-            except Exception as e:
-                self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "error", is_secret)
-                GLib.idle_add(self._show_error, f"Klasör gönderim hatası:\n{e}")
+
+            GLib.idle_add(self._show_transfer_progress, True)
+            try:
+                try:
+                    # Klasöre resume/hash/iptal bayrakları uygulanır. Not:
+                    # klasör-içi tekil dosya temizliği (clean-first) yalnız
+                    # tekli/çoklu gönderimde yapılır.
+                    sender.send_folder(
+                        folder_path, pin, stats_callback=on_stats,
+                        resume=not is_secret, verify_hash=not is_secret,
+                        cancel_event=cancel_event,
+                    )
+                    self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "ok", is_secret)
+                    GLib.idle_add(
+                        self._show_info,
+                        f"'{folder_name}' klasörü başarıyla gönderildi.",
+                    )
+                except Exception as e:
+                    self._record_sent(f"{folder_name}/ (klasör)", 0, peer, "error", is_secret)
+                    GLib.idle_add(self._show_error, f"Klasör gönderim hatası:\n{e}")
+            finally:
+                GLib.idle_add(self._show_transfer_progress, False)
 
         threading.Thread(target=run, daemon=True).start()
 

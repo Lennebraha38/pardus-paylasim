@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Parmak izi + güvenilir cihazlar**: kalıcı cihaz sertifikası (SHA-256 kimlik), QR'da `fp` alanı, Ayarlar'da parmak izi + güven listesi + oto-kabul anahtarı (varsayılan kapalı), `--fingerprint` CLI.
 - **mDNS parmak izi akışı**: keşif TXT'de `fp`, listede 🔒 rozeti, detayda parmak izi, satırdan Güven butonu, ele cihaz ekleme.
 - **Tarayıcıdan paylaşım**: dosya yöneticisi yükleme UI (100 MB, ilerleme çubuğu) + host panelinde PIN'li dosya linki; uygulamasız cihaz tarayıcıyla alıp gönderebilir.
+- **Aktarım iptali**: ilerleme yanında İptal butonu + `cancel_event` (alıcıda resume devam eder).
+- **`--send` CLI + Nautilus**: son cihaza terminalden gönderim (`--to`, `--pin`), sağ-tık betikleri (`scripts/nautilus/`).
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 
 ### Changed

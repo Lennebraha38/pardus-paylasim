@@ -1,0 +1,15 @@
+#!/bin/bash
+# Nautilus betiği: seçili dosyaların metadata bilgisini yerinde temizler.
+# Orijinalin yanına <ad>_temiz.<uzantı> yazar (orijinal korunur).
+set -u
+if [ $# -eq 0 ]; then
+    exit 1
+fi
+if command -v pardus-paylasim >/dev/null 2>&1; then
+    BIN="pardus-paylasim"
+else
+    ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+    BIN="env PYTHONPATH=$ROOT/src python3 -m pardus_paylasim.app"
+fi
+OUT=$($BIN --clean "$@" 2>&1 | tail -30)
+notify-send "Pardus Paylaşım" "$OUT" 2>/dev/null || echo "$OUT"

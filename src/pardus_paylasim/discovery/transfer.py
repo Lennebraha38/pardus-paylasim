@@ -139,7 +139,8 @@ class FileSender:
 
     def send_file(self, file_path, secret_pin=None, progress_callback=None, rel_name=None,
                   stats_callback: Optional[Callable[[int, int, float], None]] = None,
-                  resume=False, verify_hash=False):
+                  resume=False, verify_hash=False,
+                  cancel_event: Optional[threading.Event] = None):
         """Tek dosya gönderir.
 
         rel_name verilirse tel-üzeri ad olarak kullanılır (klasör transferinde
@@ -161,13 +162,16 @@ class FileSender:
             raise FileTransferError("Resume yalnız normal modda desteklenir.")
         if verify_hash and secret_pin:
             raise FileTransferError("Secret mod zaten AEAD ile doğrulanır.")
+        if cancel_event is not None and cancel_event.is_set():
+            raise FileTransferError("Aktarım iptal edildi.")
 
         file_size = os.path.getsize(file_path)
         file_name = rel_name if rel_name else os.path.basename(file_path)
 
         if resume:
             self._send_resume(file_path, file_name, file_size,
-                              progress_callback, stats_callback)
+                              progress_callback, stats_callback,
+                              cancel_event)
             return
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -210,6 +214,8 @@ class FileSender:
                     sent = 0
                     counter = 0
                     while True:
+                        if cancel_event is not None and cancel_event.is_set():
+                            raise FileTransferError("Aktarım iptal edildi.")
                         chunk = f.read(SECRET_CHUNK_SIZE)
                         if not chunk:
                             if counter == 0:
@@ -236,6 +242,8 @@ class FileSender:
                 sent = 0
                 with open(file_path, "rb") as f:
                     while True:
+                        if cancel_event is not None and cancel_event.is_set():
+                            raise FileTransferError("Aktarım iptal edildi.")
                         chunk = f.read(65536)
                         if not chunk:
                             break
@@ -253,7 +261,8 @@ class FileSender:
                 raise FileTransferError("Alıcı cihaz dosyayı kabul etmedi veya hata oluştu.")
 
     def _send_resume(self, file_path, file_name, file_size,
-                     progress_callback=None, stats_callback=None):
+                     progress_callback=None, stats_callback=None,
+                     cancel_event: Optional[threading.Event] = None):
         """Kaldığı yerden devam: alıcıdaki offset'i öğrenip kalanı gönderir."""
         if file_size > MAX_PAYLOAD_SIZE:
             raise FileTransferError("Dosya boyutu aktarım sınırını aşıyor.")
@@ -292,6 +301,8 @@ class FileSender:
             with open(file_path, "rb") as f:
                 f.seek(offset)
                 while True:
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise FileTransferError("Aktarım iptal edildi.")
                     chunk = f.read(RESUME_IO_CHUNK)
                     if not chunk:
                         break
@@ -304,7 +315,8 @@ class FileSender:
                 raise FileTransferError("Alıcı cihaz dosyayı kabul etmedi veya hata oluştu.")
 
     def send_files(self, file_paths, secret_pin=None, progress_callback=None,
-                   stats_callback=None, resume=False, verify_hash=False):
+                   stats_callback=None, resume=False, verify_hash=False,
+                   cancel_event: Optional[threading.Event] = None):
         """Birden çok dosyayı sırayla gönderir (her biri ayrı bağlantı).
 
         progress_callback(oran, gonderilen_index, toplam) — genel ilerleme.
@@ -315,12 +327,14 @@ class FileSender:
         total = len(file_paths)
         for idx, path in enumerate(file_paths):
             self.send_file(path, secret_pin, stats_callback=stats_callback,
-                           resume=resume, verify_hash=verify_hash)
+                           resume=resume, verify_hash=verify_hash,
+                           cancel_event=cancel_event)
             if progress_callback:
                 progress_callback((idx + 1) / total, idx + 1, total)
 
     def send_folder(self, folder_path, secret_pin=None, progress_callback=None,
-                    stats_callback=None, resume=False, verify_hash=False):
+                    stats_callback=None, resume=False, verify_hash=False,
+                    cancel_event: Optional[threading.Event] = None):
         """Bir klasörü, iç yapısını koruyarak (göreli yollarla) gönderir.
 
         Klasörün üst dizini taban alınır; her dosya 'klasoradi/alt/dosya'
@@ -347,7 +361,8 @@ class FileSender:
             rel = os.path.relpath(path, base_dir).replace(os.sep, "/")
             self.send_file(path, secret_pin, rel_name=rel,
                            stats_callback=stats_callback,
-                           resume=resume, verify_hash=verify_hash)
+                           resume=resume, verify_hash=verify_hash,
+                           cancel_event=cancel_event)
             if progress_callback:
                 progress_callback((idx + 1) / total, idx + 1, total)
 

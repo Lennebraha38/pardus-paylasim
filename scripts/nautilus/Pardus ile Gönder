@@ -1,0 +1,23 @@
+#!/bin/bash
+# Nautilus betiği: seçili dosyaları son cihaza gönderir.
+# Kurulum: bash scripts/nautilus/install.sh (repo kökünden)
+# Not: hedef, uygulamada son gönderim yapılan cihazdır (--to ile ezilebilir:
+#   PARDUS_TO="192.168.1.20:8900" "Pardus ile Gönder").
+set -u
+ARGS=()
+if [ -n "${PARDUS_TO:-}" ]; then
+    ARGS+=(--to "$PARDUS_TO")
+fi
+if [ $# -eq 0 ]; then
+    notify-send "Pardus Paylaşım" "Dosya seçilmedi." 2>/dev/null || true
+    exit 1
+fi
+if command -v pardus-paylasim >/dev/null 2>&1; then
+    BIN="pardus-paylasim"
+else
+    # Geliştirme ağacı: betiğin üç üst dizini repo köküdür.
+    ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+    BIN="env PYTHONPATH=$ROOT/src python3 -m pardus_paylasim.app"
+fi
+# shellcheck disable=SC2086
+$BIN --send "$@" ${ARGS[@]+"${ARGS[@]}"} 2>&1 | tail -20

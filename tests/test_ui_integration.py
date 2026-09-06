@@ -127,6 +127,16 @@ def test_window_trust_from_list():
     assert "🔒 " in content
 
 
+def test_window_cancel_and_last_peer():
+    """İptal butonu + son cihaz kaydı bağlı mı?"""
+    content = _read(WINDOW_FILE)
+    assert "btn_cancel_transfer" in content
+    assert "def _on_cancel_transfer" in content
+    assert "_transfer_cancel" in content
+    assert "def _remember_peer" in content
+    assert '"last_peer"' in content or "'last_peer'" in content
+
+
 def test_app_has_mesh_status_arg():
     content = _read(APP_FILE)
     assert "--mesh-status" in content
@@ -174,6 +184,7 @@ if __name__ == "__main__":
         ("window_mesh_discovery_wiring", test_window_mesh_discovery_wiring),
         ("window_fingerprint_section", test_window_fingerprint_section),
         ("window_trust_from_list", test_window_trust_from_list),
+        ("window_cancel_and_last_peer", test_window_cancel_and_last_peer),
         ("app_has_mesh_status_arg", test_app_has_mesh_status_arg),
         ("app_has_async_list_arg", test_app_has_async_list_arg),
         ("app_no_ai_scan_arg", test_app_no_ai_scan_arg),
