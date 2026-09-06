@@ -68,18 +68,20 @@ else
     echo 'UYARI: X0 soketi yok; Termux:X11 uygulamasini acip tekrar dene.'
 fi
 # Preflight: display gerçekten kullanılabilir mi? Değilse uygulamayı
-# çökertmek yerine teşhis yazdır.
+# çökertmek yerine teşhis yazdır. NOT: init_check() True dönse bile
+# default display None olabilir — asıl kriter display'in varlığı.
 python3 -c \"
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gdk
 r = Gtk.init_check()
-ok = r[0] if isinstance(r, tuple) else bool(r)
+init_ok = r[0] if isinstance(r, tuple) else bool(r)
 import os
 print('DISPLAY=' + os.environ.get('DISPLAY', ''))
-print('init_check:', ok)
 d = Gdk.Display.get_default()
 print('display:', d.get_name() if d else None)
+ok = init_ok and d is not None
+print('preflight:', 'OK' if ok else 'FAIL')
 raise SystemExit(0 if ok else 1)
 \" || { echo 'HATA: display açılamıyor — Termux:X11 uygulamasını aç (Display 0) ve tekrar dene.'; exit 1; }
 cd ~/pardus-paylasim
