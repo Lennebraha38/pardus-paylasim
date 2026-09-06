@@ -56,7 +56,7 @@ class ScreenCaptureTrack(VideoStreamTrack):
                 with self._frame_lock:
                     self._frame_buffer = frame
 
-            except Exception:
+            except Exception as e:
                 # Capture hatalarını yut ve döngüyü sürdür
                 pass
 

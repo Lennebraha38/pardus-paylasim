@@ -74,7 +74,7 @@ class DeviceManager:
                     for entry in data.get("trusted", []):
                         trusted.add(entry.get("id", ""))
                     return trusted
-        except Exception:
+        except Exception as e:
             pass
         return set()
 
@@ -105,7 +105,7 @@ class DeviceManager:
             with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump({"trusted": trusted}, f, indent=2, ensure_ascii=False)
             os.replace(tmp_file, PERSISTENCE_FILE)
-        except Exception:
+        except Exception as e:
             pass
 
     def trust_device(self, device_id: str):
@@ -162,7 +162,7 @@ class DeviceManager:
         for cb in listeners:
             try:
                 cb(device_list)
-            except Exception:
+            except Exception as e:
                 pass
 
     def start_discovery(self):

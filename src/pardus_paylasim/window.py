@@ -52,7 +52,8 @@ try:
     from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
     HAS_GTK = True
-except Exception:
+except Exception as e:
+    logger.warning("GTK import failed: %s", e)
     HAS_GTK = False
 
 logger = logging.getLogger(__name__)
@@ -121,9 +122,9 @@ class MainWindow:
         if HAS_GTK and app:
             self._build_gtk_ui(app)
         else:
-            print("[Pardus Paylaşım] Running in headless/CLI framework mode.")
-            print("  Kullanım: pardus-paylasim --clean <dosya> --out <çıktı>")
-            print("           pardus-paylasim --mask <metin>")
+            logger.info("Running in headless/CLI framework mode.")
+            logger.info("Kullanım: pardus-paylasim --clean <dosya> --out <çıktı>")
+            logger.info("           pardus-paylasim --mask <metin>")
 
     # ──────────────────────────────────────────────
     #  GTK4 UI Construction
@@ -283,7 +284,8 @@ class MainWindow:
                 props.append(Gtk.AccessibleProperty.DESCRIPTION)
                 vals.append(description)
             widget.update_property(props, vals)
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             logger.debug("a11y update_property unsupported for %r", widget)
 
     # ──────────────────────────────────────────────
@@ -1826,12 +1828,13 @@ class MainWindow:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             local_ip = s.getsockname()[0]
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             local_ip = "127.0.0.1"
         finally:
             try:
                 s.close()
-            except Exception:
+            except Exception as e:
                 pass
         host_port = self.screen_handler.host_port
         self.lbl_host_ip.set_label(_("Sunucu IP: {ip}:{port}").format(ip=local_ip, port=host_port))
@@ -2242,7 +2245,8 @@ class MainWindow:
         self._control_client = None
         try:
             self.screen_handler.release_control()
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
         # Düğme geri "İste" durumuna (yalnız GTK'de widget varsa).
         if HAS_GTK and getattr(self, "btn_request_control", None) is not None:
@@ -2302,7 +2306,8 @@ class MainWindow:
             text = clipboard.read_text_finish(result)
             if text:
                 self._set_textview_text(self.clip_input, text)
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
 
     def _on_toggle_clipboard_monitor(self, btn):
@@ -2322,7 +2327,8 @@ class MainWindow:
         try:
             clipboard = Gdk.Display.get_default().get_clipboard()
             clipboard.read_text_async(None, self._on_monitor_clipboard_text)
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
         return True  # Repeat
 
@@ -2336,7 +2342,8 @@ class MainWindow:
                     self._update_clip_findings(matches)
                     masked = self.clipboard_handler.sanitize_text(text)
                     self._set_textview_text(self.clip_output, masked)
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
 
     def _update_clip_findings(self, matches):
@@ -2473,11 +2480,13 @@ class MainWindow:
         # asılı token/kanal bırakma (1.8 — C4 teardown).
         try:
             self.screen_handler.stop_control_host()
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
         try:
             self.screen_handler.release_control()
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
         if self._screen_hosting:
             self._stop_hosting()
@@ -2490,11 +2499,13 @@ class MainWindow:
         # Arka plan sunucularını durdur (soketleri serbest bırak).
         try:
             self.receiver.stop()
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
         try:
             self.clipboard_server.stop()
-        except Exception:
+        except Exception as e:
+            logger.debug("exception at %s: %s", inspect.currentframe().f_code.co_name, e)
             pass
         return False  # Allow window to close (False = propagate, don't stop)
 

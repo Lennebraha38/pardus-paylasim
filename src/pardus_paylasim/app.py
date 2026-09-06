@@ -22,7 +22,7 @@ try:
     gi.require_version("Adw", "1")
     from gi.repository import Adw
     HAS_GTK = True
-except Exception:
+except Exception as e:
     HAS_GTK = False
 
 

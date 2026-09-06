@@ -38,7 +38,7 @@ def _try_load_gsettings():
 
         gi.require_version("Gio", "2.0")
         from gi.repository import Gio, GLib
-    except Exception:
+    except Exception as e:
         return None
     try:
         source = Gio.SettingsSchemaSource.get_default()

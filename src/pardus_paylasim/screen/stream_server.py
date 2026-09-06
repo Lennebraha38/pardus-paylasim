@@ -443,7 +443,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(b'{"status":"ok"}')
                 else:
                     self._send_json('{"error":"INVALID_PIN"}', 403)
-            except Exception:
+            except Exception as e:
                 self._send_json('{"error":"BAD_REQUEST"}', 400)
             return
 
@@ -529,7 +529,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                             "sha256": hasher.hexdigest(),
                         },
                     )
-                except Exception:
+                except Exception as e:
                     pass
 
                 try:
@@ -540,7 +540,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                         message=f"{os.path.basename(final_path)} indirilenlere kaydedildi.",
                         notification_id="file-received",
                     )
-                except Exception:
+                except Exception as e:
                     pass
 
             except Exception as e:
@@ -577,7 +577,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                             "quality": quality,
                         },
                     )
-                except Exception:
+                except Exception as e:
                     pass
 
                 from pardus_paylasim.screen.webrtc_server import process_offer_sync
@@ -894,7 +894,7 @@ class ScreenStreamServer:
             try:
                 for chunk in iter(lambda: stderr.read(4096), b""):
                     sink.append(chunk)
-            except Exception:
+            except Exception as e:
                 pass
 
         thread = threading.Thread(target=_pump, daemon=True)
@@ -936,7 +936,7 @@ class ScreenStreamServer:
                         self.capture_error = None
                     self._update_native_resolution(jpeg)
             return True
-        except Exception:
+        except Exception as e:
             return False
 
     def _fallback_screenshot_loop(self):
@@ -982,7 +982,7 @@ class ScreenStreamServer:
                     if self.capture_backend is None:
                         self.capture_backend = backend_label
                     self._update_native_resolution(frame)
-            except Exception:
+            except Exception as e:
                 pass
             # Kare aralığı config'den (1/fps); hardcoded 0.04 değil.
             time.sleep(self._config.frame_interval)
@@ -1014,10 +1014,10 @@ class ScreenStreamServer:
             try:
                 self._gst_process.terminate()
                 self._gst_process.wait(timeout=2)
-            except Exception:
+            except Exception as e:
                 try:
                     self._gst_process.kill()
-                except Exception:
+                except Exception as e:
                     pass
             self._gst_process = None
 
@@ -1025,7 +1025,7 @@ class ScreenStreamServer:
         if self._capture_thread and self._capture_thread.is_alive():
             try:
                 self._capture_thread.join(timeout=2)
-            except Exception:
+            except Exception as e:
                 pass
         self._capture_thread = None
 
@@ -1034,7 +1034,7 @@ class ScreenStreamServer:
             try:
                 self.httpd.shutdown()
                 self.httpd.server_close()
-            except Exception:
+            except Exception as e:
                 pass
 
         # Clean temp file
@@ -1042,7 +1042,7 @@ class ScreenStreamServer:
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception:
+            except Exception as e:
                 pass
 
         # TLS geçici sertifika/anahtar dosyalarını sil (0600 izinli temp).

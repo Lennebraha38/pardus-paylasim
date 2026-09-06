@@ -67,7 +67,7 @@ def send_notification(
         # Uygulama ikonunu ekle (tema ikonu bulunamazsa GTK yok sayar).
         try:
             notification.set_icon(Gio.ThemedIcon.new(icon_name))
-        except Exception:
+        except Exception as e:
             # İkon kritik değil; başarısızsa bildirim ikonsuz gönderilir.
             pass
 

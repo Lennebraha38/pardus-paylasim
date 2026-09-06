@@ -211,7 +211,7 @@ class ScreenStreamClient:
                 data = json.loads(resp.read().decode("utf-8"))
             self._pin_fingerprint_from(data)
             return data
-        except Exception:
+        except Exception as e:
             return None
 
     def _pin_fingerprint_from(self, data: dict) -> None:
@@ -226,7 +226,7 @@ class ScreenStreamClient:
             with self._open(host_ip, port, "/ping", 3) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data.get("status") == "ok"
-        except Exception:
+        except Exception as e:
             # Ham soket ile son çare (şema/TLS bağımsız erişilebilirlik).
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -234,7 +234,7 @@ class ScreenStreamClient:
                 result = sock.connect_ex((host_ip, port))
                 sock.close()
                 return result == 0
-            except Exception:
+            except Exception as e:
                 return False
 
     def connect_to_stream(
@@ -302,7 +302,7 @@ class ScreenStreamClient:
                                 "Kimlik doğrulama hatası: %s",
                                 err.get("message", "Bilinmeyen hata"),
                             )
-                        except Exception:
+                        except Exception as e:
                             pass
                         self.is_connected = False
                         return
@@ -312,7 +312,7 @@ class ScreenStreamClient:
                     while self.is_connected:
                         try:
                             chunk = resp.read(8192)
-                        except Exception:
+                        except Exception as e:
                             break  # Read timeout or connection error
                         if not chunk:
                             break

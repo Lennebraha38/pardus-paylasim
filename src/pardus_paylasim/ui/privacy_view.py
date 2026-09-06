@@ -13,7 +13,7 @@ try:
     gi.require_version("Gtk", "4.0")
     gi.require_version("Adw", "1")
     HAS_GTK = True
-except Exception:
+except Exception as e:
     HAS_GTK = False
 
 

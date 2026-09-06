@@ -116,7 +116,7 @@ class MeshProtocol:
                 "source_peer_id": src_str,
                 "hop_count": hop,
             }
-        except Exception:
+        except Exception as e:
             return None
 
 
@@ -277,9 +277,9 @@ class MeshNode:
                             port=msg.get("port", self.mesh_port),
                         )
                         self.add_peer(p)
-                except Exception:
+                except Exception as e:
                     pass
-        except Exception:
+        except Exception as e:
             pass
         finally:
             conn.close()

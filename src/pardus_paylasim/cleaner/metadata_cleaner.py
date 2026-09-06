@@ -113,7 +113,7 @@ class MetadataCleaner:
                                             description=desc,
                                         )
                                     )
-            except Exception:
+            except Exception as e:
                 pass
 
         if not risks:
@@ -139,7 +139,7 @@ class MetadataCleaner:
                                 ),
                             )
                         )
-            except Exception:
+            except Exception as e:
                 pass
         return risks
 
@@ -173,7 +173,7 @@ class MetadataCleaner:
                                 ),
                             )
                         )
-        except Exception:
+        except Exception as e:
             pass
         return risks
 
@@ -208,9 +208,9 @@ class MetadataCleaner:
                                                 ),
                                             )
                                         )
-                            except Exception:
+                            except Exception as e:
                                 pass
-        except Exception:
+        except Exception as e:
             pass
         return risks
 
@@ -285,7 +285,7 @@ class MetadataCleaner:
                 if os.path.exists(backup_path):
                     try:
                         os.remove(backup_path)
-                    except Exception:
+                    except Exception as e:
                         pass
                 if res.returncode == 0:
                     return CleaningResult(
@@ -379,5 +379,5 @@ class MetadataCleaner:
                             data = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"></cp:coreProperties>'
                     zout.writestr(item, data)
             return True
-        except Exception:
+        except Exception as e:
             return False

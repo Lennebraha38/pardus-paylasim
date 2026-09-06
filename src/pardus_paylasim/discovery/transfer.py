@@ -440,7 +440,7 @@ class FileReceiverServer:
                 temp.write(chunk)
                 received += len(chunk)
             return temp.name
-        except Exception:
+        except Exception as e:
             try:
                 os.unlink(temp.name)
             except OSError:
@@ -485,7 +485,7 @@ class FileReceiverServer:
             if remaining != 0:
                 raise FileTransferError("Şifreli aktarım boyutu tutarsız.")
             return temp.name
-        except Exception:
+        except Exception as e:
             try:
                 os.unlink(temp.name)
             except OSError:

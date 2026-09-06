@@ -535,3 +535,274 @@ class TestAsyncTransferManager:
         # Tekrar kontrol: pending kalmadı
         again = mgr.check_pending_for("peer1")
         assert len(again) == 0
+
+
+class TestMaskWithAI:
+    """mask_with_ai yönteminin maskeleme doğruluğu."""
+
+    def test_mask_iban(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        masked = det.mask_with_ai("TR96 3456 7890 1234 5678 9012 34")
+        assert masked != "TR96 3456 7890 1234 5678 9012 34"
+        assert "TR96" in masked
+        assert masked.endswith("34")
+
+    def test_mask_email(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        masked = det.mask_with_ai("user@example.com")
+        assert masked != "user@example.com"
+        assert "@" in masked
+
+    def test_mask_tckn(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        masked = det.mask_with_ai("TCKN: 10000000146")
+        assert masked != "TCKN: 10000000146"
+
+    def test_mask_credit_card(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        masked = det.mask_with_ai("Kart: 4532015112830366")
+        assert masked != "Kart: 4532015112830366"
+
+    def test_mask_multiple_types(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        text = "TCKN: 10000000146, IBAN: TR96 3456 7890 1234 5678 9012 34, mail: a@b.com"
+        masked = det.mask_with_ai(text)
+        assert text != masked
+        assert "10000000146" not in masked
+        assert "TR96" not in masked or "****" in masked
+
+    def test_mask_no_sensitive(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        text = "Bu sadece sıradan bir metin."
+        masked = det.mask_with_ai(text)
+        assert masked == text
+
+
+class TestAIResultFields:
+    """AIResult veri yapısının alan doğruluğu."""
+
+    def test_result_metadata(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        result = det.detect("TCKN: 10000000146")
+        assert result.has_sensitive is True
+        assert result.max_severity == "KRİTİK"
+        assert result.inference_time_ms >= 0
+        assert result.model_loaded is False
+        assert len(result.detections) >= 1
+
+    def test_detection_fields(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        result = det.detect("user@test.com")
+        d = result.detections[0]
+        assert d.text == "user@test.com"
+        assert d.label == "email"
+        assert d.confidence == 1.0
+        assert d.method == "rule"
+        assert d.severity == "ORTA"
+
+
+class TestWebRTCScreenNode:
+    """WebRTCScreenNode yaşam döngüsü."""
+
+    def test_node_lifecycle(self):
+        from pardus_paylasim.screen.webrtc.data_channel import WebRTCScreenNode
+        node = WebRTCScreenNode("test_peer", port=18922)
+        try:
+            node.start()
+            time.sleep(0.2)
+            assert node._running is True
+        finally:
+            node.stop()
+            time.sleep(0.1)
+        assert node._running is False
+        assert node._server_socket is None
+
+    def test_create_session(self):
+        from pardus_paylasim.screen.webrtc.data_channel import WebRTCScreenNode
+        node = WebRTCScreenNode("test_peer", port=18923)
+        sess = node.create_session("peer_id")
+        assert sess.session_id is not None
+        assert sess.peer_id == "peer_id"
+        assert sess.is_offerer is True
+        assert len(node.sessions) == 1
+        node.stop()
+
+    def test_sdp_offer(self):
+        from pardus_paylasim.screen.webrtc.data_channel import SDPMessage
+        offer = SDPMessage.create_offer("sess123", {"codecs": ["jpeg"]})
+        assert "offer" in offer
+        assert "sess123" in offer
+        assert "jpeg" in offer
+
+    def test_sdp_answer(self):
+        from pardus_paylasim.screen.webrtc.data_channel import SDPMessage
+        ans = SDPMessage.create_answer("sess123", {"codecs": ["jpeg"]})
+        assert "answer" in ans
+        assert "sess123" in ans
+
+    def test_sdp_ice_candidate(self):
+        from pardus_paylasim.screen.webrtc.data_channel import SDPMessage
+        ice = SDPMessage.create_ice_candidate("sess123", "192.168.1.1", 8921)
+        assert "ice" in ice
+        assert "192.168.1.1" in ice
+
+
+class TestAsyncDedupEdgeCases:
+    """Async dedup edge case testleri."""
+
+    def test_delivered_not_queued_again(self, tmp_path):
+        from pardus_paylasim.discovery.async_transfer.manager import (
+            AsyncTransferManager, AsyncTransferStore,
+        )
+        f = tmp_path / "dup.txt"
+        f.write_text("icerik")
+        db = str(tmp_path / "t.db")
+        mgr = AsyncTransferManager(
+            "dev", "Dev", store=AsyncTransferStore(db_path=db)
+        )
+        tid1 = mgr.queue_offline(str(f), "peer1", "P1")
+        assert tid1 is not None
+        mgr.check_pending_for("peer1")
+        tid2 = mgr.queue_offline(str(f), "peer1", "P1")
+        assert tid2 is None
+
+    def test_failed_transfer_not_deduped(self, tmp_path):
+        from pardus_paylasim.discovery.async_transfer.manager import (
+            AsyncTransferManager, AsyncTransferStore,
+        )
+        f = tmp_path / "failed.txt"
+        f.write_text("icerik")
+        db = str(tmp_path / "t.db")
+        mgr = AsyncTransferManager(
+            "dev", "Dev", store=AsyncTransferStore(db_path=db)
+        )
+        tid1 = mgr.queue_offline(str(f), "peer1", "P1")
+        mgr.store.mark_failed(tid1)
+        tid2 = mgr.queue_offline(str(f), "peer1", "P1")
+        assert tid2 is not None
+
+    def test_cancel_transfer(self, tmp_path):
+        from pardus_paylasim.discovery.async_transfer.manager import (
+            AsyncTransferManager, AsyncTransferStore,
+        )
+        f = tmp_path / "cancel.txt"
+        f.write_text("icerik")
+        db = str(tmp_path / "t.db")
+        mgr = AsyncTransferManager(
+            "dev", "Dev", store=AsyncTransferStore(db_path=db)
+        )
+        tid = mgr.queue_offline(str(f), "peer1", "P1")
+        mgr.cancel(tid)
+        pending = mgr.store.get_pending_for_receiver("peer1")
+        assert len(pending) == 0
+
+
+class TestLocalDetectorAllLabels:
+    """Tüm AI detector label'larının tespiti."""
+
+    def test_all_builtin_labels(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        cases = [
+            ("tckn", "10000000146"),
+            ("credit_card", "4532015112830366"),
+            ("iban_tr", "TR963456789012345678901234"),
+            ("email", "user@example.com"),
+            ("jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHk0"),
+        ]
+        for label, value in cases:
+            r = det.detect(value)
+            found = [d for d in r.detections if d.label == label]
+            assert len(found) >= 1, f"label '{label}' not detected for value '{value}'"
+
+    def test_ip_severity_düşük(self):
+        from pardus_paylasim.clipboard.ai.local_detector import LocalSensitiveDetector
+        det = LocalSensitiveDetector()
+        r = det.detect("192.168.1.1")
+        if r.has_sensitive:
+            ips = [d for d in r.detections if d.label == "ipv4"]
+            if ips:
+                assert ips[0].severity == "DÜŞÜK"
+
+
+class TestDataChannelProtocol:
+    """DataChannel protokol testleri."""
+
+    def test_data_channel_send_receive(self):
+        """İki soket üzerinden mesaj gönderip alabilmeli."""
+        import socket
+        import threading
+        import time as _time
+        from pardus_paylasim.screen.webrtc.data_channel import DataChannel
+
+        server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_sock.bind(("127.0.0.1", 0))
+        server_sock.listen(1)
+        server_sock.settimeout(5.0)
+        port = server_sock.getsockname()[1]
+
+        received = []
+        server_dc_holder: list = []
+
+        def serve():
+            try:
+                conn, _ = server_sock.accept()
+                dc = DataChannel(conn)
+                dc.on_message = lambda data: received.append(data)
+                dc.start()
+                server_dc_holder.append(dc)
+            except OSError:
+                pass
+
+        t = threading.Thread(target=serve, daemon=True)
+        t.start()
+
+        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_sock.settimeout(5.0)
+        client_dc = DataChannel(client_sock)
+        try:
+            client_sock.connect(("127.0.0.1", port))
+            client_dc.start()
+
+            deadline = _time.time() + 5.0
+            while not server_dc_holder and _time.time() < deadline:
+                _time.sleep(0.05)
+            assert server_dc_holder, "sunucu tarafı bağlanamadı"
+
+            client_dc.send(b"hello webrtc")
+            deadline = _time.time() + 5.0
+            while b"hello webrtc" not in received and _time.time() < deadline:
+                _time.sleep(0.05)
+            assert b"hello webrtc" in received
+        finally:
+            client_dc.close()
+            for dc in server_dc_holder:
+                try:
+                    dc.close()
+                except OSError:
+                    pass
+            try:
+                server_sock.close()
+            except OSError:
+                pass
+            t.join(timeout=2.0)
+
+    def test_close_idempotent(self):
+        """close() birden fazla çağrılabilmeli."""
+        import socket
+        from pardus_paylasim.screen.webrtc.data_channel import DataChannel
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        dc = DataChannel(s)
+        dc.close()
+        dc.close()
+        dc.close()
+        assert dc._closed is True

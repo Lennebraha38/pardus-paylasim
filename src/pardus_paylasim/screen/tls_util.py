@@ -135,7 +135,7 @@ def _restrict_windows_acl(path: str) -> bool:
 
     try:
         user = getpass.getuser()
-    except Exception:  # kullanıcı adı çözülemedi
+    except Exception as e:  # kullanıcı adı çözülemedi
         return False
     if not user:
         return False

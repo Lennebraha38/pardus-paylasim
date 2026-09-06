@@ -125,7 +125,7 @@ def _probe_xtest() -> bool:
         import Xlib.ext.xtest  # noqa: F401
 
         return True
-    except Exception:  # pragma: no cover - ortama bağlı
+    except Exception as e:  # pragma: no cover - ortama bağlı
         return False
 
 
@@ -135,7 +135,7 @@ def _probe_pynput() -> bool:
         import pynput  # noqa: F401
 
         return True
-    except Exception:  # pragma: no cover - ortama bağlı
+    except Exception as e:  # pragma: no cover - ortama bağlı
         return False
 
 
@@ -490,7 +490,7 @@ class XTestBackend:
     def close(self) -> None:
         try:
             self._display.close()
-        except Exception:  # pragma: no cover
+        except Exception as e:  # pragma: no cover
             pass
 
 
@@ -625,7 +625,7 @@ class PortalBackend:
         if self._session_path:
             try:
                 self.portal.NotifyPointerMotion(self._session_path, {}, x, y)
-            except Exception:
+            except Exception as e:
                 pass
 
     def button(self, button: str, down: bool) -> None:
@@ -634,7 +634,7 @@ class PortalBackend:
             state = 1 if down else 0
             try:
                 self.portal.NotifyPointerButton(self._session_path, {}, btn, state)
-            except Exception:
+            except Exception as e:
                 pass
 
     def scroll(self, dx: float, dy: float) -> None:
@@ -645,7 +645,7 @@ class PortalBackend:
                     self.portal.NotifyPointerAxis(self._session_path, {}, 1, dy)
                 if dx != 0:
                     self.portal.NotifyPointerAxis(self._session_path, {}, 0, dx)
-            except Exception:
+            except Exception as e:
                 pass
 
     def key(self, code: str, down: bool) -> None:
@@ -654,7 +654,7 @@ class PortalBackend:
             state = 1 if down else 0
             try:
                 self.portal.NotifyKeyboardKeycode(self._session_path, {}, evcode, state)
-            except Exception:
+            except Exception as e:
                 pass
 
     def close(self) -> None:

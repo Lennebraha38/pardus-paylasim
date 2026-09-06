@@ -399,7 +399,7 @@ class ControlChannelServer:
         try:
             availability = input_inject.detect_availability()
             return input_inject.select_backend_name(platform_info.session_type(), availability)
-        except Exception:  # pragma: no cover - ortama bağlı
+        except Exception as e:  # pragma: no cover - ortama bağlı
             return None
 
     # --- Upgrade ---
@@ -515,7 +515,7 @@ class ControlChannelServer:
             self.consent.revoke(session_token)
             try:
                 backend.close()
-            except Exception:  # pragma: no cover
+            except Exception as e:  # pragma: no cover
                 pass
             # Denetim: kontrol oturumu bitti (normal kapanış/kill-switch/kopma).
             self._audit(client_ip, STATUS_CONTROL_STOP, "ended")
@@ -639,7 +639,7 @@ class ControlChannelServer:
                     elif current_clipboard and current_clipboard != self._last_clipboard:
                         self._last_clipboard = current_clipboard
                         self._send(handler, cp.encode(cp.ClipboardEvent(text=current_clipboard)))
-                except Exception:
+                except Exception as e:
                     pass
 
     # --- Denetim (audit) ---

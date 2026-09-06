@@ -29,7 +29,7 @@ class TrustStore:
                 data = json.load(f)
                 for k, v in data.items():
                     self._devices[k] = TrustedDevice(**v)
-        except Exception:
+        except Exception as e:
             pass
 
     def _save(self):
@@ -45,7 +45,7 @@ class TrustStore:
                     for k, v in self._devices.items()
                 }
                 json.dump(data, f, ensure_ascii=False, indent=2)
-        except Exception:
+        except Exception as e:
             pass
 
     def add_trusted_device(self, public_key: str, device_name: str) -> None:

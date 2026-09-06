@@ -257,7 +257,7 @@ class WebRTCScreenSession:
     def _on_message(self, data: bytes):
         try:
             msg = json.loads(data.decode("utf-8"))
-        except Exception:
+        except Exception as e:
             return
         if msg.get("type") == "frame":
             self.state.frames_received += 1
@@ -372,7 +372,7 @@ class WebRTCScreenNode:
         """Gelen SDP mesajını işler."""
         try:
             msg = json.loads(message)
-        except Exception:
+        except Exception as e:
             return None
         msg_type = msg.get("type")
         sid = msg.get("session_id")
@@ -426,7 +426,7 @@ class WebRTCScreenNode:
             line, _, rest = header.partition(b"\n")
             try:
                 msg = json.loads(line.decode("utf-8"))
-            except Exception:
+            except Exception as e:
                 return
             sid = msg.get("session_id")
             if not sid:

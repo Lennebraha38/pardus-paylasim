@@ -109,7 +109,7 @@ class BLEDiscovery:
                                 )
                                 self._seen_devices[last_mac]["rssi"] = f"{rssi_val} dBm"
 
-                except Exception:
+                except Exception as e:
                     time.sleep(0.1)
 
             # If scan process ended, keep listing known devices
@@ -117,7 +117,7 @@ class BLEDiscovery:
                 self._list_known_devices(on_device_found)
                 time.sleep(5)
 
-        except Exception:
+        except Exception as e:
             # Fallback to periodic listing
             while self.running:
                 self._list_known_devices(on_device_found)
@@ -160,7 +160,7 @@ class BLEDiscovery:
                                 if self._is_valid_mac(mac):
                                     self._report_device(on_device_found, mac, name)
 
-            except Exception:
+            except Exception as e:
                 pass
 
             time.sleep(3)
@@ -181,7 +181,7 @@ class BLEDiscovery:
                         if len(parts) >= 3:
                             mac, name = parts[1], parts[2]
                             self._report_device(on_device_found, mac, name)
-        except Exception:
+        except Exception as e:
             pass
 
     def _scan_fallback(self, on_device_found: Callable[[str, str, int, dict], None]):
@@ -239,10 +239,10 @@ class BLEDiscovery:
             try:
                 self._scan_proc.terminate()
                 self._scan_proc.wait(timeout=2)
-            except Exception:
+            except Exception as e:
                 try:
                     self._scan_proc.kill()
-                except Exception:
+                except Exception as e:
                     pass
             self._scan_proc = None
         try:
@@ -251,5 +251,5 @@ class BLEDiscovery:
                 capture_output=True,
                 timeout=3,
             )
-        except Exception:
+        except Exception as e:
             pass

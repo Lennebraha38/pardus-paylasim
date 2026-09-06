@@ -63,7 +63,7 @@ class WebRTCManager:
                             message=message,
                             notification_id="chat-msg",
                         )
-                    except Exception:
+                    except Exception as e:
                         pass
 
         # Video (Ekran) Ekle
