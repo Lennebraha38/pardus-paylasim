@@ -12,7 +12,7 @@ proot-distro login debian -- bash -c "
 set -e
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libgtk-4-bin
-command -v broadwayd
+command -v gtk4-broadwayd || command -v broadwayd
 echo BROADWAY-READY"
 
 echo "== 2/2 broadwayd + uygulama (tek oturum) =="
@@ -22,7 +22,7 @@ proot-distro login debian -- bash -c "
 set -e
 pkill -f 'broadwayd :5' 2>/dev/null || true
 sleep 1
-setsid broadwayd :5 </dev/null >/tmp/broadwayd.log 2>&1 < /dev/null &
+(command -v gtk4-broadwayd >/dev/null && BW=gtk4-broadwayd || BW=broadwayd); setsid $BW :5 </dev/null >/tmp/broadwayd.log 2>&1 &
 for i in \$(seq 1 15); do
     if (echo > /dev/tcp/127.0.0.1/8085) 2>/dev/null; then
         echo 'broadwayd hazir (8085).'
