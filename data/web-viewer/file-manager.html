@@ -15,6 +15,15 @@
       <button id="btn-up" class="btn btn-secondary" aria-label="Üst Dizine Çık">Üst Dizine Çık</button>
     </section>
 
+    <section aria-label="Dosya Yükleme">
+      <h2>Bu Cihaza Dosya Gönder</h2>
+      <p>En fazla 100 MB. Yüklenen dosya karşı cihazın İndirilenler klasörüne kaydedilir.</p>
+      <input type="file" id="upload-input" aria-label="Yüklenecek dosyayı seç">
+      <button id="btn-upload" class="btn" aria-label="Seçili dosyayı yükle">Yükle</button>
+      <progress id="upload-progress" value="0" max="100" aria-label="Yükleme ilerlemesi" hidden></progress>
+      <p id="upload-status" role="status" aria-live="polite"></p>
+    </section>
+
     <div role="status" aria-live="polite" id="status-message" class="sr-only"></div>
 
     <section aria-label="Dosya Listesi">

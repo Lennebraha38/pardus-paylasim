@@ -649,10 +649,17 @@ class MainWindow:
         self.lbl_host_status.add_css_class("caption")
         self.lbl_host_status.set_halign(Gtk.Align.CENTER)
 
+        self.lbl_host_files = Gtk.Label(label="")
+        self.lbl_host_files.add_css_class("caption")
+        self.lbl_host_files.set_halign(Gtk.Align.CENTER)
+        self.lbl_host_files.set_wrap(True)
+        self.lbl_host_files.set_visible(False)
+
         host_box.append(self.btn_start_host)
         host_box.append(self.lbl_host_pin)
         host_box.append(self.lbl_host_ip)
         host_box.append(self.lbl_host_status)
+        host_box.append(self.lbl_host_files)
 
         # ── Uzaktan kontrol izni (1.8 — C4 katı consent) ──────────────
         # Default KAPALI + oturum-only (persist edilmez). Açıkken bile
@@ -2181,6 +2188,8 @@ class MainWindow:
         self.lbl_host_pin.set_label(_("PIN Kodu: —"))
         self.lbl_host_ip.set_label(_("Sunucu IP: —"))
         self.lbl_host_status.set_label(_("Durum: Yayın durduruldu."))
+        self.lbl_host_files.set_label("")
+        self.lbl_host_files.set_visible(False)
         self.screen_handler.stop_host_stream()
 
     def _on_host_pin_ready(self, pin):
@@ -2204,6 +2213,12 @@ class MainWindow:
         self.lbl_host_status.set_label(
             _("✅ Yayın aktif! Karşı cihaz bu IP ve PIN ile bağlanabilir.")
         )
+        self.lbl_host_files.set_label(
+            _("🌐 Uygulamasız cihaz: https://{ip}:{port}/file-manager.html "
+              "adresinden PIN ile dosya alıp gönderebilir.").format(
+                ip=local_ip, port=host_port)
+        )
+        self.lbl_host_files.set_visible(True)
 
     def _on_connect_remote(self, btn):
         ip = self.entry_remote_ip.get_text().strip()

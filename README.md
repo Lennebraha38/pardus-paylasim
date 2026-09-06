@@ -114,7 +114,7 @@ pardus-paylasim/
 |---|-------|--------------|
 | 1 | 🛡️ Gizlilik | Dosya seç → metadata tara → temizle |
 | 2 | 🔍 Keşif | Ağdaki cihazları bul → dosya gönder/al (istersen göndermeden metadata temizlenir) |
-| 3 | 🖥️ Ekran | Ekranını paylaş veya karşı tarafı izle |
+| 3 | 🖥️ Ekran | Ekranını paylaş veya karşı tarafı izle; uygulamasız cihaz tarayıcıdan dosya alıp gönderebilir |
 | 4 | 📋 Pano | Hassas veriyi maskele, cihazlara senkronize et |
 | 5 | ⚙️ Ayarlar | Cihaz adı, klasör, mDNS görünürlüğü, parmak izi, güvenilir cihazlar |
 | 6 | 🌐 Mesh Ağı | Mesh başlat/durdur (otomatik eş keşfi), eş ekle, WebRTC durumu, asenkron kuyruk |

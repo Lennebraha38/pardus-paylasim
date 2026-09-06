@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Gönderim-öncesi temizlik**: Keşif sekmesinde seçenek (varsayılan açık); orijinal korunur, temiz kopya gönderilir.
 - **Parmak izi + güvenilir cihazlar**: kalıcı cihaz sertifikası (SHA-256 kimlik), QR'da `fp` alanı, Ayarlar'da parmak izi + güven listesi + oto-kabul anahtarı (varsayılan kapalı), `--fingerprint` CLI.
 - **mDNS parmak izi akışı**: keşif TXT'de `fp`, listede 🔒 rozeti, detayda parmak izi, satırdan Güven butonu, ele cihaz ekleme.
+- **Tarayıcıdan paylaşım**: dosya yöneticisi yükleme UI (100 MB, ilerleme çubuğu) + host panelinde PIN'li dosya linki; uygulamasız cihaz tarayıcıyla alıp gönderebilir.
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 
 ### Changed

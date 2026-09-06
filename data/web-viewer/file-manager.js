@@ -68,5 +68,46 @@ document.getElementById('btn-up').onclick = () => {
   loadDirectory(parts.join('/'));
 };
 
+// Dosya yükleme: ham bayt gövde + ?name= (sunucu multipart beklemez).
+document.getElementById('btn-upload').onclick = () => {
+  const input = document.getElementById('upload-input');
+  const bar = document.getElementById('upload-progress');
+  const msg = document.getElementById('upload-status');
+  if (!input.files || input.files.length === 0) {
+    msg.textContent = "Önce dosya seçin.";
+    return;
+  }
+  const file = input.files[0];
+  if (file.size === 0 || file.size > 100 * 1024 * 1024) {
+    msg.textContent = "Dosya 1 bayt–100 MB aralığında olmalı.";
+    return;
+  }
+  bar.hidden = false;
+  bar.value = 0;
+  msg.textContent = "Yükleniyor: " + file.name;
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/v1/files/upload?name=' + encodeURIComponent(file.name));
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) bar.value = Math.round(e.loaded * 100 / e.total);
+  };
+  xhr.onload = () => {
+    bar.value = 100;
+    try {
+      const data = JSON.parse(xhr.responseText);
+      if (xhr.status === 200 && data.status === 'ok') {
+        msg.textContent = "Yüklendi: " + file.name + " (" + data.bytes + " bayt)";
+        input.value = "";
+        loadDirectory(currentPath);
+      } else {
+        msg.textContent = "Hata: " + (data.error || xhr.status);
+      }
+    } catch (err) {
+      msg.textContent = "Sunucu yanıtı okunamadı.";
+    }
+  };
+  xhr.onerror = () => { msg.textContent = "Bağlantı hatası."; };
+  xhr.send(file);
+};
+
 // İlk yükleme
 loadDirectory("");
