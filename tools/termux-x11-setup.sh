@@ -69,7 +69,7 @@ if [ -S \"\$X11_DIR/X0\" ]; then
     echo 'X soketi baglandi.'
 else
     echo 'UYARI: X0 soketi yok.'
-    return 3
+    exit 3
 fi
 python3 -c \"
 import gi
@@ -84,7 +84,7 @@ print('display:', d.get_name() if d else None)
 ok = init_ok and d is not None
 print('preflight:', 'OK' if ok else 'FAIL')
 raise SystemExit(0 if ok else 1)
-\" || return 4
+\" || exit 4
 cd ~/pardus-paylasim
 dbus-run-session -- env DISPLAY=:0 GDK_BACKEND=x11 GSETTINGS_BACKEND=memory \
     GTK_A11Y=none PYTHONPATH=src python3 -m pardus_paylasim.app"
