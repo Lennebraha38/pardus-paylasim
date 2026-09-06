@@ -1,0 +1,51 @@
+#!/bin/bash
+# Pardus Paylaşım — Termux:X11 + proot Debian ile GERÇEK GTK4 arayüzü
+#
+# ÖN KOŞUL (telefonda, bir kez):
+#   1. Termux:X11 APK'sını kur: https://github.com/termux/termux-x11/releases
+#   2. Termux'u açıp bu betiği çalıştır:  bash tools/termux-x11-setup.sh
+#
+# Betik; Debian proot kurar, GTK4 + libadwaita + Python bağımlılıklarını
+# yükler, repoyu klonlar ve uygulamayı Termux:X11 ekranına açar.
+
+set -e
+
+echo "== 1/5 Termux paketleri =="
+pkg update -y
+pkg install -y x11-repo proot-distro git
+
+echo "== 2/5 Debian proot =="
+if ! proot-distro list 2>/dev/null | grep -q "debian.*Installed"; then
+    proot-distro install debian
+fi
+
+echo "== 3/5 Debian içi: GTK4 + Python bağımlılıkları =="
+proot-distro login debian -- bash -c "
+set -e
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 python3-gi python3-cryptography python3-pip git \
+    gir1.2-gtk-4.0 gir1.2-adw-1 \
+    libgtk-4-1 libadwaita-1-0
+python3 -m pip install --break-system-packages -q zeroconf qrcode 2>/dev/null || \
+    pip3 install -q zeroconf qrcode
+echo DEBIAN-READY"
+
+echo "== 4/5 Repo =="
+proot-distro login debian -- bash -c "
+if [ ! -d ~/pardus-paylasim ]; then
+    git clone https://github.com/Lennebraha38/pardus-paylasim.git ~/pardus-paylasim
+else
+    cd ~/pardus-paylasim && git pull --ff-only || true
+fi"
+
+echo "== 5/5 Başlatılıyor =="
+echo "Termux:X11 uygulamasını ŞİMDİ aç (tercihler: Display 0, 1280x720)."
+echo "5 saniye bekleniyor..."
+sleep 5
+
+proot-distro login debian -- bash -c "
+export DISPLAY=:0
+export GDK_BACKEND=x11
+cd ~/pardus-paylasim
+PYTHONPATH=src python3 -m pardus_paylasim.app"
