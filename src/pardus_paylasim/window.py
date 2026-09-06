@@ -487,6 +487,14 @@ class MainWindow:
         self.btn_pair_device.set_sensitive(False)
         self.btn_pair_device.connect("clicked", self._on_pair_device)
 
+        self.btn_trust_device = Gtk.Button(label=_("Güven"))
+        self.btn_trust_device.add_css_class("pill")
+        self.btn_trust_device.set_sensitive(False)
+        self.btn_trust_device.set_tooltip_text(
+            _("Parmak izi doğrulanmış cihazı güvenilirlere ekle.")
+        )
+        self.btn_trust_device.connect("clicked", self._on_trust_device)
+
         self.btn_share_normal = Gtk.Button(label=_("📁 Normal Gönder"))
         self.btn_share_normal.add_css_class("pill")
         self.btn_share_normal.set_sensitive(False)
@@ -518,6 +526,7 @@ class MainWindow:
         self.btn_share_screen_to.connect("clicked", self._on_share_screen_to_device)
 
         action_box.append(self.btn_pair_device)
+        action_box.append(self.btn_trust_device)
         action_box.append(self.btn_share_normal)
         action_box.append(self.btn_share_secret)
         action_box.append(self.btn_share_folder)
@@ -985,6 +994,32 @@ class MainWindow:
         group4.add(self.trusted_box)
         self._refresh_trusted_rows()
 
+        # Elle cihaz ekleme (parmak izini bildiğin cihaz).
+        add_row = Adw.ActionRow(
+            title=_("Cihaz Ekle"),
+            subtitle=_("Ad + parmak izi (64 hex) + IP girin"),
+        )
+        add_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.entry_trust_name = Gtk.Entry()
+        self.entry_trust_name.set_placeholder_text(_("Ad"))
+        self.entry_trust_name.set_width_chars(12)
+        self.entry_trust_fp = Gtk.Entry()
+        self.entry_trust_fp.set_placeholder_text(_("Parmak izi"))
+        self.entry_trust_fp.set_width_chars(20)
+        self.entry_trust_ip = Gtk.Entry()
+        self.entry_trust_ip.set_placeholder_text("192.168.1.20")
+        self.entry_trust_ip.set_width_chars(13)
+        btn_trust_add = Gtk.Button(label=_("Ekle"))
+        btn_trust_add.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_trust_add, _("Güvenilir cihazı elle ekle"))
+        btn_trust_add.connect("clicked", self._on_trust_add_manual)
+        for w in (self.entry_trust_name, self.entry_trust_fp, self.entry_trust_ip):
+            w.set_valign(Gtk.Align.CENTER)
+            add_box.append(w)
+        add_box.append(btn_trust_add)
+        add_row.add_suffix(add_box)
+        group4.add(add_row)
+
         self.view_stack.add_titled(page, "settings", "⚙️ Ayarlar")
 
     @staticmethod
@@ -1034,6 +1069,29 @@ class MainWindow:
             TrustStore().remove_trusted_device(fingerprint)
         except Exception as e:
             logger.debug("güven kaldırılamadı: %s", e)
+        self._refresh_trusted_rows()
+
+    def _on_trust_add_manual(self, btn):
+        from pardus_paylasim.auth.trust_store import TrustStore, valid_fingerprint
+
+        name = self.entry_trust_name.get_text().strip() or "?"
+        fp = valid_fingerprint(self.entry_trust_fp.get_text())
+        ip = self.entry_trust_ip.get_text().strip() or None
+        if not fp:
+            self._show_error(_("Geçersiz parmak izi (64 hex karakter olmalı)."))
+            return
+        try:
+            ok = TrustStore().record_pairing(fp, name, ip)
+        except Exception as e:
+            logger.debug("güven kaydı yazılamadı: %s", e)
+            ok = False
+        if not ok:
+            self._show_error(_("Güven kaydı yazılamadı."))
+            return
+        self.entry_trust_name.set_text("")
+        self.entry_trust_fp.set_text("")
+        self.entry_trust_ip.set_text("")
+        self._show_info(_("{name} güvenilirlere eklendi.").format(name=name))
         self._refresh_trusted_rows()
 
     def _on_copy_fingerprint(self, btn):
@@ -1463,8 +1521,9 @@ class MainWindow:
             row_box.set_margin_bottom(4)
 
             icon = "📶" if "Wi-Fi" in dev.connection_type else "📡"
+            lock = "🔒 " if getattr(dev, "fingerprint", "") else ""
             lbl = Gtk.Label(
-                label=f"{icon} {dev.name}\n"
+                label=f"{icon} {lock}{dev.name}\n"
                 f"<small>{dev.connection_type} · {dev.address} · "
                 f"RSSI: {dev.rssi} · {dev.status}</small>"
             )
@@ -1484,6 +1543,14 @@ class MainWindow:
         if row and row in self._row_devices:
             dev = self._row_devices[row]
             self._selected_device = dev
+            fp_line = ""
+            peer_fp = getattr(dev, "fingerprint", "") or ""
+            if peer_fp:
+                from pardus_paylasim.auth.trust_store import group_fingerprint
+
+                short_fp = group_fingerprint(peer_fp)
+                short_fp = short_fp[:35] + "…" if len(short_fp) > 36 else short_fp
+                fp_line = f"\n🔑 Parmak İzi: {short_fp}"
             detail = (
                 f"**{dev.name}**\n"
                 f"🖥️ İşletim Sistemi: {dev.os_info}\n"
@@ -1492,6 +1559,7 @@ class MainWindow:
                 f"📶 Sinyal: {dev.rssi}\n"
                 f"📋 Durum: {dev.status}\n"
                 f"🛠️ Yetenekler: {', '.join(dev.capabilities)}"
+                f"{fp_line}"
             )
             self.device_detail.set_label(detail)
             self.btn_pair_device.set_sensitive(True)
@@ -1500,6 +1568,7 @@ class MainWindow:
             self.btn_share_folder.set_sensitive(True)
             self.btn_share_clipboard.set_sensitive(True)
             self.btn_share_screen_to.set_sensitive("Ekran Paylaşımı" in dev.capabilities)
+            self._update_trust_button(dev)
         else:
             self._selected_device = None
             self.device_detail.set_label(_("Cihaz seçildiğinde detaylar burada görünür."))
@@ -1509,6 +1578,49 @@ class MainWindow:
             self.btn_share_folder.set_sensitive(False)
             self.btn_share_clipboard.set_sensitive(False)
             self.btn_share_screen_to.set_sensitive(False)
+            self.btn_trust_device.set_sensitive(False)
+
+    def _update_trust_button(self, dev=None):
+        """Güven butonu: fp yoksa/ekrana gerek yoksa kapalı."""
+        from pardus_paylasim.auth.trust_store import TrustStore
+
+        dev = dev if dev is not None else self._selected_device
+        try:
+            trusted = bool(dev) and TrustStore().is_ip_trusted(
+                getattr(dev, "address", None)
+            )
+        except Exception:
+            trusted = False
+        has_fp = bool(dev) and bool(getattr(dev, "fingerprint", ""))
+        self.btn_trust_device.set_sensitive(has_fp and not trusted)
+        self.btn_trust_device.set_label(
+            _("Güvenilir ✓") if trusted else _("Güven")
+        )
+
+    def _on_trust_device(self, btn):
+        from pardus_paylasim.auth.trust_store import TrustStore
+
+        dev = self._selected_device
+        if not dev or not getattr(dev, "fingerprint", ""):
+            return
+        try:
+            ok = TrustStore().record_pairing(
+                dev.fingerprint, dev.name, dev.address
+            )
+        except Exception as e:
+            logger.debug("güven kaydı yazılamadı: %s", e)
+            ok = False
+        if ok:
+            self._show_info(
+                _("{name} güvenilirlere eklendi.").format(name=dev.name)
+            )
+            try:
+                self._refresh_trusted_rows()
+            except Exception as e:
+                logger.debug("güven listesi tazelenemedi: %s", e)
+            self._update_trust_button(dev)
+        else:
+            self._show_error(_("Güven kaydı yazılamadı."))
 
     def _on_pair_device(self, btn):
         if self._selected_device:

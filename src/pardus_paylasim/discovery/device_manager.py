@@ -41,6 +41,8 @@ class PardusDevice:
     status: str = "Açık (Hazır)"  # "Açık (Hazır)", "Eşleşti", "Ekran Paylaşılıyor", "Güvenilir"
     is_trusted: bool = False
     is_paired: bool = False
+    # mDNS/QR ile gelen cihaz sertifika parmak izi (hex, yoksa "").
+    fingerprint: str = ""
     # Servis portları (mDNS TXT'den): screen_port/file_port/clip_port/control_port
     service_ports: Dict[str, int] = field(default_factory=dict)
 
@@ -201,6 +203,13 @@ class DeviceManager:
 
         ports = self._parse_service_ports(props, port)
 
+        try:
+            from pardus_paylasim.auth.trust_store import valid_fingerprint
+
+            peer_fp = valid_fingerprint(props.get("fp", ""))
+        except Exception:
+            peer_fp = ""
+
         with self._lock:
             is_trusted = ip in self._trusted_ids or name in self._trusted_ids
 
@@ -216,6 +225,7 @@ class DeviceManager:
                 status="Güvenilir Cihaz" if is_trusted else "Açık (Wi-Fi)",
                 is_trusted=is_trusted,
                 service_ports=ports,
+                fingerprint=peer_fp,
             )
             self.devices[ip] = dev
         self.notify_listeners()

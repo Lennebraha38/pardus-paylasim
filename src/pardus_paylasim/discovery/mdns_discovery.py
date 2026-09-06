@@ -247,6 +247,16 @@ class MDNSDiscovery:
         }
         if self.control_port > 0:
             props["control_port"] = str(self.control_port)
+        # Cihaz parmak izi: karşı taraf kimliği doğrulayabilsin (TOFU).
+        # Yoksa (cryptography eksik) alan atılır; keşif yine çalışır.
+        try:
+            from pardus_paylasim.auth.trust_store import own_fingerprint
+
+            own_fp = own_fingerprint()
+            if own_fp:
+                props["fp"] = own_fp
+        except Exception as e:
+            pass
         return props
 
     def start_broadcasting_and_scanning(

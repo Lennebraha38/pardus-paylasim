@@ -87,6 +87,44 @@ class TestTrustStore(unittest.TestCase):
         self.assertEqual(group_fingerprint(""), "")
 
 
+class TestMdnsFingerprintFlow(unittest.TestCase):
+    def test_mdns_props_carry_fingerprint(self):
+        from pardus_paylasim.discovery.device_manager import DeviceManager
+        mgr = DeviceManager.__new__(DeviceManager)
+        import threading
+        mgr._lock = threading.Lock()
+        mgr.devices = {}
+        mgr._trusted_ids = set()
+        mgr.notify_listeners = lambda: None
+        props = {"os": "Pardus", "type": "Wi-Fi (mDNS)",
+                 "file_share": "1", "fp": FP_A}
+        mgr._on_mdns_found("EvPC", "192.168.1.20", 8900, props)
+        dev = mgr.devices["192.168.1.20"]
+        self.assertEqual(dev.fingerprint, FP_A)
+
+    def test_mdns_without_fp_defaults_empty(self):
+        from pardus_paylasim.discovery.device_manager import DeviceManager
+        import threading
+        mgr = DeviceManager.__new__(DeviceManager)
+        mgr._lock = threading.Lock()
+        mgr.devices = {}
+        mgr._trusted_ids = set()
+        mgr.notify_listeners = lambda: None
+        mgr._on_mdns_found("EvPC", "192.168.1.21", 8900, {})
+        self.assertEqual(mgr.devices["192.168.1.21"].fingerprint, "")
+
+    def test_mdns_broken_fp_ignored(self):
+        from pardus_paylasim.discovery.device_manager import DeviceManager
+        import threading
+        mgr = DeviceManager.__new__(DeviceManager)
+        mgr._lock = threading.Lock()
+        mgr.devices = {}
+        mgr._trusted_ids = set()
+        mgr.notify_listeners = lambda: None
+        mgr._on_mdns_found("EvPC", "192.168.1.22", 8900, {"fp": "bozuk"})
+        self.assertEqual(mgr.devices["192.168.1.22"].fingerprint, "")
+
+
 class TestDeviceCert(unittest.TestCase):
     def test_no_crypto_raises_clear_error(self):
         from pardus_paylasim.screen import tls_util

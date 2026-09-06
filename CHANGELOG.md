@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mesh mDNS keşfi** (`discovery/mesh/mdns.py`): `_pardus-mesh._tcp` duyuru + tarama; eşler otomatik eklenir/düşer, zeroconf yoksa sessiz degrade.
 - **Gönderim-öncesi temizlik**: Keşif sekmesinde seçenek (varsayılan açık); orijinal korunur, temiz kopya gönderilir.
 - **Parmak izi + güvenilir cihazlar**: kalıcı cihaz sertifikası (SHA-256 kimlik), QR'da `fp` alanı, Ayarlar'da parmak izi + güven listesi + oto-kabul anahtarı (varsayılan kapalı), `--fingerprint` CLI.
+- **mDNS parmak izi akışı**: keşif TXT'de `fp`, listede 🔒 rozeti, detayda parmak izi, satırdan Güven butonu, ele cihaz ekleme.
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 
 ### Changed

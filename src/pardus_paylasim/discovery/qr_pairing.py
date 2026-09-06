@@ -113,7 +113,10 @@ def parse_pairing_uri(uri: str) -> Optional[Dict]:
     capabilities = [c for c in caps_raw.split(",") if c] if caps_raw else []
 
     fp = _first("fp").lower()
-    if fp and (len(fp) != 64 or any(c not in "0123456789abcdef" for c in fp)):
+    try:
+        from pardus_paylasim.auth.trust_store import valid_fingerprint
+        fp = valid_fingerprint(fp)
+    except Exception:
         fp = ""  # bozuk parmak izi yok sayılır
 
     return {

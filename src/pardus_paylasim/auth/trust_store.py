@@ -149,6 +149,16 @@ def group_fingerprint(fp: str) -> str:
     return ":".join(fp[i:i + 2] for i in range(0, len(fp), 2))
 
 
+def valid_fingerprint(fp) -> str:
+    """64-hex parmak izini normalize eder; bozuksa '' döner."""
+    if not isinstance(fp, str):
+        return ""
+    fp = fp.strip().lower()
+    if len(fp) != 64 or any(c not in "0123456789abcdef" for c in fp):
+        return ""
+    return fp
+
+
 def own_fingerprint() -> str:
     """Bu cihazın kalıcı parmak izi (yoksa/üretilemezse "")."""
     try:

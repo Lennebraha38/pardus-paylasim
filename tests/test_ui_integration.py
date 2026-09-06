@@ -116,6 +116,17 @@ def test_window_fingerprint_section():
     assert "_device_fingerprint" in content
 
 
+def test_window_trust_from_list():
+    """Listeden güvenme (buton + handler) ve manuel ekleme var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "btn_trust_device" in content
+    assert "def _on_trust_device" in content
+    assert "_update_trust_button" in content
+    assert "entry_trust_fp" in content
+    assert "def _on_trust_add_manual" in content
+    assert "🔒 " in content
+
+
 def test_app_has_mesh_status_arg():
     content = _read(APP_FILE)
     assert "--mesh-status" in content
@@ -162,6 +173,7 @@ if __name__ == "__main__":
         ("window_clean_before_send", test_window_clean_before_send),
         ("window_mesh_discovery_wiring", test_window_mesh_discovery_wiring),
         ("window_fingerprint_section", test_window_fingerprint_section),
+        ("window_trust_from_list", test_window_trust_from_list),
         ("app_has_mesh_status_arg", test_app_has_mesh_status_arg),
         ("app_has_async_list_arg", test_app_has_async_list_arg),
         ("app_no_ai_scan_arg", test_app_no_ai_scan_arg),
