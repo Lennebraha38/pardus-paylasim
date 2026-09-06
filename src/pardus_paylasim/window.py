@@ -201,6 +201,11 @@ class MainWindow:
         # Klavye kısayolları (sekme geçişi, geçmiş, çıkış).
         self._setup_shortcuts()
 
+        # Rol bazlı arayüz + ilk açılışta rol seçimi.
+        self._apply_role_ui()
+        if not self.config.get("classroom_role"):
+            GLib.idle_add(self._show_role_onboarding)
+
         self.win.present()
 
     # ──────────────────────────────────────────────
@@ -1248,6 +1253,8 @@ class MainWindow:
             self.config.set("classroom_role", ROLES[combo.get_active()])
         except (IndexError, TypeError, AttributeError) as e:
             logger.debug("rol kaydedilemedi: %s", e)
+            return
+        self._apply_role_ui()
 
     def _build_mesh_tab(self):
         """Mesh ağı: parça-parça P2P transfer, WebRTC ekran paylaşımı, asenkron kuyruk."""
@@ -1350,6 +1357,60 @@ class MainWindow:
         page.set_child(box)
         self.view_stack.add_titled(page, "mesh", "🌐 Mesh Ağı")
 
+    def _show_role_onboarding(self):
+        """İlk açılışta rol seçimi (bir kez; sonra Ayarlar'dan değişir)."""
+        from pardus_paylasim.discovery.classroom import ROLES, ROLE_LABELS
+
+        dialog = Adw.MessageDialog(
+            transient_for=self.win,
+            heading=_("Bu cihazı nasıl kullanacaksınız?"),
+            body=_("Arayüz rolünüze göre düzenlenir. Sonradan Ayarlar'dan değiştirebilirsiniz."),
+        )
+        for role_key in ROLES:
+            dialog.add_response(role_key or "normal", ROLE_LABELS[role_key])
+        dialog.set_default_response("normal")
+        dialog.set_close_response("normal")
+
+        def on_response(dlg, resp):
+            role = resp if resp in ROLES else ""
+            try:
+                self.config.set("classroom_role", role)
+                try:
+                    self.combo_role.set_active(ROLES.index(role))
+                except (ValueError, TypeError, AttributeError):
+                    pass
+            except Exception as e:
+                logger.debug("rol kaydedilemedi: %s", e)
+            self._apply_role_ui()
+
+        dialog.connect("response", on_response)
+        dialog.present()
+        return False
+
+    def _apply_role_ui(self):
+        """Role göre varsayılan sekme + tahta sadeleştirmesi."""
+        from pardus_paylasim.discovery.classroom import ROLE_BOARD, ROLE_TEACHER
+
+        try:
+            role = self.config.get("classroom_role", "")
+        except Exception:
+            role = ""
+        is_board = (role == ROLE_BOARD)
+        for grp in (getattr(self, "classroom_msg_group", None),
+                    getattr(self, "classroom_dist_group", None)):
+            if grp is not None:
+                try:
+                    grp.set_visible(not is_board)
+                except Exception:
+                    pass
+        try:
+            if role == ROLE_TEACHER:
+                self.view_stack.set_visible_child_name("classroom")
+            elif is_board:
+                self.view_stack.set_visible_child_name("discovery")
+        except Exception as e:
+            logger.debug("varsayılan sekme ayarlanamadı: %s", e)
+
     def _build_classroom_tab(self):
         """Sınıf Modu: tahta listesi + mesaj yayını + dosya dağıtımı."""
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -1395,8 +1456,9 @@ class MainWindow:
 
         msg_group = Adw.PreferencesGroup(
             title=_("Mesaj Yayını"),
-            description=_("Tüm tahtaların panosuna metin gönderir"),
+            description=_("Seçili tahtaların panosuna metin gönderir"),
         )
+        self.classroom_msg_group = msg_group
         self.entry_class_message = Gtk.Entry()
         self.entry_class_message.set_placeholder_text(_("Duyuru metni…"))
         self.entry_class_message.set_hexpand(True)
@@ -1416,8 +1478,9 @@ class MainWindow:
 
         dist_group = Adw.PreferencesGroup(
             title=_("Dosya Dağıtımı"),
-            description=_("Seçilen dosya listedeki tüm tahtalara gider"),
+            description=_("Seçilen dosya seçili tahtalara gider"),
         )
+        self.classroom_dist_group = dist_group
         btn_distribute = Gtk.Button(label=_("📁 Dosya Seç ve Dağıt"))
         btn_distribute.set_valign(Gtk.Align.CENTER)
         self._set_a11y_label(btn_distribute, _("Dosya seçip tüm tahtalara dağıt"))
@@ -1462,6 +1525,11 @@ class MainWindow:
             if child is None:
                 break
             self.classroom_list_box.remove(child)
+        # Önceki seçimleri koru; yeni cihazlar varsayılan seçili.
+        old_checks = getattr(self, "_classroom_checks", {})
+        old_status = getattr(self, "_classroom_last_status", {})
+        self._classroom_checks = {}
+        self._classroom_last_status = old_status
         self.classroom_count_row.set_subtitle(
             _("{n} tahta").format(n=len(devices)) if devices
             else _("Henüz taranmadı")
@@ -1474,10 +1542,43 @@ class MainWindow:
             return
         for dev in devices[:30]:
             lock = "🔒 " if getattr(dev, "fingerprint", "") else ""
-            lbl = Gtk.Label(label=f"{lock}{dev.name} · {dev.address}")
-            lbl.set_halign(Gtk.Align.START)
-            lbl.add_css_class("body")
-            self.classroom_list_box.append(lbl)
+            mark = old_status.get(dev.address, "")
+            mark = f" {mark}" if mark else ""
+            check = Gtk.CheckButton(label=f"{lock}{dev.name} · {dev.address}{mark}")
+            check.set_halign(Gtk.Align.START)
+            self._set_a11y_label(check, _("Yayın hedefi olarak seç") + f": {dev.name}")
+            prev = old_checks.get(dev.address)
+            check.set_active(prev.get_active() if prev is not None else True)
+            check.connect("toggled", lambda *_a: self._update_classroom_count())
+            self._classroom_checks[dev.address] = check
+            self.classroom_list_box.append(check)
+        self._update_classroom_count()
+
+    def _update_classroom_count(self):
+        checks = getattr(self, "_classroom_checks", {})
+        n_sel = sum(1 for c in checks.values() if c.get_active())
+        self.classroom_count_row.set_subtitle(
+            _("{s}/{n} tahta seçili").format(s=n_sel, n=len(checks))
+        )
+
+    def _classroom_targets(self):
+        """İşaretli tahtalar (yayın/dağıtım hedefleri)."""
+        checks = getattr(self, "_classroom_checks", {})
+        selected = {addr for addr, c in checks.items() if c.get_active()}
+        if not selected:
+            return []
+        return [d for d in self._classroom_devices() if d.address in selected]
+
+    def _mark_broadcast_results(self, results):
+        """Satırlara ✓/✗ işareti (ağ hissi); seçimler korunur."""
+        try:
+            status = {addr: ("✓" if ok else "✗") for addr, ok in results.items()}
+            self._classroom_last_status = status
+            devices = self._classroom_devices()
+            if devices:
+                self._refresh_classroom_list(devices)
+        except Exception as e:
+            logger.debug("yayın rozetleri işlenemedi: %s", e)
 
     def _on_classroom_refresh(self, btn):
         self._refresh_classroom_list()
@@ -1491,9 +1592,9 @@ class MainWindow:
         if not text:
             self._show_error(_("Önce duyuru metni yazın."))
             return
-        devices = self._classroom_devices()
+        devices = self._classroom_targets()
         if not devices:
-            self._show_error(_("Listede tahta yok; önce Keşif sekmesinde tarayın."))
+            self._show_error(_("Önce listeden hedef tahta işaretleyin."))
             return
         self.class_broadcast_status.set_subtitle(_("Gönderiliyor…"))
 
@@ -1502,8 +1603,10 @@ class MainWindow:
                 results = broadcast_text(devices, text)
                 summary = summarize_broadcast(results)
             except Exception as e:
+                results = {}
                 summary = _("Hata: {e}").format(e=e)
             GLib.idle_add(self.class_broadcast_status.set_subtitle, summary)
+            GLib.idle_add(self._mark_broadcast_results, results)
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -1521,9 +1624,9 @@ class MainWindow:
                 path = f.get_path()
                 if not path:
                     return
-                devices = self._classroom_devices()
+                devices = self._classroom_targets()
                 if not devices:
-                    self._show_error(_("Listede tahta yok; önce Keşif sekmesinde tarayın."))
+                    self._show_error(_("Önce listeden hedef tahta işaretleyin."))
                     return
                 self._start_multi_transfer([path], None, devices=devices)
             except Exception as e:

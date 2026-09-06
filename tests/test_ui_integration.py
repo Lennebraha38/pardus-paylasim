@@ -140,6 +140,17 @@ def test_window_classroom_tab():
     assert "classroom_role" in content
 
 
+def test_window_classroom_selective():
+    """Rol diyaloğu + seçim kutuları + sonuç rozetleri var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "def _show_role_onboarding" in content
+    assert "def _apply_role_ui" in content
+    assert "def _classroom_targets" in content
+    assert "Gtk.CheckButton" in content
+    assert "def _mark_broadcast_results" in content
+    assert "classroom_msg_group" in content
+
+
 def test_window_cancel_and_last_peer():
     """İptal butonu + son cihaz kaydı bağlı mı?"""
     content = _read(WINDOW_FILE)
@@ -217,6 +228,7 @@ if __name__ == "__main__":
         ("window_fingerprint_section", test_window_fingerprint_section),
         ("window_trust_from_list", test_window_trust_from_list),
         ("window_classroom_tab", test_window_classroom_tab),
+        ("window_classroom_selective", test_window_classroom_selective),
         ("window_cancel_and_last_peer", test_window_cancel_and_last_peer),
         ("window_manual_device_and_multi", test_window_manual_device_and_multi),
         ("window_clipboard_history", test_window_clipboard_history),
