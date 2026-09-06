@@ -15,7 +15,9 @@ pkg update -y
 pkg install -y x11-repo proot-distro git termux-x11
 
 echo "== 2/5 Debian proot =="
-if ! proot-distro list 2>/dev/null | grep -q "debian.*Installed"; then
+if [ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]; then
+    echo "Debian zaten kurulu, atlanıyor."
+else
     proot-distro install debian
 fi
 
