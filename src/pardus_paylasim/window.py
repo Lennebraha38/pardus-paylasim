@@ -1522,7 +1522,7 @@ class MainWindow:
             subtitle=_("Yayınlar otomatik alınır; sınavları aşağıdan cevaplayın."),
         )
         self.classroom_info_group = Adw.PreferencesGroup(title=_("Bilgi"))
-        self.classroom_info_group.append(self.classroom_board_info)
+        self.classroom_info_group.add(self.classroom_board_info)
         box.append(self.classroom_info_group)
 
         boards_group = Adw.PreferencesGroup(
