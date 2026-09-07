@@ -1442,7 +1442,12 @@ class MainWindow:
         self.win.present()
 
     def _apply_role_ui(self):
-        """Role göre varsayılan sekme + sekme görünürlüğü + tahta sadeleşmesi."""
+        """Role göre sekme + grup görünürlüğü + varsayılan sekme.
+
+        Öğretmen: her şey (yayın, dağıtım, sınav yönetimi).
+        Tahta: yalnız sınav cevaplama + bilgi (yayın araçları gizli).
+        Normal/kayıtsız: Sınıf sekmesi gizli.
+        """
         from pardus_paylasim.discovery.classroom import ROLE_BOARD, ROLE_TEACHER
 
         try:
@@ -1451,18 +1456,25 @@ class MainWindow:
             role = ""
         is_board = (role == ROLE_BOARD)
         is_teacher = (role == ROLE_TEACHER)
-        for grp in (getattr(self, "classroom_msg_group", None),
-                    getattr(self, "classroom_dist_group", None)):
+        teacher_only = {
+            "classroom_boards_group": is_teacher,
+            "classroom_msg_group": is_teacher,
+            "classroom_dist_group": is_teacher,
+            "classroom_quiz_teacher_group": is_teacher,
+            "classroom_screen_group": is_teacher,
+            "classroom_quiz_answer_group": is_teacher or is_board,
+            "classroom_info_group": is_board,
+        }
+        for attr, visible in teacher_only.items():
+            grp = getattr(self, attr, None)
             if grp is not None:
                 try:
-                    grp.set_visible(not is_board)
+                    grp.set_visible(visible)
                 except Exception:
                     pass
-        # Normal ve tahta rollerinde Sınıf sekmesi gizlenir (ilgisiz kalabalık
-        # yapmasın); yalnız öğretmen görür.
         try:
             if hasattr(self, "page_classroom"):
-                self.page_classroom.set_visible(is_teacher)
+                self.page_classroom.set_visible(is_teacher or is_board)
         except Exception as e:
             logger.debug("sekme görünürlüğü ayarlanamadı: %s", e)
         try:
@@ -1505,10 +1517,19 @@ class MainWindow:
         header_box.append(lbl_sub)
         box.append(header_box)
 
+        self.classroom_board_info = Adw.ActionRow(
+            title=_("Tahta modu"),
+            subtitle=_("Yayınlar otomatik alınır; sınavları aşağıdan cevaplayın."),
+        )
+        self.classroom_info_group = Adw.PreferencesGroup(title=_("Bilgi"))
+        self.classroom_info_group.append(self.classroom_board_info)
+        box.append(self.classroom_info_group)
+
         boards_group = Adw.PreferencesGroup(
             title=_("Tahtalar"),
             description=_("Keşif sekmesinde tarama yapın; bulunanlar burada listelenir"),
         )
+        self.classroom_boards_group = boards_group
         self.classroom_count_row = Adw.ActionRow(
             title=_("Bağlı Tahta"), subtitle=_("Henüz taranmadı"),
         )
@@ -1564,6 +1585,7 @@ class MainWindow:
             title=_("Sınav"),
             description=_("Oluştur, dağıt, cevapla, puanla (dosya ile taşınır)"),
         )
+        self.classroom_quiz_teacher_group = quiz_group
         btn_quiz_create = Gtk.Button(label=_("Sınav Oluştur"))
         btn_quiz_create.set_valign(Gtk.Align.CENTER)
         self._set_a11y_label(btn_quiz_create, _("Metinden sınav dosyası oluştur"))
@@ -1580,14 +1602,6 @@ class MainWindow:
         qdist_row.add_suffix(btn_quiz_distribute)
         quiz_group.add(qdist_row)
 
-        btn_quiz_answer = Gtk.Button(label=_("Sınavı Aç ve Cevapla"))
-        btn_quiz_answer.set_valign(Gtk.Align.CENTER)
-        self._set_a11y_label(btn_quiz_answer, _("Sınav dosyasını açıp cevapla"))
-        btn_quiz_answer.connect("clicked", self._on_quiz_answer)
-        answer_row = Adw.ActionRow(title=_("Cevapla"))
-        answer_row.add_suffix(btn_quiz_answer)
-        quiz_group.add(answer_row)
-
         btn_quiz_score = Gtk.Button(label=_("Cevap Puanla"))
         btn_quiz_score.set_valign(Gtk.Align.CENTER)
         self._set_a11y_label(btn_quiz_score, _("Cevap dosyasını puanla"))
@@ -1597,10 +1611,26 @@ class MainWindow:
         quiz_group.add(score_row)
         box.append(quiz_group)
 
+        # Tahta rolü yalnız bunu görür: öğretmenden gelen sınavı cevaplar.
+        answer_group = Adw.PreferencesGroup(
+            title=_("Sınav Cevapla"),
+            description=_("Öğretmenden gelen sınav dosyasını açıp yanıtlayın"),
+        )
+        self.classroom_quiz_answer_group = answer_group
+        btn_quiz_answer = Gtk.Button(label=_("Sınavı Aç ve Cevapla"))
+        btn_quiz_answer.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_quiz_answer, _("Sınav dosyasını açıp cevapla"))
+        btn_quiz_answer.connect("clicked", self._on_quiz_answer)
+        answer_row = Adw.ActionRow(title=_("Cevapla"))
+        answer_row.add_suffix(btn_quiz_answer)
+        answer_group.add(answer_row)
+        box.append(answer_group)
+
         screen_group = Adw.PreferencesGroup(
             title=_("Ekran Paylaşımı"),
             description=_("Ekran sekmesinde yayını başlatın; tahtalar istemci kipiyle izler"),
         )
+        self.classroom_screen_group = screen_group
         btn_go_screen = Gtk.Button(label=_("Ekran Sekmesine Git"))
         btn_go_screen.set_valign(Gtk.Align.CENTER)
         btn_go_screen.connect(

@@ -177,13 +177,18 @@ def test_window_quiz_section():
 
 
 def test_window_login_and_role_tabs():
-    """Tam-pencere giriş + role göre sekme görünürlüğü var mı?"""
+    """Tam-pencere giriş + rol matrisi (grup görünürlükleri) var mı?"""
     content = _read(WINDOW_FILE)
     assert "def _show_login_window" in content
     assert "def _on_login_role_chosen" in content
     assert "page_classroom" in content
-    assert "set_visible(is_teacher)" in content
+    assert "set_visible(is_teacher or is_board)" in content
     assert "_show_role_onboarding" not in content
+    for grp in ("classroom_boards_group", "classroom_msg_group",
+                "classroom_dist_group", "classroom_quiz_teacher_group",
+                "classroom_quiz_answer_group", "classroom_screen_group",
+                "classroom_info_group"):
+        assert grp in content, f"grup referansı yok: {grp}"
 
 
 def test_window_notification_center():
