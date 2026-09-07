@@ -509,11 +509,6 @@ class MainWindow:
 
         # Action buttons for selected device
         action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.btn_pair_device = Gtk.Button(label=_("Eşleştir"))
-        self.btn_pair_device.add_css_class("pill")
-        self.btn_pair_device.set_sensitive(False)
-        self.btn_pair_device.connect("clicked", self._on_pair_device)
-
         self.btn_trust_device = Gtk.Button(label=_("Güven"))
         self.btn_trust_device.add_css_class("pill")
         self.btn_trust_device.set_sensitive(False)
@@ -552,7 +547,6 @@ class MainWindow:
         self.btn_share_screen_to.set_sensitive(False)
         self.btn_share_screen_to.connect("clicked", self._on_share_screen_to_device)
 
-        action_box.append(self.btn_pair_device)
         action_box.append(self.btn_trust_device)
         action_box.append(self.btn_share_normal)
         action_box.append(self.btn_share_secret)
@@ -2233,6 +2227,15 @@ class MainWindow:
         self.discovery_handler.stop_scanning()
 
     def _update_device_list(self, devices):
+        # Yeniden çizimde seçimi koru (mDNS güncellemesi seçimi silmesin).
+        kept_ids = set()
+        try:
+            for row in self.device_list.get_selected_rows():
+                dev = self._row_devices.get(row)
+                if dev is not None and getattr(dev, "id", None):
+                    kept_ids.add(dev.id)
+        except Exception as e:
+            logger.debug("seçim okunamadı: %s", e)
         # Clear existing
         while True:
             row = self.device_list.get_first_child()
@@ -2263,13 +2266,13 @@ class MainWindow:
             row.set_child(row_box)
             self._row_devices[row] = dev
             self.device_list.append(row)
+            if getattr(dev, "id", None) in kept_ids:
+                try:
+                    self.device_list.select_row(row)
+                except Exception as e:
+                    logger.debug("seçim geri yüklenemedi: %s", e)
 
         self.lbl_discovery_status.set_label(f"{len(devices)} cihaz bulundu.")
-        try:
-            if hasattr(self, "classroom_list_box"):
-                self._refresh_classroom_list(devices)
-        except Exception as e:
-            logger.debug("sınıf listesi tazelenemedi: %s", e)
         return False  # Don't repeat
 
     def _selected_devices(self):
@@ -2318,10 +2321,6 @@ class MainWindow:
                 _("{n} cihaz seçildi ({names}{more}).\n"
                   "Gönderim hepsine yapılır.").format(n=len(devs), names=names, more=more)
             )
-            self.btn_pair_device.set_sensitive(False)
-            self.btn_share_normal.set_sensitive(True)
-            self.btn_share_secret.set_sensitive(True)
-            self.btn_share_folder.set_sensitive(True)
             self.btn_share_clipboard.set_sensitive(False)
             self.btn_share_screen_to.set_sensitive(False)
             self.btn_trust_device.set_sensitive(False)
@@ -2348,7 +2347,6 @@ class MainWindow:
                 f"{fp_line}"
             )
             self.device_detail.set_label(detail)
-            self.btn_pair_device.set_sensitive(True)
             self.btn_share_normal.set_sensitive(True)
             self.btn_share_secret.set_sensitive(True)
             self.btn_share_folder.set_sensitive(True)
@@ -2358,10 +2356,6 @@ class MainWindow:
         else:
             self._selected_device = None
             self.device_detail.set_label(_("Cihaz seçildiğinde detaylar burada görünür."))
-            self.btn_pair_device.set_sensitive(False)
-            self.btn_share_normal.set_sensitive(False)
-            self.btn_share_secret.set_sensitive(False)
-            self.btn_share_folder.set_sensitive(False)
             self.btn_share_clipboard.set_sensitive(False)
             self.btn_share_screen_to.set_sensitive(False)
             self.btn_trust_device.set_sensitive(False)
@@ -2407,12 +2401,6 @@ class MainWindow:
             self._update_trust_button(dev)
         else:
             self._show_error(_("Güven kaydı yazılamadı."))
-
-    def _on_pair_device(self, btn):
-        if self._selected_device:
-            self._show_info(
-                _("{name} ile eşleşme isteği gönderildi.").format(name=self._selected_device.name)
-            )
 
     def _on_share_normal(self, btn):
         if not self._selected_device:

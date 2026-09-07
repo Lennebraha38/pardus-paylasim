@@ -131,6 +131,16 @@ def test_window_trust_from_list():
     assert "entry_trust_fp" in content
     assert "def _on_trust_add_manual" in content
     assert "[güvenilir]" in content
+    # Sahte Eşleştir butonu kaldırıldı (hiçbir şey göndermiyordu).
+    assert "btn_pair_device" not in content
+    assert "_on_pair_device" not in content
+
+
+def test_window_selection_preserved():
+    """Liste yenilenince seçim korunmalı (kept_ids mantığı)."""
+    content = _read(WINDOW_FILE)
+    assert "kept_ids" in content
+    assert "select_row" in content
 
 
 def test_window_classroom_tab():
@@ -244,6 +254,7 @@ if __name__ == "__main__":
         ("window_mesh_discovery_wiring", test_window_mesh_discovery_wiring),
         ("window_fingerprint_section", test_window_fingerprint_section),
         ("window_trust_from_list", test_window_trust_from_list),
+        ("window_selection_preserved", test_window_selection_preserved),
         ("window_classroom_tab", test_window_classroom_tab),
         ("window_classroom_selective", test_window_classroom_selective),
         ("window_quiz_section", test_window_quiz_section),
