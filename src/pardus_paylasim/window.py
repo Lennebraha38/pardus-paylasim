@@ -1478,6 +1478,43 @@ class MainWindow:
         dist_group.add(dist_row)
         box.append(dist_group)
 
+        quiz_group = Adw.PreferencesGroup(
+            title=_("Sınav"),
+            description=_("Oluştur, dağıt, cevapla, puanla (dosya ile taşınır)"),
+        )
+        btn_quiz_create = Gtk.Button(label=_("Sınav Oluştur"))
+        btn_quiz_create.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_quiz_create, _("Metinden sınav dosyası oluştur"))
+        btn_quiz_create.connect("clicked", self._on_quiz_create)
+        create_row = Adw.ActionRow(title=_("Oluştur"))
+        create_row.add_suffix(btn_quiz_create)
+        quiz_group.add(create_row)
+
+        btn_quiz_distribute = Gtk.Button(label=_("Sınav Dağıt"))
+        btn_quiz_distribute.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_quiz_distribute, _("Sınav dosyasını seçili tahtalara dağıt"))
+        btn_quiz_distribute.connect("clicked", self._on_quiz_distribute)
+        qdist_row = Adw.ActionRow(title=_("Dağıt"))
+        qdist_row.add_suffix(btn_quiz_distribute)
+        quiz_group.add(qdist_row)
+
+        btn_quiz_answer = Gtk.Button(label=_("Sınavı Aç ve Cevapla"))
+        btn_quiz_answer.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_quiz_answer, _("Sınav dosyasını açıp cevapla"))
+        btn_quiz_answer.connect("clicked", self._on_quiz_answer)
+        answer_row = Adw.ActionRow(title=_("Cevapla"))
+        answer_row.add_suffix(btn_quiz_answer)
+        quiz_group.add(answer_row)
+
+        btn_quiz_score = Gtk.Button(label=_("Cevap Puanla"))
+        btn_quiz_score.set_valign(Gtk.Align.CENTER)
+        self._set_a11y_label(btn_quiz_score, _("Cevap dosyasını puanla"))
+        btn_quiz_score.connect("clicked", self._on_quiz_score)
+        score_row = Adw.ActionRow(title=_("Puanla"))
+        score_row.add_suffix(btn_quiz_score)
+        quiz_group.add(score_row)
+        box.append(quiz_group)
+
         screen_group = Adw.PreferencesGroup(
             title=_("Ekran Paylaşımı"),
             description=_("Ekran sekmesinde yayını başlatın; tahtalar istemci kipiyle izler"),
@@ -1617,6 +1654,282 @@ class MainWindow:
                     self._show_error(_("Önce listeden hedef tahta işaretleyin."))
                     return
                 self._start_multi_transfer([path], None, devices=devices)
+            except Exception as e:
+                logger.debug("Dosya seçimi iptal edildi: %s", e)
+
+        dialog.open(self.win, None, on_response)
+
+    # ── Sınav (Quiz) ────────────────────────────────────────────
+
+    def _on_quiz_create(self, btn):
+        from pardus_paylasim.discovery.quiz import QuizEngine, parse_questions_text
+
+        dialog = Adw.MessageDialog(
+            transient_for=self.win,
+            heading=_("Sınav Oluştur"),
+            body=_("Her satıra bir soru:\nSoru | A | B | C | D | doğru:2"),
+        )
+        title_entry = Gtk.Entry()
+        title_entry.set_placeholder_text(_("Sınav başlığı"))
+        text_view = Gtk.TextView()
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.set_monospace(True)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_min_content_height(200)
+        scroll.set_child(text_view)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.append(title_entry)
+        content.append(scroll)
+        dialog.set_extra_child(content)
+        dialog.add_response("cancel", _("Vazgeç"))
+        dialog.add_response("save", _("Kaydet"))
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(dlg, resp):
+            if resp != "save":
+                return
+            title = title_entry.get_text().strip() or _("Sınav")
+            buf = text_view.get_buffer()
+            text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
+            try:
+                questions = parse_questions_text(text)
+            except ValueError as e:
+                self._show_error(str(e))
+                return
+            try:
+                import os as _os
+                import tempfile
+
+                engine = QuizEngine()
+                quiz = engine.create_quiz(title, questions)
+                out = _os.path.join(
+                    tempfile.gettempdir(), f"{quiz.quiz_id}.pardus-quiz.json")
+                from pardus_paylasim.discovery.quiz import quiz_to_file
+
+                quiz_to_file(quiz, out, created_by=self.config.get("device_name", ""))
+                self._show_info(
+                    _("Sınav kaydedildi ({n} soru):\n{path}").format(
+                        n=len(questions), path=out)
+                )
+            except Exception as e:
+                self._show_error(_("Kayıt hatası:\n{error}").format(error=e))
+
+        dialog.connect("response", on_response)
+        dialog.present()
+
+    def _on_quiz_distribute(self, btn):
+        dialog = Gtk.FileDialog()
+        dialog.set_title(_("Dağıtılacak Sınav Dosyası"))
+        dialog.set_accept_label(_("Dağıt"))
+        dialog.set_modal(True)
+
+        def on_response(dialog, result):
+            try:
+                f = dialog.open_finish(result)
+                if not f or not f.get_path():
+                    return
+                from pardus_paylasim.discovery.quiz import quiz_from_file
+
+                try:
+                    quiz = quiz_from_file(f.get_path())
+                except ValueError as e:
+                    self._show_error(str(e))
+                    return
+                devices = self._classroom_targets()
+                if not devices:
+                    self._show_error(_("Önce listeden hedef tahta işaretleyin."))
+                    return
+                self._show_info(
+                    _("'{t}' ({n} soru) dağıtılıyor…").format(
+                        t=quiz.title, n=quiz.question_count)
+                )
+                self._start_multi_transfer([f.get_path()], None, devices=devices)
+            except Exception as e:
+                logger.debug("Dosya seçimi iptal edildi: %s", e)
+
+        dialog.open(self.win, None, on_response)
+
+    def _on_quiz_answer(self, btn):
+        dialog = Gtk.FileDialog()
+        dialog.set_title(_("Cevaplanacak Sınav Dosyası"))
+        dialog.set_accept_label(_("Aç"))
+        dialog.set_modal(True)
+
+        def on_response(dialog, result):
+            try:
+                f = dialog.open_finish(result)
+                if not f or not f.get_path():
+                    return
+                from pardus_paylasim.discovery.quiz import quiz_from_file
+
+                try:
+                    quiz = quiz_from_file(f.get_path())
+                except ValueError as e:
+                    self._show_error(str(e))
+                    return
+                if not quiz.questions:
+                    self._show_error(_("Sınavda soru yok."))
+                    return
+                self._open_answer_dialog(quiz)
+            except Exception as e:
+                logger.debug("Dosya seçimi iptal edildi: %s", e)
+
+        dialog.open(self.win, None, on_response)
+
+    def _open_answer_dialog(self, quiz):
+        """Soru-soru cevap diyaloğu (süre soru başına ölçülür)."""
+        import time as _time
+
+        state = {"index": 0, "picked": {}, "spent": {}, "shown_at": _time.monotonic()}
+
+        dialog = Adw.MessageDialog(
+            transient_for=self.win,
+            heading=f"{quiz.title} (1/{quiz.question_count})",
+        )
+        q_label = Gtk.Label(label="", wrap=True, xalign=0)
+        opts_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.append(q_label)
+        content.append(opts_box)
+        dialog.set_extra_child(content)
+        dialog.add_response("back", _("Geri"))
+        dialog.add_response("next", _("İleri"))
+        dialog.add_response("finish", _("Bitir ve Gönder"))
+
+        radios = []
+
+        def render():
+            import time as _t
+            now = _t.monotonic()
+            idx = state["index"]
+            prev = state.get("current")
+            if prev is not None:
+                state["spent"][prev] = state["spent"].get(prev, 0.0) + (now - state["shown_at"])
+            state["current"] = idx
+            state["shown_at"] = now
+            q = quiz.questions[idx]
+            dialog.set_heading(f"{quiz.title} ({idx + 1}/{quiz.question_count})")
+            q_label.set_label(q.text)
+            while True:
+                child = opts_box.get_first_child()
+                if child is None:
+                    break
+                opts_box.remove(child)
+            radios.clear()
+            first = None
+            for oi, opt in enumerate(q.options):
+                r = Gtk.CheckButton(label=f"{oi + 1}. {opt}")
+                if first is None:
+                    first = r
+                else:
+                    r.set_group(first)
+                if state["picked"].get(q.question_id) == oi:
+                    r.set_active(True)
+                opts_box.append(r)
+                radios.append(r)
+
+        def current_pick():
+            for oi, r in enumerate(radios):
+                if r.get_active():
+                    return oi
+            return -1
+
+        def on_response(dlg, resp):
+            import time as _t
+            idx = state["index"]
+            q = quiz.questions[idx]
+            pick = current_pick()
+            if pick >= 0:
+                state["picked"][q.question_id] = pick
+            now = _t.monotonic()
+            state["spent"][q.question_id] = (
+                state["spent"].get(q.question_id, 0.0) + (now - state["shown_at"])
+            )
+            state["shown_at"] = now
+            if resp == "back" and idx > 0:
+                state["index"] = idx - 1
+                state["current"] = None
+                render()
+                return
+            if resp == "next" and idx < quiz.question_count - 1:
+                state["index"] = idx + 1
+                state["current"] = None
+                render()
+                return
+            if resp == "finish":
+                self._submit_quiz_answers(quiz, state)
+                return
+            # Sınırda geri/ileri: diyaloğu kapatma, yeniden çiz.
+            state["current"] = None
+            render()
+
+        dialog.connect("response", on_response)
+        render()
+        dialog.present()
+
+    def _submit_quiz_answers(self, quiz, state):
+        import os as _os
+        import tempfile
+
+        from pardus_paylasim.discovery.quiz import Answer, answers_to_file
+
+        if self._selected_device is None:
+            self._show_error(_("Önce Keşif sekmesinde öğretmeni seçin."))
+            return
+        answers = []
+        for q in quiz.questions:
+            answers.append(Answer(
+                board_id="", board_name="",
+                question_id=q.question_id,
+                answer_index=state["picked"].get(q.question_id, -1),
+                time_taken=round(state["spent"].get(q.question_id, 0.0), 1),
+            ))
+        try:
+            device_name = self.config.get("device_name", "")
+            fp = self._device_fingerprint()
+            board_id = fp or device_name or "tahta"
+            for a in answers:
+                a.board_id = board_id
+                a.board_name = device_name or board_id[:8]
+            out = _os.path.join(
+                tempfile.gettempdir(),
+                f"{quiz.quiz_id}.cevap-{board_id[:8]}.json")
+            answers_to_file(quiz, answers, board_id,
+                            device_name or board_id[:8], out)
+            self._show_info(
+                _("Cevaplar kaydedildi, öğretmene gönderiliyor…")
+            )
+            self._start_transfer(out, None)
+        except Exception as e:
+            self._show_error(_("Gönderim hatası:\n{error}").format(error=e))
+
+    def _on_quiz_score(self, btn):
+        dialog = Gtk.FileDialog()
+        dialog.set_title(_("Puanlanacak Cevap Dosyası"))
+        dialog.set_accept_label(_("Puanla"))
+        dialog.set_modal(True)
+
+        def on_response(dialog, result):
+            try:
+                f = dialog.open_finish(result)
+                if not f or not f.get_path():
+                    return
+                from pardus_paylasim.discovery.quiz import score_answers_file
+
+                try:
+                    res = score_answers_file(f.get_path())
+                except ValueError as e:
+                    self._show_error(str(e))
+                    return
+                lines = [
+                    _("Öğrenci: {n}").format(n=res["board_name"]),
+                    _("Doğru: {c}/{t} · Puan: {s}").format(
+                        c=res["correct"], t=res["total"], s=res["score"]),
+                ]
+                for i, row in enumerate(res["rows"], 1):
+                    mark = _("Doğru") if row["is_correct"] else _("Yanlış")
+                    lines.append(f"{i}. {mark} ({row['points']} puan)")
+                self._show_info("\n".join(lines))
             except Exception as e:
                 logger.debug("Dosya seçimi iptal edildi: %s", e)
 

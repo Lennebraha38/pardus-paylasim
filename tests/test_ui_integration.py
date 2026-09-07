@@ -156,6 +156,18 @@ def test_window_classroom_selective():
     assert "classroom_msg_group" in content
 
 
+def test_window_quiz_section():
+    """Sınav bölümü (oluştur/dağıt/cevapla/puanla) bağlı mı?"""
+    content = _read(WINDOW_FILE)
+    assert "def _on_quiz_create" in content
+    assert "def _on_quiz_distribute" in content
+    assert "def _on_quiz_answer" in content
+    assert "def _open_answer_dialog" in content
+    assert "def _submit_quiz_answers" in content
+    assert "def _on_quiz_score" in content
+    assert "parse_questions_text" in content
+
+
 def test_window_cancel_and_last_peer():
     """İptal butonu + son cihaz kaydı bağlı mı?"""
     content = _read(WINDOW_FILE)
@@ -234,6 +246,7 @@ if __name__ == "__main__":
         ("window_trust_from_list", test_window_trust_from_list),
         ("window_classroom_tab", test_window_classroom_tab),
         ("window_classroom_selective", test_window_classroom_selective),
+        ("window_quiz_section", test_window_quiz_section),
         ("window_cancel_and_last_peer", test_window_cancel_and_last_peer),
         ("window_manual_device_and_multi", test_window_manual_device_and_multi),
         ("window_clipboard_history", test_window_clipboard_history),
