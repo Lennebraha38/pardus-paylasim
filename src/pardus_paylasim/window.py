@@ -223,7 +223,7 @@ class MainWindow:
     #  Keyboard shortcuts (GTK4 actions + accelerators)
     # ──────────────────────────────────────────────
 
-    # Sekmelerin sıralı adları — Ctrl+1..6 bu sıraya göre eşlenir.
+    # Sekmelerin sıralı adları — Ctrl+1..7 bu sıraya göre eşlenir.
     # (view_stack'e ekleme sırasıyla birebir aynı olmalı.)
     TAB_NAMES = ("privacy", "discovery", "screenshare", "clipboard", "settings", "mesh",
                    "classroom")
@@ -249,14 +249,14 @@ class MainWindow:
     def _setup_shortcuts(self):
         """Uygulama düzeyinde klavye kısayollarını kaydeder.
 
-        Ctrl+1..5: sekme geçişi, Ctrl+H: transfer geçmişi, Ctrl+Q: çıkış.
+        Ctrl+1..7: sekme geçişi, Ctrl+H: transfer geçmişi, Ctrl+Q: çıkış.
         `Gio.SimpleAction` + `set_accels_for_action` kalıbı kullanılır; eylem
         adları "app." önekiyle hızlandırıcılara bağlanır. GTK yoksa çağrılmaz.
         """
         if not HAS_GTK or self.app is None:
             return
 
-        # Sekme geçişi: Ctrl+1..6 → view_stack.set_visible_child_name.
+        # Sekme geçişi: Ctrl+1..7 → view_stack.set_visible_child_name.
         for i, name in enumerate(self.TAB_NAMES, start=1):
             action = Gio.SimpleAction.new(f"tab-{i}", None)
             # Varsayılan bağ (default arg) döngü kapanış tuzağını önler.
@@ -289,6 +289,12 @@ class MainWindow:
     def _activate_tab(self, name):
         """Verilen ada sahip sekmeyi görünür yapar (kısayol eylemi)."""
         if self.view_stack is not None:
+            try:
+                if name == "classroom" and hasattr(self, "page_classroom"):
+                    if not self.page_classroom.get_visible():
+                        return  # Rol gereği gizli sekmeye geçilmez.
+            except Exception as e:
+                logger.debug("sekme kontrolü atlandı: %s", e)
             self.view_stack.set_visible_child_name(name)
 
     # ──────────────────────────────────────────────
@@ -1460,9 +1466,17 @@ class MainWindow:
         except Exception as e:
             logger.debug("sekme görünürlüğü ayarlanamadı: %s", e)
         try:
+            visible = ""
+            try:
+                visible = self.view_stack.get_visible_child_name() or ""
+            except Exception:
+                pass
             if is_teacher:
                 self.view_stack.set_visible_child_name("classroom")
             elif is_board:
+                self.view_stack.set_visible_child_name("discovery")
+            elif visible == "classroom":
+                # Sınıf gizlendi ama kullanıcı oradaydı: boş ekrana düşmesin.
                 self.view_stack.set_visible_child_name("discovery")
         except Exception as e:
             logger.debug("varsayılan sekme ayarlanamadı: %s", e)
@@ -1846,7 +1860,12 @@ class MainWindow:
         dialog.open(self.win, None, on_response)
 
     def _open_answer_dialog(self, quiz):
-        """Soru-soru cevap diyaloğu (süre soru başına ölçülür)."""
+        """Soru-soru cevap diyaloğu (süre soru başına ölçülür).
+
+        NOT: Adw.MessageDialog her yanıtta kendini kapatır; bu yüzden
+        Geri/İleri içerikteki normal butonlardır, yalnız Bitir/Vazgeç
+        diyalog yanıtıdır.
+        """
         import time as _time
 
         state = {"index": 0, "picked": {}, "spent": {}, "shown_at": _time.monotonic()}
@@ -1857,25 +1876,40 @@ class MainWindow:
         )
         q_label = Gtk.Label(label="", wrap=True, xalign=0)
         opts_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        nav_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        nav_row.set_halign(Gtk.Align.CENTER)
+        btn_back = Gtk.Button(label=_("Geri"))
+        btn_next = Gtk.Button(label=_("İleri"))
+        nav_row.append(btn_back)
+        nav_row.append(btn_next)
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(q_label)
         content.append(opts_box)
+        content.append(nav_row)
         dialog.set_extra_child(content)
-        dialog.add_response("back", _("Geri"))
-        dialog.add_response("next", _("İleri"))
+        dialog.add_response("cancel", _("Vazgeç"))
         dialog.add_response("finish", _("Bitir ve Gönder"))
+        dialog.set_response_appearance("finish", Adw.ResponseAppearance.SUGGESTED)
 
         radios = []
 
-        def render():
+        def save_current():
             import time as _t
-            now = _t.monotonic()
+
             idx = state["index"]
-            prev = state.get("current")
-            if prev is not None:
-                state["spent"][prev] = state["spent"].get(prev, 0.0) + (now - state["shown_at"])
-            state["current"] = idx
+            q = quiz.questions[idx]
+            for oi, r in enumerate(radios):
+                if r.get_active():
+                    state["picked"][q.question_id] = oi
+                    break
+            now = _t.monotonic()
+            state["spent"][q.question_id] = (
+                state["spent"].get(q.question_id, 0.0) + (now - state["shown_at"])
+            )
             state["shown_at"] = now
+
+        def render():
+            idx = state["index"]
             q = quiz.questions[idx]
             dialog.set_heading(f"{quiz.title} ({idx + 1}/{quiz.question_count})")
             q_label.set_label(q.text)
@@ -1896,41 +1930,22 @@ class MainWindow:
                     r.set_active(True)
                 opts_box.append(r)
                 radios.append(r)
+            btn_back.set_sensitive(idx > 0)
+            btn_next.set_sensitive(idx < quiz.question_count - 1)
 
-        def current_pick():
-            for oi, r in enumerate(radios):
-                if r.get_active():
-                    return oi
-            return -1
+        def on_nav(btn, delta):
+            save_current()
+            state["index"] = max(
+                0, min(quiz.question_count - 1, state["index"] + delta))
+            render()
+
+        btn_back.connect("clicked", on_nav, -1)
+        btn_next.connect("clicked", on_nav, +1)
 
         def on_response(dlg, resp):
-            import time as _t
-            idx = state["index"]
-            q = quiz.questions[idx]
-            pick = current_pick()
-            if pick >= 0:
-                state["picked"][q.question_id] = pick
-            now = _t.monotonic()
-            state["spent"][q.question_id] = (
-                state["spent"].get(q.question_id, 0.0) + (now - state["shown_at"])
-            )
-            state["shown_at"] = now
-            if resp == "back" and idx > 0:
-                state["index"] = idx - 1
-                state["current"] = None
-                render()
-                return
-            if resp == "next" and idx < quiz.question_count - 1:
-                state["index"] = idx + 1
-                state["current"] = None
-                render()
-                return
             if resp == "finish":
+                save_current()
                 self._submit_quiz_answers(quiz, state)
-                return
-            # Sınırda geri/ileri: diyaloğu kapatma, yeniden çiz.
-            state["current"] = None
-            render()
 
         dialog.connect("response", on_response)
         render()
