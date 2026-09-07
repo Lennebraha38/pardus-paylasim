@@ -41,3 +41,5 @@ python3 -m pytest tests/test_transfer_multi.py tests/test_transfer_accept.py \
 
 > Beklenen: hepsi PASS. Bu ortamda `cryptography` yok; yukarıdaki
 > komut gerçek Pardus/Debian iş istasyonunda koşulmalıdır.
+
+**Sonuç (2026-09-07, Debian trixie proot, Python 3.13, pytest 8.3.5): 26/26 PASS** (2.29 sn).
