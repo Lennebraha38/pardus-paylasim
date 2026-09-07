@@ -34,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sınıf Modu**: rol seçimi (öğretmen/tahta) + 7. sekme; tahta listesi, tek tuşla mesaj yayını ve dosya dağıtımı (merkezi sunucusuz P2P).
 - **Sınav (Quiz)**: metinden sınav oluşturma, tahtalara dağıtım, soru-soru cevap diyaloğu (süre ölçümlü), cevap puanlama + liderlik (neural-system motor portu).
 - **Premium dil**: 82 satır emoji temizliği, Apple referansları kaldırıldı, ölü WebRTC satırı silindi, sahte Eşleştir butonu kaldırıldı, liste seçimi güncellemede korunuyor.
-- **Seçerek yayın**: sınıf listesinde işaretleme, sonuç rozetleri (✓/✗); açılışta rol diyaloğu ve role göre arayüz.
+- **Seçerek yayın**: sınıf listesinde işaretleme, sonuç rozetleri; tam-pencere rol giriş ekranı (tek seferlik) ve role göre sekme görünürlüğü.
+- **Bildirim merkezi**: bilgi/hata iletileri uygulama içinde listelenir (okunmamış rozeti + temizleme).
 - **Aktarım sağlığı** (`discovery/health.py`, neural-system'den port): Z-skor anomali detektörü + hız düşüşü/duraksama uyarıları (UI satırı + CLI); bağlantıda kısa retry (mesh parça + gönderici).
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
 

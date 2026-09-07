@@ -158,9 +158,7 @@ def test_window_classroom_tab():
 def test_window_classroom_selective():
     """Rol diyaloğu + seçim kutuları + sonuç rozetleri var mı?"""
     content = _read(WINDOW_FILE)
-    assert "def _show_role_onboarding" in content
     assert "def _apply_role_ui" in content
-    assert "def _classroom_targets" in content
     assert "Gtk.CheckButton" in content
     assert "def _mark_broadcast_results" in content
     assert "classroom_msg_group" in content
@@ -176,6 +174,25 @@ def test_window_quiz_section():
     assert "def _submit_quiz_answers" in content
     assert "def _on_quiz_score" in content
     assert "parse_questions_text" in content
+
+
+def test_window_login_and_role_tabs():
+    """Tam-pencere giriş + role göre sekme görünürlüğü var mı?"""
+    content = _read(WINDOW_FILE)
+    assert "def _show_login_window" in content
+    assert "def _on_login_role_chosen" in content
+    assert "page_classroom" in content
+    assert "set_visible(is_teacher)" in content
+    assert "_show_role_onboarding" not in content
+
+
+def test_window_notification_center():
+    """Bildirim merkezi (kayıt + rozet + liste) bağlı mı?"""
+    content = _read(WINDOW_FILE)
+    assert "def _record_notification" in content
+    assert "def _on_show_notifications" in content
+    assert "btn_notifications" in content
+    assert "_notif_unread" in content
 
 
 def test_window_cancel_and_last_peer():
@@ -258,6 +275,8 @@ if __name__ == "__main__":
         ("window_classroom_tab", test_window_classroom_tab),
         ("window_classroom_selective", test_window_classroom_selective),
         ("window_quiz_section", test_window_quiz_section),
+        ("window_login_and_role_tabs", test_window_login_and_role_tabs),
+        ("window_notification_center", test_window_notification_center),
         ("window_cancel_and_last_peer", test_window_cancel_and_last_peer),
         ("window_manual_device_and_multi", test_window_manual_device_and_multi),
         ("window_clipboard_history", test_window_clipboard_history),

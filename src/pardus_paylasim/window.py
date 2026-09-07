@@ -71,6 +71,11 @@ class MainWindow:
 
         self.history = TransferHistory()
 
+        from collections import deque
+
+        self._notifications = deque(maxlen=50)
+        self._notif_unread = 0
+
         self.receiver = FileReceiverServer(self.config.get("download_dir"))
         self.receiver.on_file_received = self._on_file_received_callback
         self.receiver.get_secret_pin_callback = self._on_get_secret_pin_callback
@@ -192,6 +197,12 @@ class MainWindow:
         btn_history.connect("clicked", self._on_show_history)
         header.pack_end(btn_history)
 
+        # Bildirim merkezi butonu (okunmamış sayısıyla).
+        self.btn_notifications = Gtk.Button(label=_("Bildirimler"))
+        self.btn_notifications.set_tooltip_text(_("Uygulama bildirimleri"))
+        self.btn_notifications.connect("clicked", self._on_show_notifications)
+        header.pack_end(self.btn_notifications)
+
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         main_box.append(self.view_stack)
 
@@ -201,10 +212,10 @@ class MainWindow:
         # Klavye kısayolları (sekme geçişi, geçmiş, çıkış).
         self._setup_shortcuts()
 
-        # Rol bazlı arayüz + ilk açılışta rol seçimi.
+        # Rol bazlı arayüz + ilk açılışta tam-pencere giriş ekranı.
         self._apply_role_ui()
         if not self.config.get("classroom_role"):
-            GLib.idle_add(self._show_role_onboarding)
+            GLib.idle_add(self._show_login_window)
 
         self.win.present()
 
@@ -1339,38 +1350,93 @@ class MainWindow:
         page.set_child(box)
         self.view_stack.add_titled(page, "mesh", "Mesh Ağı")
 
-    def _show_role_onboarding(self):
-        """İlk açılışta rol seçimi (bir kez; sonra Ayarlar'dan değişir)."""
+    def _show_login_window(self):
+        """Tam-pencere giriş ekranı: yalnız kullanıcı türü seçilir (tek seferlik)."""
         from pardus_paylasim.discovery.classroom import ROLES, ROLE_LABELS
 
-        dialog = Adw.MessageDialog(
-            transient_for=self.win,
-            heading=_("Bu cihazı nasıl kullanacaksınız?"),
-            body=_("Arayüz rolünüze göre düzenlenir. Sonradan Ayarlar'dan değiştirebilirsiniz."),
+        login = Gtk.Window(title=_("Pardus Paylaşım'a Hoş Geldiniz"))
+        login.set_transient_for(self.win)
+        login.set_modal(True)
+        login.set_default_size(520, 560)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        box.set_margin_top(32)
+        box.set_margin_bottom(32)
+        box.set_margin_start(32)
+        box.set_margin_end(32)
+
+        title = Gtk.Label(label=_("Pardus Paylaşım"))
+        title.add_css_class("title-1")
+        title.set_halign(Gtk.Align.CENTER)
+        sub = Gtk.Label(
+            label=_("Başlamak için bu cihazı nasıl kullanacağınızı seçin.")
         )
+        sub.add_css_class("body")
+        sub.set_halign(Gtk.Align.CENTER)
+        sub.set_wrap(True)
+        box.append(title)
+        box.append(sub)
+
+        descriptions = {
+            "": _("Kişisel dosya paylaşımı, ekran ve pano özellikleri."),
+            "ogretmen": _("Sınıfı yönetir: tahta listesi, duyuru ve dosya dağıtımı."),
+            "tahta": _("Yayınları alır: sade ekran, otomatik karşılama."),
+        }
         for role_key in ROLES:
-            dialog.add_response(role_key or "normal", ROLE_LABELS[role_key])
-        dialog.set_default_response("normal")
-        dialog.set_close_response("normal")
+            card = Gtk.Button()
+            card.add_css_class("card")
+            inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            inner.set_margin_top(12)
+            inner.set_margin_bottom(12)
+            inner.set_margin_start(16)
+            inner.set_margin_end(16)
+            name_lbl = Gtk.Label(label=ROLE_LABELS[role_key])
+            name_lbl.add_css_class("title-3")
+            name_lbl.set_halign(Gtk.Align.START)
+            desc_lbl = Gtk.Label(label=descriptions.get(role_key, ""))
+            desc_lbl.add_css_class("caption")
+            desc_lbl.set_halign(Gtk.Align.START)
+            desc_lbl.set_wrap(True)
+            inner.append(name_lbl)
+            inner.append(desc_lbl)
+            card.set_child(inner)
+            self._set_a11y_label(card, _("Rol seç") + f": {ROLE_LABELS[role_key]}")
+            card.connect("clicked", self._on_login_role_chosen, role_key, login)
+            box.append(card)
 
-        def on_response(dlg, resp):
-            role = resp if resp in ROLES else ""
-            try:
-                self.config.set("classroom_role", role)
-                try:
-                    self.combo_role.set_active(ROLES.index(role))
-                except (ValueError, TypeError, AttributeError):
-                    pass
-            except Exception as e:
-                logger.debug("rol kaydedilemedi: %s", e)
-            self._apply_role_ui()
+        note = Gtk.Label(
+            label=_("Seçiminiz bu cihazda saklanır; Ayarlar'dan değiştirebilirsiniz.")
+        )
+        note.add_css_class("caption")
+        note.set_halign(Gtk.Align.CENTER)
+        note.set_wrap(True)
+        box.append(note)
 
-        dialog.connect("response", on_response)
-        dialog.present()
+        login.set_child(box)
+        login.present()
         return False
 
+    def _on_login_role_chosen(self, btn, role_key, login_window):
+        from pardus_paylasim.discovery.classroom import ROLES
+
+        role = role_key if role_key in ROLES else ""
+        try:
+            self.config.set("classroom_role", role)
+            try:
+                self.combo_role.set_active(ROLES.index(role))
+            except (ValueError, TypeError, AttributeError):
+                pass
+        except Exception as e:
+            logger.debug("rol kaydedilemedi: %s", e)
+        self._apply_role_ui()
+        try:
+            login_window.destroy()
+        except Exception as e:
+            logger.debug("giriş penceresi kapatılamadı: %s", e)
+        self.win.present()
+
     def _apply_role_ui(self):
-        """Role göre varsayılan sekme + tahta sadeleştirmesi."""
+        """Role göre varsayılan sekme + sekme görünürlüğü + tahta sadeleşmesi."""
         from pardus_paylasim.discovery.classroom import ROLE_BOARD, ROLE_TEACHER
 
         try:
@@ -1378,6 +1444,7 @@ class MainWindow:
         except Exception:
             role = ""
         is_board = (role == ROLE_BOARD)
+        is_teacher = (role == ROLE_TEACHER)
         for grp in (getattr(self, "classroom_msg_group", None),
                     getattr(self, "classroom_dist_group", None)):
             if grp is not None:
@@ -1385,8 +1452,15 @@ class MainWindow:
                     grp.set_visible(not is_board)
                 except Exception:
                     pass
+        # Normal ve tahta rollerinde Sınıf sekmesi gizlenir (ilgisiz kalabalık
+        # yapmasın); yalnız öğretmen görür.
         try:
-            if role == ROLE_TEACHER:
+            if hasattr(self, "page_classroom"):
+                self.page_classroom.set_visible(is_teacher)
+        except Exception as e:
+            logger.debug("sekme görünürlüğü ayarlanamadı: %s", e)
+        try:
+            if is_teacher:
                 self.view_stack.set_visible_child_name("classroom")
             elif is_board:
                 self.view_stack.set_visible_child_name("discovery")
@@ -1526,7 +1600,8 @@ class MainWindow:
 
         page = Gtk.ScrolledWindow()
         page.set_child(box)
-        self.view_stack.add_titled(page, "classroom", " Sınıf")
+        self.page_classroom = page
+        self.view_stack.add_titled(page, "classroom", "Sınıf")
 
     def _classroom_devices(self):
         """Yayın hedefleri: keşfedilen cihazlar (kendi hariç tutma çağırana ait)."""
@@ -3848,7 +3923,61 @@ class MainWindow:
         if name == "discovery" and not self._discovery_active:
             self._start_discovery()
 
+    def _record_notification(self, kind, msg):
+        """Bilgi/hata iletilerini uygulama-içi merkeze yazar."""
+        import time as _time
+
+        try:
+            self._notifications.appendleft(
+                {"time": _time.strftime("%H:%M:%S"), "kind": kind, "msg": msg})
+            self._notif_unread += 1
+            btn = getattr(self, "btn_notifications", None)
+            if btn is not None and HAS_GTK:
+                n = self._notif_unread
+                btn.set_label(_("Bildirimler ({n})").format(n=n) if n else _("Bildirimler"))
+        except Exception as e:
+            logger.debug("bildirim kaydedilemedi: %s", e)
+
+    def _on_show_notifications(self, btn):
+        items = list(getattr(self, "_notifications", []))
+        dialog = Adw.MessageDialog(
+            transient_for=self.win,
+            heading=_("Bildirimler ({n})").format(n=len(items)),
+        )
+        if items:
+            lines = [f"[{it['time']}] {it['kind']}: {it['msg']}" for it in items]
+            body = Gtk.Label(label="\n\n".join(lines))
+        else:
+            body = Gtk.Label(label=_("Henüz bildirim yok."))
+        body.set_wrap(True)
+        body.set_halign(Gtk.Align.START)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_min_content_height(240)
+        scroll.set_child(body)
+        dialog.set_extra_child(scroll)
+        dialog.add_response("read", _("Okundu İşaretle"))
+        dialog.add_response("clear", _("Temizle"))
+        dialog.add_response("close", _("Kapat"))
+        dialog.set_default_response("close")
+
+        def on_response(dlg, resp):
+            if resp == "clear":
+                try:
+                    self._notifications.clear()
+                except Exception:
+                    pass
+            if resp in ("clear", "read"):
+                self._notif_unread = 0
+                try:
+                    self.btn_notifications.set_label(_("Bildirimler"))
+                except Exception:
+                    pass
+
+        dialog.connect("response", on_response)
+        dialog.present()
+
     def _show_error(self, msg):
+        self._record_notification(_("Hata"), msg)
         if not HAS_GTK or not self.win:
             logger.error("%s", msg)
             return
@@ -3861,6 +3990,7 @@ class MainWindow:
         dialog.present()
 
     def _show_info(self, msg):
+        self._record_notification(_("Bilgi"), msg)
         if not HAS_GTK or not self.win:
             logger.info("%s", msg)
             return
