@@ -29,6 +29,7 @@ SALT_LEN = 16
 NONCE_LEN = 12
 PBKDF2_ITERATIONS = 200_000
 MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024  # 1 GiB hard limit against memory DoS.
+MAX_NAME_LEN = 8192  # Dosya/klasör adı üst sınırı (güvenilmez uçtan bellek DoS).
 SECRET_MAGIC = b"PPS2"
 SECRET_CHUNK_SIZE = 64 * 1024
 SECRET_FRAME_OVERHEAD = 4 + 16
@@ -129,6 +130,41 @@ def _secret_nonce(prefix: bytes, counter: int) -> bytes:
 
 class FileTransferError(Exception):
     pass
+
+
+def build_peer_tls_context(host: str, port: int) -> "ssl.SSLContext":
+    """Eş (alıcı) için güvenli TLS istemci bağlamı kurar (cert pinli).
+
+    Alıcı bu sürümde yalnız TLS üstünde dinler (fail-closed); göndericiler de
+    düz metne düşmemeli. Canlı sertifikanın parmak izi alınır, aynı sertifika
+    tekrar istemde ikinci kez karşılaştırılarak temp dosyaya yazılır ve istemci
+    bağlamı o sertifikaya kilitlenir (MITM'e karşı temel koruma).
+
+    Hata durumunda `FileTransferError` yükseltilir (sessiz düz-metin yok).
+    """
+    from pardus_paylasim.screen import tls_util
+
+    if not tls_util.HAS_TLS:
+        raise FileTransferError(
+            "Güvenli gönderim için 'cryptography' kurulu değil."
+        )
+    live_fp = tls_util.get_peer_fingerprint(host, port)
+    if not live_fp:
+        raise FileTransferError(
+            f"Alıcının TLS sertifikası alınamadı ({host}:{port}). Sunucu TLS ile çalışıyor mu?"
+        )
+    cert_path = tls_util.fetch_server_cert_to_tempfile(host, port, live_fp)
+    if not cert_path:
+        raise FileTransferError(
+            f"Alıcı sertifikası doğrulanamadı ({host}:{port}); aktarım iptal."
+        )
+    try:
+        return tls_util.build_client_context(cert_path)
+    finally:
+        try:
+            os.remove(cert_path)
+        except OSError:
+            pass
 
 
 class FileSender:
@@ -454,6 +490,12 @@ class FileReceiverServer:
             if name_len_data is None:
                 return
             name_len = struct.unpack("!I", name_len_data)[0]
+
+            # Güvenilmeyen uçtan gelen ad uzunluğunu sınırla (bellek DoS).
+            if name_len > MAX_NAME_LEN:
+                logger.warning("Dosya adı uzunluğu sınır aştı (%d), reddedildi.", name_len)
+                conn.sendall(b"\x00")
+                return
 
             # Read filename
             name_bytes = net_util.recv_exact(conn, name_len)

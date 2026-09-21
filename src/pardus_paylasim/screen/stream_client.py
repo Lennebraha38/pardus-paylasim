@@ -39,6 +39,10 @@ class ScreenStreamClient:
         self._frame_callback: Optional[Callable[[bytes], None]] = None
         self._pin: str = ""
         self.trust_callback = trust_callback
+        # /auth ile alınan oturum token'ı. PIN tek kullanımlık olduğu için
+        # native istemci PIN'i bir kez /auth'a verir, ardından /stream ve
+        # /control'ü bu token ile açar (web viewer ile aynı yol).
+        self.session_token: Optional[str] = None
         # TLS durumu: sunucu keşfedildiğinde belirlenir. use_tls None iken
         # şema bilinmiyor; ilk /info veya /ping ile çözülür.
         self.use_tls: Optional[bool] = None
@@ -144,7 +148,6 @@ class ScreenStreamClient:
         except Exception as e:
             logger.error("Sunucu sertifikası okunurken hata oluştu: %s", e)
             return False
-            return False
 
         if not self.target_device_id:
             logger.error("Cihaz kimliği (device_id) eksik, MITM doğrulaması yapılamaz.")
@@ -220,6 +223,66 @@ class ScreenStreamClient:
         if fp:
             self.pinned_fingerprint = fp
 
+    @staticmethod
+    def _extract_session_token(headers) -> Optional[str]:
+        """Yanıt başlıklarından `pardus_session` cookie token'ını çözer."""
+        values = []
+        if hasattr(headers, "get_all"):
+            try:
+                values = headers.get_all("Set-Cookie") or []
+            except Exception:
+                values = []
+        value = headers.get("Set-Cookie")
+        if value:
+            values.append(value)
+        for cookie in values:
+            if "pardus_session=" in cookie:
+                for part in cookie.split(";"):
+                    part = part.strip()
+                    if part.startswith("pardus_session="):
+                        return part[len("pardus_session="):]
+        return None
+
+    def authenticate(self, host_ip: str, port: int, pin: str, timeout: float = 10.0) -> bool:
+        """PIN'i /auth ile tek kullanımlık oturum token'ına çevirir.
+
+        Sunucu PIN'i istemcinin IP'sine bağlı doğrular (TTL+lockout), yanıtta
+        `Set-Cookie: pardus_session=...` döner. Token sonrasında /stream ve
+        /control kimliği olur. Başarısızsa False (fail-closed: akış açılmaz).
+        """
+        if not pin or self.session_token:
+            return True
+        tls = self.use_tls if self.use_tls is not None else tls_util.HAS_TLS
+        scheme = "https" if tls else "http"
+        url = f"{scheme}://{host_ip}:{port}/auth"
+        body = json.dumps({"pin": pin}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        kwargs: dict = {"timeout": timeout}
+        if tls:
+            kwargs["context"] = self._client_ctx(host_ip, port)
+        try:
+            with urllib.request.urlopen(req, **kwargs) as resp:
+                if resp.status != 200:
+                    logger.warning("Kimlik doğrulama reddedildi (HTTP %s).", resp.status)
+                    return False
+                token = self._extract_session_token(resp.headers)
+                if not token:
+                    logger.error("Sunucu oturum token'ı döndürmedi; akış açılamaz.")
+                    return False
+                self.session_token = token
+                return True
+        except urllib.error.HTTPError as e:
+            logger.warning("Kimlik doğrulama reddedildi (HTTP %s).", e.code)
+            return False
+        except Exception as e:
+            logger.warning("Kimlik doğrulama başarısız: %s", e)
+            return False
+
     def ping_server(self, host_ip: str, port: int = DEFAULT_PORT) -> bool:
         """Check if screen share server is reachable."""
         try:
@@ -268,6 +331,12 @@ class ScreenStreamClient:
             self.is_connected = False
             return False
 
+        # PIN'i tek kullanımlık oturum token'ına çevir (fail-closed: token yoksa
+        # akış açılmaz). Sunucu X-Pardus-PIN'i değil, yalnız token/cookie kabul eder.
+        if self._pin and not self.authenticate(host_ip, port, self._pin):
+            self.is_connected = False
+            return False
+
         self.is_connected = True
         threading.Thread(target=self._receive_loop, daemon=True).start()
         return True
@@ -283,6 +352,11 @@ class ScreenStreamClient:
             # güvenli). Sunucu X-Pardus-PIN'i query'den önce okur.
             if self._pin:
                 req.add_header("X-Pardus-PIN", self._pin)
+            # Native istemci /auth ile aldığı oturum token'ını da taşır
+            # (sunucu yalnız token/cookie doğrular). Cookie tarayıcı uyumu.
+            if self.session_token:
+                req.add_header("X-Pardus-Session", self.session_token)
+                req.add_header("Cookie", f"pardus_session={self.session_token}")
             # Use a socket with timeout for individual reads
             orig_timeout = socket.getdefaulttimeout()
             socket.setdefaulttimeout(5.0)  # 5 second read timeout

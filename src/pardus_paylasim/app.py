@@ -141,7 +141,13 @@ class PardusPaylasimApp:
 
             secret_pin = cli_args.pin
             is_secret = bool(secret_pin)
-            sender = FileSender(address, port)
+            from pardus_paylasim.discovery.transfer import build_peer_tls_context
+            try:
+                ssl_ctx = build_peer_tls_context(address, port)
+            except Exception as e:
+                print(_("Güvenli kanal kurulamadı: {e}").format(e=e))
+                return 1
+            sender = FileSender(address, port, ssl_context=ssl_ctx)
             cancel_event = threading.Event()
             failed = 0
             for path in cli_args.send:

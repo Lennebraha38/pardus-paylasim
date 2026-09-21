@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Düzeltmeler**: rol değişiminde boş sekme koruması, gizli sekmeye kısayol koruması, sınav diyaloğunda gezinme (MessageDialog yanıtında kapanır, içerik butonuna taşındı).
 - **Aktarım sağlığı** (`discovery/health.py`, neural-system'den port): Z-skor anomali detektörü + hız düşüşü/duraksama uyarıları (UI satırı + CLI); bağlantıda kısa retry (mesh parça + gönderici).
 - **WebRTC parçalama**: 64 KB üstü kareler otomatik bölünür/birleşir (16 MB üst sınır).
+- **Jüri denetimi düzeltmeleri** (objektif inceleme sonrası):
+  - GUI dosya alıcısı artık TLS ile dinliyor (fail-closed kablolaması tamamlandı) — önceki alıcı hiç başlamıyordu.
+  - Gizli aktarım şifresi sabit `"123456"` yerine gerçek modal giriş penceresi (yoksa/iptalde transfer reddedilir).
+  - GUI/CLI göndericileri alıcıya TLS client context ile bağlanıyor (düz metne düşme yok; `build_peer_tls_context`).
+  - Native ekran izleme eklendi: `ScreenStreamClient` PIN'i tek kullanımlık `/auth` token'ına çevirir, `/stream`+`/control` token ile açılır (web viewer ile aynı protokol).
+  - Uzaktan kontrol çökmesi: `_server.sessions` → `_server.session_mgr` (ilk girdi olayında AttributeError giderildi).
+  - Alıcıda `name_len` üst sınırı (8 KiB) → sınırsız ad üzerinden bellek DoS kapısı kapandı.
+  - Yeni regresyon testi: `tests/test_core_wiring.py` — TLS alıcı↔gönderici uçtan uca, isim sınırı, kontrol el sıkışma token'ı.
 
 ### Changed
 - Logging: replaced f-string logger calls with %-formatting (security best practice)

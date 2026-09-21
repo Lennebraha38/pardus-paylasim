@@ -90,6 +90,7 @@ class ScreenShareViewHandler:
             pin=client._pin,
             pinned_fingerprint=client.pinned_fingerprint,
             use_tls=client.use_tls,
+            session_token=client.session_token,
         )
         if not control.connect(timeout=timeout):
             control.close()

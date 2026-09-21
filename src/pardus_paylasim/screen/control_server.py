@@ -588,7 +588,7 @@ class ControlChannelServer:
                 continue
 
             # Token'ın scope yetkisini denetle (sadece view ise input olayı drop edilir)
-            session_details = self._server.sessions.get_session_details(token)
+            session_details = self._server.session_mgr.get_session_details(token)
             caps = session_details.get("capabilities", []) if session_details else []
 
             if isinstance(event, cp.ClipboardEvent):

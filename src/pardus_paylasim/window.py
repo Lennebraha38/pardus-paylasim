@@ -76,7 +76,21 @@ class MainWindow:
         self._notifications = deque(maxlen=50)
         self._notif_unread = 0
 
-        self.receiver = FileReceiverServer(self.config.get("download_dir"))
+        _receiver_ssl = None
+        try:
+            from pardus_paylasim.screen import tls_util
+
+            if tls_util.HAS_TLS:
+                _cert, _key, _ = tls_util.get_or_create_device_cert()
+                _receiver_ssl = tls_util.build_server_context(_cert, _key)
+        except Exception as e:
+            logger.warning("Alıcı TLS bağlamı kurulamadı, alıcı kapalı kalır: %s", e)
+
+        # Dosya alıcısı yalnız TLS üstünde başlar (fail-closed). TLS bağlamı
+        # yoksa (cryptography kurulu değil) start() sessizce döner — güvenli.
+        self.receiver = FileReceiverServer(
+            self.config.get("download_dir"), ssl_context=_receiver_ssl
+        )
         self.receiver.on_file_received = self._on_file_received_callback
         self.receiver.get_secret_pin_callback = self._on_get_secret_pin_callback
         self.receiver.on_file_request = self._on_file_request_callback
@@ -2646,8 +2660,13 @@ class MainWindow:
                 ok_count = 0
                 for dev in targets:
                     peer = dev.address
-                    sender = FileSender(dev.address, dev.port)
                     try:
+                        from pardus_paylasim.discovery.transfer import (
+                            build_peer_tls_context,
+                        )
+
+                        ctx = build_peer_tls_context(dev.address, dev.port)
+                        sender = FileSender(dev.address, dev.port, ssl_context=ctx)
                         # Normal modda resume + bütünlük doğrulaması açık;
                         # secret mod zaten parça-parça AEAD ile korunur.
                         sender.send_file(
@@ -2745,7 +2764,19 @@ class MainWindow:
             try:
                 for dev in targets:
                     peer = dev.address
-                    sender = FileSender(dev.address, dev.port)
+                    try:
+                        from pardus_paylasim.discovery.transfer import (
+                            build_peer_tls_context,
+                        )
+
+                        ctx = build_peer_tls_context(dev.address, dev.port)
+                    except Exception as e:
+                        GLib.idle_add(
+                            self._show_error,
+                            f"{dev.name}: güvenli kanal kurulamadı:\n{e}",
+                        )
+                        continue
+                    sender = FileSender(dev.address, dev.port, ssl_context=ctx)
                     for path in file_paths:
                         if cancel_event.is_set():
                             break
@@ -2831,8 +2862,13 @@ class MainWindow:
                     # tekli/çoklu gönderimde yapılır.
                     for dev in targets:
                         peer = dev.address
-                        sender = FileSender(dev.address, dev.port)
                         try:
+                            from pardus_paylasim.discovery.transfer import (
+                                build_peer_tls_context,
+                            )
+
+                            ctx = build_peer_tls_context(dev.address, dev.port)
+                            sender = FileSender(dev.address, dev.port, ssl_context=ctx)
                             sender.send_folder(
                                 folder_path, pin, stats_callback=on_stats,
                                 resume=not is_secret, verify_hash=not is_secret,
@@ -3128,9 +3164,59 @@ class MainWindow:
         send_notification(app, title, body, notification_id=notification_id, priority=priority)
 
     def _on_get_secret_pin_callback(self, filename):
-        # Normalde modal dialog açıp bekletmek gerekir
-        # Ancak basit test için "123456" veya sabit bir pin kullanılabilir
-        return "123456"
+        """Gizli aktarım için şifreyi kullanıcıya sorar (gerçek modal).
+
+        Alıcı thread'inin içinden çağrılır (GTK ana thread'i değil); diyalog
+        `GLib.idle_add` ile ana döngüye taşınır, sonuç Event/Queue ile beklenir.
+        Vazgeçilir / zaman aşarsa / GTK yoksa None döner → transfer reddedilir.
+        """
+        import queue
+
+        result_q = queue.Queue(maxsize=1)
+
+        def ask_pin():
+            if not HAS_GTK or getattr(self, "win", None) is None:
+                result_q.put(None)
+                return False
+            try:
+                dialog = Adw.MessageDialog(
+                    transient_for=self.win,
+                    heading=_("Gizli aktarım şifresi"),
+                    body=_(
+                        "'{name}' dosyası şifreli iner.\n"
+                        "Göndericinin ekranında gösterdiği şifreyi girin."
+                    ).format(name=filename),
+                )
+            except Exception as e:
+                logger.warning("Şifre diyaloğu açılamadı: %s", e)
+                result_q.put(None)
+                return False
+            entry = Gtk.PasswordEntry(show_peek_icon=True)
+            dialog.set_extra_child(entry)
+            dialog.add_response("cancel", _("Reddet"))
+            dialog.add_response("ok", _("Gönder"))
+            dialog.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+            dialog.set_default_response("ok")
+
+            def on_resp(_dlg, resp):
+                if resp == "ok":
+                    result_q.put(entry.get_text().strip() or None)
+                else:
+                    result_q.put(None)
+
+            dialog.connect("response", on_resp)
+            entry.connect("activate", lambda _w: dialog.respond("ok"))
+            dialog.present()
+            return False  # idle_add tek-atım
+
+        if not HAS_GTK or getattr(self, "win", None) is None:
+            return None
+        GLib.idle_add(ask_pin)
+        try:
+            return result_q.get(timeout=300)
+        except queue.Empty:
+            logger.warning("Şifre için bekleme aşıldı; aktarım reddedildi.")
+            return None
 
     def _on_share_screen_to_device(self, btn):
         if self._selected_device and self._selected_device.port > 0:

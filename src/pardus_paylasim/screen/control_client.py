@@ -122,11 +122,19 @@ def generate_ws_key() -> str:
     return base64.b64encode(secrets.token_bytes(16)).decode("ascii")
 
 
-def build_handshake_request(host: str, port: int, ws_key: str, pin: str = "") -> bytes:
+def build_handshake_request(
+    host: str,
+    port: int,
+    ws_key: str,
+    pin: str = "",
+    session_token: str = "",
+) -> bytes:
     """`/control` WebSocket upgrade GET isteğini kur (istemci→sunucu).
 
     PIN URL'e değil `X-Pardus-PIN` header'ına konur (access-log/proxy sızıntısı
-    yok — görüntüleme yoluyla aynı). Saf: soket gerektirmez → test edilebilir.
+    yok — görüntüleme yoluyla aynı). Native istemci /auth ile aldığı oturum
+    token'ını `X-Pardus-Session` (+ Cookie) ile taşır; sunucu yalnız tokenda
+    doğrular. Saf: soket gerektirmez → test edilebilir.
     """
     lines = [
         "GET /control HTTP/1.1",
@@ -138,6 +146,9 @@ def build_handshake_request(host: str, port: int, ws_key: str, pin: str = "") ->
     ]
     if pin:
         lines.append(f"X-Pardus-PIN: {pin}")
+    if session_token:
+        lines.append(f"X-Pardus-Session: {session_token}")
+        lines.append(f"Cookie: pardus_session={session_token}")
     lines.append("")  # başlık bloğu sonu
     lines.append("")  # boş satır (CRLFCRLF)
     return "\r\n".join(lines).encode("ascii")
@@ -334,11 +345,13 @@ class ControlChannelClient:
         pinned_fingerprint: Optional[str] = None,
         use_tls: Optional[bool] = None,
         require_tls: Optional[bool] = None,
+        session_token: Optional[str] = None,
     ) -> None:
         self.host = host
         self.port = port
         self.device_id = None  # Ekstra device_id, ileride atanabilir
         self._pin = pin
+        self._auth_token = session_token  # /auth ile alınan oturum token'ı
         self.pinned_fingerprint = pinned_fingerprint
         # use_tls None iken TLS önce denenir, başarısızsa (require_tls kapalıysa)
         # düz TCP'ye düşülür. Görüntüleme istemcisi zaten şemayı çözmüşse onu
@@ -489,7 +502,11 @@ class ControlChannelClient:
     def _do_handshake(self) -> bool:
         """RFC6455 istemci el sıkışması: GET yaz → 101 + accept doğrula."""
         ws_key = generate_ws_key()
-        self._sock.sendall(build_handshake_request(self.host, self.port, ws_key, self._pin))
+        self._sock.sendall(
+            build_handshake_request(
+                self.host, self.port, ws_key, self._pin, self._auth_token or ""
+            )
+        )
 
         # Yanıt başlıklarını CRLFCRLF'e dek satır satır oku.
         header_bytes = b""
