@@ -1,8 +1,12 @@
 """
 P2P Mesh Ağı — Parça-Parça (Fragmented) Dosya Transferi.
 
-Bir cihaz çevrimdışıysa veya doğrudan erişilemiyorsa, dosya parçaları
-mesh ağındaki ara (relay) cihazlar üzerinden yönlendirilir.
+Doğrudan erişimin başarısız olduğu cihazlara dosya parçaları, mesh ağındaki
+ara (relay) cihazlar üzerinden yönlendirilir. Gönderici önce alıcıya doğrudan
+bağlanmayı dener; bağlanamazsa parçayı komşu bir düğüme iletir ve o düğüm de
+(parçanın hedefi kendisi değilse) aynı parçayı kendi komşularına iletir.
+İletimler `MAX_RELAY_HOPS` (varsayılan 3) adımla sınırlanır; döngüler köken
+eş hariç tutularak ve (transfer, parça, kaynak) tekil anahtarıyla önlenir.
 
 Her cihaz hem istemci hem sunucu hem de röle olarak çalışır.
 """
@@ -143,6 +147,7 @@ class MeshNode:
         self._accept_thread: Optional[threading.Thread] = None
         self._discovery = None
         self.protocol = MeshProtocol()
+        self._relay_seen: Set[tuple] = set()  # (tid, type, chunk, source) tekrar-iletim önleme
 
     def start(self):
         if self._running:
@@ -279,10 +284,23 @@ class MeshNode:
             FRAG_DATA, tid, idx, total, data, self.peer_id, hop, chash
         )
         with self._lock:
-            if target not in self.peers:
+            peer = self.peers.get(target)
+            relays = [
+                p for p in self.peers.values()
+                if p.is_online and p.id != target
+            ]
+        delivered = False
+        if peer is not None:
+            delivered = self._send_raw(peer.ip, peer.port, packed)
+        if delivered or hop >= MAX_RELAY_HOPS:
+            return
+        # Doğrudan ulaşılamadı: parçayı komşu bir düğüm üzerinden ile.
+        relay_payload = self.protocol.pack_fragment(
+            FRAG_DATA, tid, idx, total, data, self.peer_id, hop + 1, chash
+        )
+        for relay in relays:
+            if self._send_raw(relay.ip, relay.port, relay_payload):
                 return
-            peer = self.peers[target]
-        self._send_raw(peer.ip, peer.port, packed)
 
     def _send_raw(self, ip: str, port: int, data: bytes) -> bool:
         # Kısa retry: anlık takılmalar tolere edilir, ölü eş hızlı geçilir.
@@ -331,7 +349,7 @@ class MeshNode:
                 return
             frag = self.protocol.unpack_fragment(raw)
             if frag:
-                self._process(frag)
+                self._process(frag, addr[0])
             else:
                 try:
                     msg = json.loads(raw.decode("utf-8"))
@@ -349,32 +367,70 @@ class MeshNode:
         finally:
             conn.close()
 
-    def _process(self, frag: Dict):
+    def _process(self, frag: Dict, source_ip: Optional[str] = None):
         t = frag["type"]
         tid = frag["transfer_id"]
         if t == FRAG_DATA:
-            self._handle_data(frag)
+            self._handle_data(frag, source_ip)
         elif t == FRAG_ACK:
             logger.debug("ACK: %s chunk %d", tid, frag["chunk_index"])
 
-    def _handle_data(self, frag: Dict):
+    def _relay_data(self, frag: Dict, source_ip: Optional[str] = None):
+        """Bu düğüme ait olmayan parçayı komşulara iletir (ara düğüm rolü).
+
+        Döngüler `_relay_seen` tekillaştırması ve kaynak dışlama ile önlenir.
+        """
+        key = (
+            frag["transfer_id"],
+            frag["type"],
+            frag["chunk_index"],
+            frag["source_peer_id"],
+        )
+        with self._lock:
+            if key in self._relay_seen:
+                return
+            if len(self._relay_seen) > 4096:
+                self._relay_seen.clear()
+            self._relay_seen.add(key)
+            targets = [
+                p for p in self.peers.values()
+                if p.is_online and p.id != frag["source_peer_id"]
+            ]
+        relay_payload = self.protocol.pack_fragment(
+            frag["type"],
+            frag["transfer_id"],
+            frag["chunk_index"],
+            frag["total_chunks"],
+            frag["data"],
+            frag["source_peer_id"],
+            frag["hop_count"] + 1,
+            frag["file_hash"],
+        )
+        for peer in targets:
+            self._send_raw(peer.ip, peer.port, relay_payload)
+
+    def _handle_data(self, frag: Dict, source_ip: Optional[str] = None):
         tid = frag["transfer_id"]
         idx = frag["chunk_index"]
         data = frag["data"]
         with self._lock:
-            if tid not in self.transfers:
-                return
-            job = self.transfers[tid]
+            job = self.transfers.get(tid)
+        if job is None:
+            # Hedef biz değiliz; hop limit varsa parçayı komşulara ilet.
+            if frag["hop_count"] < MAX_RELAY_HOPS:
+                self._relay_data(frag, source_ip)
+            return
         chunk_hash = hashlib.sha256(data).hexdigest()[:32]
         if chunk_hash != frag["file_hash"]:
             logger.warning("Hash mismatch chunk %d", idx)
             return
         with self._lock:
             job.received_chunks[idx] = data
-            if len(job.received_chunks) == job.total_chunks:
+            complete = len(job.received_chunks) == job.total_chunks
+            if complete:
                 job.status = "complete"
                 all_data = b"".join(
                     job.received_chunks[k] for k in sorted(job.received_chunks)
                 )
-                if self.on_transfer_complete:
-                    self.on_transfer_complete(tid, job.file_name, all_data)
+        if complete and self.on_transfer_complete:
+            self.on_transfer_complete(tid, job.file_name, all_data)

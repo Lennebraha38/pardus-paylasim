@@ -1,6 +1,8 @@
 """
 Sensitive Text & Clipboard Redactor for Pardus Güvenli Paylaşım.
-Detects and redacts TC Kimlik No, Credit Cards, IBANs, Emails, Phone Numbers, Passwords, API Keys.
+Detects and redacts TC Kimlik No (Mod-10 doğrulamalı), Credit Cards (Luhn
+doğrulamalı), IBANs (Mod-97 doğrulamalı), Emails, Phone Numbers, Passwords,
+API Keys.
 """
 
 import re
@@ -10,7 +12,7 @@ from typing import List
 
 @dataclass
 class SensitiveMatch:
-    match_type: str  # 'TCKN', 'KREDİ_KARTI', 'IBAN', 'EPOSTA', 'TELEFON', 'API_KEY'
+    match_type: str  # 'TCKN', 'KREDİ_KARTI', 'IBAN', 'EPOSTA', 'TELEFON', 'PASSWORD', 'API_KEY'
     original: str
     masked: str
     start: int
@@ -22,7 +24,7 @@ class SensitiveMasker:
 
     PATTERNS = [
         ("TCKN", r"\b[1-9]\d{10}\b", lambda m: m[:3] + "*****" + m[-3:]),
-        # Credit card: require 16-digit format with Luhn-like structure and typical separators
+        # Credit card: require 16-digit format with typical separators + Luhn check
         (
             "KREDİ_KARTI",
             r"\b[3456]\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b",
@@ -46,6 +48,12 @@ class SensitiveMasker:
             r"(?<!\d)(?:\+?90\s*[-.]?\s*)?\(?\s*5\d{2}\s*\)?\s*[-.]?\s*\d{3}\s*[-.]?\s*\d{2}\s*[-.]?\s*\d{2}(?!\d)",
             lambda m: "+90 5** *** ** **",
         ),
+        # Password: only when an explicit label introduces the secret
+        (
+            "PASSWORD",
+            r"\b(?:password|passwd|şifre|sifre|parola|token|apikey)\s*[:=]\s*[^\s,:;]+",
+            lambda m: re.split(r"[:=]", m, maxsplit=1)[0] + ": ********",
+        ),
         # API key: stricter prefixes, require common key patterns
         (
             "API_KEY",
@@ -60,8 +68,11 @@ class SensitiveMasker:
         for label, pattern, mask_func in cls.PATTERNS:
             for match in re.finditer(pattern, text, re.IGNORECASE):
                 val = match.group(0)
-                # Validation for TCKN checksum algorithm (optional enhancement)
                 if label == "TCKN" and not cls._validate_tckn(val):
+                    continue
+                if label == "KREDİ_KARTI" and not cls._validate_luhn(val):
+                    continue
+                if label == "IBAN" and not cls._validate_iban(val):
                     continue
                 masked = mask_func(val)
                 matches.append(
@@ -93,3 +104,27 @@ class SensitiveMasker:
         d10 = ((sum(digits[0:9:2]) * 7) - sum(digits[1:8:2])) % 10
         d11 = sum(digits[:10]) % 10
         return digits[9] == d10 and digits[10] == d11
+
+    @staticmethod
+    def _validate_luhn(card: str) -> bool:
+        digits = [int(c) for c in card if c.isdigit()]
+        if len(digits) < 13 or len(digits) > 19:
+            return False
+        total = 0
+        for i, d in enumerate(reversed(digits)):
+            if i % 2 == 1:
+                d *= 2
+                if d > 9:
+                    d -= 9
+            total += d
+        return total % 10 == 0
+
+    @staticmethod
+    def _validate_iban(iban: str) -> bool:
+        s = iban.replace(" ", "").replace("-", "").upper()
+        if not re.fullmatch(r"[A-Z]{2}\d{2}[A-Z0-9]{11,30}", s):
+            return False
+        # Move the 4 initial chars (country+check) to the end, letters -> 10..35
+        s = s[4:] + s[:4]
+        num = int("".join(str(ord(c) - 55) if c.isalpha() else c for c in s))
+        return num % 97 == 1

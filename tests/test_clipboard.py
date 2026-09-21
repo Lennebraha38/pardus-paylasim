@@ -21,9 +21,32 @@ class TestClipboardMasker(unittest.TestCase):
         self.assertNotIn("tevfik@example.com", masked)
 
     def test_iban_masking(self):
-        sample = "TR33 0006 1005 1234 5678 9012 34 IBAN numarası"
+        sample = "TR33 0006 1005 1978 6457 8413 26 IBAN numarası"
         masked = SensitiveMasker.mask_text(sample)
-        self.assertIn("TR33 **** **** **** **** 34", masked)
+        self.assertIn("TR33 **** **** **** **** 26", masked)
+
+    def test_invalid_iban_not_masked(self):
+        """Mod-97 başarısız IBAN maskelemeye tökezlememeli (doğrulama gerçek)."""
+        sample = "TR33 0006 1005 1234 5678 9012 34 (hatalı çek hanesi)"
+        masked = SensitiveMasker.mask_text(sample)
+        self.assertIn("TR33 0006 1005 1234 5678 9012 34", masked)
+
+    def test_valid_card_masked_with_luhn(self):
+        sample = "Kart: 4111-1111-1111-1111 son kullanma 12/29"
+        masked = SensitiveMasker.mask_text(sample)
+        self.assertIn("4111 **** **** 1111", masked)
+
+    def test_invalid_card_not_masked(self):
+        """Luhn başarısız kart numarası maskelenmemeli."""
+        sample = "Kart: 1234 5678 9012 3456"
+        masked = SensitiveMasker.mask_text(sample)
+        self.assertIn("1234 5678 9012 3456", masked)
+
+    def test_password_masked(self):
+        sample = "Şifre: Sup3rGizli1234 giriş için."
+        masked = SensitiveMasker.mask_text(sample)
+        self.assertIn("Şifre: ********", masked)
+        self.assertNotIn("Sup3rGizli1234", masked)
 
 
 if __name__ == "__main__":

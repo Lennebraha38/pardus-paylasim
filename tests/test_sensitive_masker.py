@@ -12,8 +12,8 @@ test_cases = [
     "Invalid TCKN: 12345678901",
     # Valid Credit Card
     "Credit Card: 4111-1111-1111-1111",
-    # Valid IBAN
-    "My IBAN is TR12 3456 7890 1234 5678 9012 34",
+    # Valid IBAN (Mod-97)
+    "My IBAN is TR33 0006 1005 1978 6457 8413 26",
     # Email
     "Contact me at user@example.com",
     # Phone

@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uzaktan kontrol çökmesi: `_server.sessions` → `_server.session_mgr` (ilk girdi olayında AttributeError giderildi).
   - Alıcıda `name_len` üst sınırı (8 KiB) → sınırsız ad üzerinden bellek DoS kapısı kapandı.
   - Yeni regresyon testi: `tests/test_core_wiring.py` — TLS alıcı↔gönderici uçtan uca, isim sınırı, kontrol el sıkışma token'ı.
+  - Maskeleyici gerçek doğrulayıcı: kartlar Luhn, IBAN Mod-97 ile doğrulanıyor; `Password/Şifre/Token:` etiketleri maskeleniyor.
+  - **Mesh relay gerçekten çalışıyor**: gönderici hedefe doğrudan ulaşamazsa parçayı komşu düğümden iletir (hop ≤ `MAX_RELAY_HOPS`, tekrar-iletim yinelenmez); yeni test `tests/test_mesh_relay.py` (A → B → C zinciri).
 
 ### Changed
 - Logging: replaced f-string logger calls with %-formatting (security best practice)

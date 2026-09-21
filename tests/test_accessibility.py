@@ -95,10 +95,11 @@ class TestSensitiveMaskerA11y:
         """IBAN maskelendiğinde başlık ve son hane okunabilir olmalı."""
         from pardus_paylasim.clipboard.sensitive_masker import SensitiveMasker
 
-        text = "TR12 3456 7890 1234 5678 9012 34"
+        text = "TR33 0006 1005 1978 6457 8413 26"
         masked = SensitiveMasker.mask_text(text)
-        assert masked.startswith("TR12 ")
-        assert masked.endswith("34")
+        assert masked.startswith("TR33 ")
+        assert masked.endswith("26")
+        assert masked != text
 
     def test_scan_text_finds_tckn(self):
         """Geçerli TCKN taranabilmeli."""
