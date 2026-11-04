@@ -3,10 +3,9 @@ Ağ yardımcı işlevleri.
 """
 
 import socket
-from typing import Optional
 
 
-def recv_exact(conn: socket.socket, n: int) -> Optional[bytes]:
+def recv_exact(conn: socket.socket, n: int) -> bytes | None:
     """Tam n bayt okur; bağlantı erken kapanırsa None döner."""
     buf = bytearray()
     while len(buf) < n:

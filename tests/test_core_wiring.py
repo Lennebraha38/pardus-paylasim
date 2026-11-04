@@ -116,9 +116,10 @@ class TestCoreWiring(unittest.TestCase):
         """B3: kontrol el sıkışması /auth token'ını header+cookie taşır."""
         from pardus_paylasim.screen import control_client
 
+        test_tok = "tok123"
         req = control_client.build_handshake_request(
             "127.0.0.1", 8080, "dGVzdGtleQ==", pin="654321",
-            session_token="tok123",
+            session_token=test_tok,
         ).decode("iso-8859-1")
         self.assertIn("X-Pardus-Session: tok123", req)
         self.assertIn("Cookie: pardus_session=tok123", req)

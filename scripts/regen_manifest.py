@@ -16,7 +16,6 @@ Exit 0 only when Missing == Mismatch == Unlisted == 0.
 from __future__ import annotations
 
 import hashlib
-import os
 import sys
 import zipfile
 from pathlib import Path

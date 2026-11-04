@@ -133,7 +133,7 @@ def _read_os_release_pretty_name() -> str:
     soyulur. Okuma hatası logla + "" dön (çağıran fallback'e geçer).
     """
     try:
-        with open("/etc/os-release", "r", encoding="utf-8") as fh:
+        with open("/etc/os-release", encoding="utf-8") as fh:
             for line in fh:
                 if line.startswith("PRETTY_NAME="):
                     value = line.split("=", 1)[1].strip()

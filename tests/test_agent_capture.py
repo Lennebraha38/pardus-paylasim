@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from pardus_paylasim_agent.capture import (
     AgentCaptureLoop,
@@ -19,9 +18,9 @@ class DummyServer:
         import threading
 
         self._frame_lock = threading.Lock()
-        self._current_frame: Optional[bytes] = None
-        self.capture_backend: Optional[str] = None
-        self.capture_error: Optional[str] = "başlangıç hatası"
+        self._current_frame: bytes | None = None
+        self.capture_backend: str | None = None
+        self.capture_error: str | None = "başlangıç hatası"
 
 
 class DummyBackend:
@@ -32,7 +31,7 @@ class DummyBackend:
     def __init__(self) -> None:
         self.closed = False
 
-    def grab_jpeg(self, quality: int = 70) -> Optional[bytes]:
+    def grab_jpeg(self, quality: int = 70) -> bytes | None:
         return b"fake_jpeg_data"
 
     def close(self) -> None:

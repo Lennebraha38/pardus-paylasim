@@ -1,18 +1,30 @@
 import os
 import socket
 import subprocess
+import sys
+import tempfile
 import time
+
+import pytest
+
+pytestmark = pytest.mark.docker
 
 
 def run_cmd(cmd):
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    """Kabuk kullanmadan komutu argüman listesi olarak çalıştır."""
+    env = os.environ.copy()
+    repo_src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+    env["PYTHONPATH"] = f"{repo_src}:{env.get('PYTHONPATH', '')}"
+    if cmd and cmd[0] == "pardus-paylasim":
+        cmd = [sys.executable, "-m", "pardus_paylasim"] + cmd[1:]
+    return subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
 
 
 def test_1_cli_masking():
     print("[TURING TEST] 1. Hassas Veri Maskeleme")
-    # Gerçek bir kredi kartı maskeleme paterni testi
-    text = "Selam, deneme amacli kartım: 4502 1234 5678 9012 ve gizli bilgi."
-    res = run_cmd(f'pardus-paylasim --mask "{text}"')
+    # Gerçek bir kredi kartı maskeleme paterni testi (Luhn uyumlu)
+    text = "Selam, deneme amacli kartım: 4111 1111 1111 1111 ve gizli bilgi."
+    res = run_cmd(["pardus-paylasim", "--mask", text])
     out = res.stdout.strip()
     # Maskeleme fonksiyonu ya **** kullanıyor ya da sansürlüyor.
     if "*" in out:
@@ -21,19 +33,22 @@ def test_1_cli_masking():
     else:
         print(" -> FAILED: Maskeleme beklenen sonucu vermedi.")
         print("ÇIKTI:", out)
-        return
+        pytest.fail(f"Maskeleme çıktısında '*' bulunamadı: {out}")
 
 
 def test_2_metadata_cleaner_mock_pdf():
     print("[TURING TEST] 2. Metadata Temizleyici Engine")
-    pdf_path = "/tmp/test_doc.pdf"
-    clean_path = "/tmp/test_doc_clean.pdf"
+    tmpdir = tempfile.mkdtemp(prefix="pardus_turing_")
+    pdf_path = os.path.join(tmpdir, "test_doc.pdf")
+    clean_path = os.path.join(tmpdir, "test_doc_clean.pdf")
     with open(pdf_path, "w") as f:
         f.write(
             "%PDF-1.4\n%\n1 0 obj\n<<\n/Creator (Canva)\n/Author (Hacker)\n>>\nendobj\ntrailer\n<<\n/Info 1 0 R\n>>\n%%EOF"
         )
 
-    res = run_cmd(f"pardus-paylasim --clean {pdf_path} --out {clean_path}")
+    res = run_cmd(
+        ["pardus-paylasim", "--clean", pdf_path, "--out", clean_path]
+    )
     if res.returncode == 0 and os.path.exists(clean_path):
         print(" -> PASSED: Metadata temizleme (CLI ve mat2 tabanlı) sorunsuz tamamlandı.")
     else:

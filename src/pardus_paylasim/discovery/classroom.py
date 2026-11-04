@@ -11,7 +11,7 @@ istemci kipiyle izlenir.
 
 import logging
 import threading
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ ROLE_LABELS = {
 
 
 def broadcast_text(devices, text: str, timeout: float = 5.0,
-                   progress_cb: Optional[Callable[[int, int], None]] = None
-                   ) -> Dict[str, bool]:
+                   progress_cb: Callable[[int, int], None] | None = None
+                   ) -> dict[str, bool]:
     """Metni cihazlara paralel gönderir; {address: ok} döndürür.
 
     Her cihaz bağımsız iş parçacığında denenir; biri takılsa diğerleri
@@ -42,7 +42,7 @@ def broadcast_text(devices, text: str, timeout: float = 5.0,
         raise ValueError("Boş mesaj yayınlanamaz.")
     targets = [d for d in (devices or [])
                if getattr(d, "address", None)]
-    results: Dict[str, bool] = {}
+    results: dict[str, bool] = {}
     lock = threading.Lock()
     done = [0]
 
@@ -53,7 +53,7 @@ def broadcast_text(devices, text: str, timeout: float = 5.0,
                 service_ports = getattr(dev, "service_ports", None) or {}
                 port = int(service_ports.get("clip_port", 8901))
             except (TypeError, ValueError):
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
             ClipboardSyncClient(dev.address, port).send_text(
                 text, timeout=timeout)
             ok = True
@@ -67,7 +67,7 @@ def broadcast_text(devices, text: str, timeout: float = 5.0,
                 try:
                     progress_cb(done[0], len(targets))
                 except Exception:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
 
     threads = [threading.Thread(target=_one, args=(d,), daemon=True)
                for d in targets]
@@ -81,12 +81,12 @@ def broadcast_text(devices, text: str, timeout: float = 5.0,
     return results
 
 
-def summarize_broadcast(results: Dict[str, bool]) -> str:
+def summarize_broadcast(results: dict[str, bool]) -> str:
     ok = sum(1 for v in results.values() if v)
     return f"{ok}/{len(results)} cihaza ulaştı"
 
 
-def boards_only(devices) -> List:
+def boards_only(devices) -> list:
     """Tahta olabilecek cihazlar (öğretmenin kendisi hariç tutulmaz;
     çağıran kendi IP'sini eler)."""
     return [d for d in (devices or []) if getattr(d, "address", None)]

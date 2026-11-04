@@ -18,7 +18,6 @@ from __future__ import annotations
 import logging
 import shutil
 from dataclasses import dataclass
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +64,7 @@ class AgentCapabilities:
 
     def summary(self) -> str:
         """İnsan okunur yetenek özeti."""
-        items: Tuple[str, ...] = tuple(
+        items: tuple[str, ...] = tuple(
             label
             for flag, label in (
                 (self.can_capture, "capture(mss+PIL)"),

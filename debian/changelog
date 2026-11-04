@@ -1,0 +1,8 @@
+pardus-paylasim (1.1.0) stable; urgency=medium
+
+  * Release 1.1.0: TEKNOFEST Pardus Geliştirme Kategorisi sürümü.
+  * GTK 4.8 / Pardus 23 uyumluluğu ve GTK 4.10 desteği.
+  * Uçtan uca TLS parmak izi doğrulama ve birleşik güven deposu.
+  * Web-viewer CSP uyumluluğu ve RFC 5987 dosya aktarımı.
+
+ -- Lennebraha38 <farukhilmi12345@gmail.com>  Wed, 04 Nov 2026 12:00:00 +0300

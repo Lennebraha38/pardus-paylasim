@@ -8,8 +8,6 @@ Erişilebilirlik (a11y) ve kapsayıcılık testleri:
 """
 
 import os
-import pytest
-
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 WINDOW_FILE = os.path.join(

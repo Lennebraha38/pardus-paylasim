@@ -7,7 +7,6 @@ API Keys.
 
 import re
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass
@@ -63,8 +62,8 @@ class SensitiveMasker:
     ]
 
     @classmethod
-    def scan_text(cls, text: str) -> List[SensitiveMatch]:
-        matches: List[SensitiveMatch] = []
+    def scan_text(cls, text: str) -> list[SensitiveMatch]:
+        matches: list[SensitiveMatch] = []
         for label, pattern, mask_func in cls.PATTERNS:
             for match in re.finditer(pattern, text, re.IGNORECASE):
                 val = match.group(0)

@@ -3,7 +3,6 @@
 import os
 import sys
 import unittest
-from collections import deque
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
@@ -25,8 +24,9 @@ class TestManualDevice(unittest.TestCase):
         self.assertIn("192.168.1.50", mgr.devices)
 
     def test_upsert_overwrites_same_ip(self):
-        from pardus_paylasim.discovery.device_manager import DeviceManager
         import threading
+
+        from pardus_paylasim.discovery.device_manager import DeviceManager
         mgr = DeviceManager.__new__(DeviceManager)
         mgr._lock = threading.Lock()
         mgr.devices = {}
@@ -37,8 +37,9 @@ class TestManualDevice(unittest.TestCase):
         self.assertEqual(mgr.devices["192.168.1.50"].port, 8901)
 
     def test_empty_name_falls_back_to_ip(self):
-        from pardus_paylasim.discovery.device_manager import DeviceManager
         import threading
+
+        from pardus_paylasim.discovery.device_manager import DeviceManager
         mgr = DeviceManager.__new__(DeviceManager)
         mgr._lock = threading.Lock()
         mgr.devices = {}

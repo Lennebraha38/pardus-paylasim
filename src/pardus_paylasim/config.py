@@ -38,7 +38,7 @@ def _try_load_gsettings():
 
         gi.require_version("Gio", "2.0")
         from gi.repository import Gio, GLib
-    except Exception as e:
+    except Exception:
         return None
     try:
         source = Gio.SettingsSchemaSource.get_default()
@@ -70,7 +70,7 @@ class AppConfig:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(AppConfig, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._settings = _try_load_gsettings()
             cls._instance.load()
         return cls._instance
@@ -104,7 +104,7 @@ class AppConfig:
     def _load_from_json(self):
         if os.path.exists(self._config_path):
             try:
-                with open(self._config_path, "r", encoding="utf-8") as f:
+                with open(self._config_path, encoding="utf-8") as f:
                     loaded = json.load(f)
                     self.data.update(loaded)
             except Exception as e:

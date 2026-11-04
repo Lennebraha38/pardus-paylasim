@@ -13,8 +13,8 @@ import logging
 import math
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Callable, Optional, Tuple, Type
+from collections.abc import Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -154,8 +154,8 @@ class AnomalyDetector:
 
 def retry(max_attempts: int = 3, initial_delay: float = 0.2,
           backoff_factor: float = 2.0, max_delay: float = 5.0,
-          exceptions: Tuple[Type[Exception], ...] = (OSError,),
-          on_retry: Optional[Callable] = None):
+          exceptions: tuple[type[Exception], ...] = (OSError,),
+          on_retry: Callable | None = None):
     """Üstel geri çekilmeli yeniden deneme (neural-system core/retry karşılığı).
 
     Varsayılanlar LAN için tutumlu tutuldu: en fazla ~0.6 sn ekler.
@@ -176,7 +176,7 @@ def retry(max_attempts: int = 3, initial_delay: float = 0.2,
                             try:
                                 on_retry(attempt, e, delay)
                             except Exception:
-                                pass
+                                logger.debug("istisna yutuldu", exc_info=True)
                         logger.debug("%s deneme %d/%d başarısız: %s",
                                      func.__name__, attempt, max_attempts, e)
                         time.sleep(delay)
@@ -207,9 +207,9 @@ class TransferHealth:
         self._stall_warned = False
         self._slow_warned = False
         # O an görünen uyarı (toparlanınca None). UI satıra ekler.
-        self.active_warning: Optional[str] = None
+        self.active_warning: str | None = None
 
-    def check(self, sent: int, total: int, elapsed: float) -> Optional[str]:
+    def check(self, sent: int, total: int, elapsed: float) -> str | None:
         if total <= 0 or sent >= total:
             return None
         dt = elapsed - self._last_elapsed

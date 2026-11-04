@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 
 import mss
@@ -13,6 +14,8 @@ except ImportError:
     sc = None
 
 import threading
+
+logger = logging.getLogger(__name__)
 
 
 class ScreenCaptureTrack(VideoStreamTrack):
@@ -56,9 +59,9 @@ class ScreenCaptureTrack(VideoStreamTrack):
                 with self._frame_lock:
                     self._frame_buffer = frame
 
-            except Exception as e:
+            except Exception:
                 # Capture hatalarını yut ve döngüyü sürdür
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
 
             elapsed = time.time() - start_time
             sleep_time = self._target_delay - elapsed
@@ -101,7 +104,7 @@ class AudioCaptureTrack(AudioStreamTrack):
             self.recorder = sc.default_speaker().recorder(samplerate=48000, channels=2)
             self.recorder.__enter__()  # Başlat
         except Exception as e:
-            raise RuntimeError(f"Ses yakalama cihazı başlatılamadı: {e}")
+            raise RuntimeError(f"Ses yakalama cihazı başlatılamadı: {e}") from e
 
     async def recv(self):
         pts, time_base = await self.next_timestamp()

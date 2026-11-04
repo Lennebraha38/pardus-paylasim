@@ -56,7 +56,9 @@ class TestBroadcast(unittest.TestCase):
 
     def test_roles_defined(self):
         from pardus_paylasim.discovery.classroom import (
-            ROLES, ROLE_BOARD, ROLE_TEACHER,
+            ROLE_BOARD,
+            ROLE_TEACHER,
+            ROLES,
         )
         self.assertIn(ROLE_TEACHER, ROLES)
         self.assertIn(ROLE_BOARD, ROLES)

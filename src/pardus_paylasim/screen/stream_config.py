@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import Optional, Tuple
 
 # Değer sınırları. GSettings şeması zaten kısıtlar; JSON fallback / bozuk veri
 # için kod tarafında da güvenle kırpılır (fail-safe, çökme değil).
@@ -30,7 +29,7 @@ _NATIVE_TOKENS = frozenset({"", "native", "auto"})
 _RESOLUTION_RE = re.compile(r"^\s*(\d+)\s*[xX]\s*(\d+)\s*$")
 
 
-def parse_jpeg_dimensions(data: bytes) -> Optional[Tuple[int, int]]:
+def parse_jpeg_dimensions(data: bytes) -> tuple[int, int] | None:
     """JPEG baytlarından `(width, height)` çıkar (SOF marker). Bulunamazsa None.
 
     Native (ölçeksiz) modda `capture_resolution`/`/info` dürüst olsun diye ilk
@@ -88,8 +87,8 @@ class StreamConfig:
     - `adaptive`: backpressure altında kalite/fps otomatik düşürme (B1 stretch).
     """
 
-    width: Optional[int] = None
-    height: Optional[int] = None
+    width: int | None = None
+    height: int | None = None
     jpeg_quality: int = DEFAULT_JPEG_QUALITY
     framerate: int = DEFAULT_FRAMERATE
     port: int = DEFAULT_PORT
@@ -117,7 +116,7 @@ class StreamConfig:
         object.__setattr__(self, "height", self._sanitize_dim(self.height))
 
     @staticmethod
-    def _sanitize_dim(value: Optional[int]) -> Optional[int]:
+    def _sanitize_dim(value: int | None) -> int | None:
         if value is None:
             return None
         try:
@@ -143,11 +142,11 @@ class StreamConfig:
         """Kare döngü uyku aralığı (saniye) = 1/framerate."""
         return 1.0 / self.framerate
 
-    def with_quality(self, quality: int) -> "StreamConfig":
+    def with_quality(self, quality: int) -> StreamConfig:
         """Yeni kaliteyle kopya (adaptif düşürme için)."""
         return replace(self, jpeg_quality=quality)
 
-    def with_framerate(self, framerate: int) -> "StreamConfig":
+    def with_framerate(self, framerate: int) -> StreamConfig:
         """Yeni fps'le kopya (adaptif düşürme için)."""
         return replace(self, framerate=framerate)
 
@@ -168,7 +167,7 @@ class StreamConfig:
         return f"jpegenc quality={self.jpeg_quality}"
 
     @staticmethod
-    def parse_resolution(text: object) -> Tuple[Optional[int], Optional[int]]:
+    def parse_resolution(text: object) -> tuple[int | None, int | None]:
         """`"native"`/`"1920x1080"` → `(w, h)`. Tanınmayan → `(None, None)`."""
         if text is None:
             return (None, None)
@@ -184,7 +183,7 @@ class StreamConfig:
         return (width, height)
 
     @classmethod
-    def from_app_config(cls, config: object) -> "StreamConfig":
+    def from_app_config(cls, config: object) -> StreamConfig:
         """`AppConfig` benzeri `get(key, default)` sağlayan nesneden üret.
 
         Python anahtarları (GSettings kebab-case karşılığı): `resolution` (str),

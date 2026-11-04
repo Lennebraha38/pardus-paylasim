@@ -1,0 +1,16 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: pardus-paylasim
+Upstream-Contact: Lennebraha38 <farukhilmi12345@gmail.com>
+Source: https://github.com/Lennebraha38/pardus-paylasim
+
+Files: *
+Copyright: 2024-2026 Lennebraha38 <farukhilmi12345@gmail.com>
+License: GPL-3.0-only
+
+License: GPL-3.0-only
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, version 3.
+ .
+ On Debian/Pardus systems, the full text of the GNU General Public License
+ version 3 can be found in `/usr/share/common-licenses/GPL-3`.

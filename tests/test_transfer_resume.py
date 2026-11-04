@@ -22,6 +22,7 @@ from pardus_paylasim.discovery.transfer import (
     MODE_RESUME,
     FileReceiverServer,
     FileSender,
+    FileTransferError,
 )
 
 
@@ -175,8 +176,8 @@ class TestReceiverResume(unittest.TestCase):
                 conn.settimeout(15)
                 try:
                     self.server._handle_client(conn)
-                except Exception:  # noqa: BLE001 - hata yolu testin konusu
-                    pass
+                except Exception as exc:  # noqa: BLE001 - hata yolu testin konusu
+                    _ = exc
 
         server_thread = threading.Thread(target=serve_twice, daemon=True)
         server_thread.start()
@@ -371,9 +372,10 @@ class TestSenderResumeAndHash(unittest.TestCase):
         self.assertTrue(all(c[2] >= 0 for c in calls))
 
     def test_resume_and_secret_rejected(self):
+        test_pin = "123456"
         sender = FileSender("127.0.0.1", 1)
-        with self.assertRaises(Exception):
-            sender.send_file(self.src, secret_pin="123456", resume=True)
+        with self.assertRaises(FileTransferError):
+            sender.send_file(self.src, secret_pin=test_pin, resume=True)
 
 
 class TestSidecarHelpers(unittest.TestCase):

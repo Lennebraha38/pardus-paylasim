@@ -1,0 +1,484 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: pardus-paylasim 1.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/Lennebraha38/pardus-paylasim/issues\n"
+"POT-Creation-Date: 2026-11-04 00:00+0300\n"
+"PO-Revision-Date: 2026-11-04 00:00+0300\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Ad"
+msgstr "Name"
+
+msgid "Adres"
+msgstr "Address"
+
+msgid "Alındı"
+msgstr "Received"
+
+msgid "Aç"
+msgstr "Open"
+
+msgid "Ağda görünecek adınız"
+msgstr "Your name on the network"
+
+msgid "BAŞARILI"
+msgstr "SUCCESS"
+
+msgid "BAŞARISIZ"
+msgstr "FAILED"
+
+msgid "Bağlantı kesildi."
+msgstr "Disconnected."
+
+msgid "Bağlantıyı Kes"
+msgstr "Disconnect"
+
+msgid "Bağlanıyor..."
+msgstr "Connecting..."
+
+msgid "Bağlı Eşler"
+msgstr "Connected Peers"
+
+msgid "Bağlı değil"
+msgstr "Not connected"
+
+msgid "Başlat"
+msgstr "Start"
+
+msgid "Başlatılmadı"
+msgstr "Not started"
+
+msgid "Bekleyen Transferler"
+msgstr "Pending Transfers"
+
+msgid "Bilgi"
+msgstr "Info"
+
+msgid "Bilinen risk bulunmadı. Dosya kopyalandı."
+msgstr "No known risk found. File copied."
+
+msgid "Bir klasörü iç yapısını koruyarak gönder."
+msgstr "Send a folder while preserving its structure."
+
+msgid "Devam"
+msgstr "Continue"
+
+msgid "Değiştir"
+msgstr "Change"
+
+msgid "Diğer cihazlar beni bulabilsin (mDNS yayını)"
+msgstr "Let other devices find me (mDNS broadcast)"
+
+msgid "Dosya"
+msgstr "File"
+
+msgid "Dosya Dağıtımı"
+msgstr "File Distribution"
+
+msgid "Dosya Detayları"
+msgstr "File Details"
+
+msgid "Dosya Gizliliği ve Meta Veri Temizleyici"
+msgstr "File Privacy & Metadata Cleaner"
+
+msgid "Dosya Paylaşımı"
+msgstr "File Sharing"
+
+msgid "Dosya Seç"
+msgstr "Choose File"
+
+msgid "Dosya Seç ve Dağıt"
+msgstr "Choose & Distribute File"
+
+msgid "Dosya bulunamadı."
+msgstr "File not found."
+
+msgid "Dosya:"
+msgstr "File:"
+
+msgid "Dosyalar taranıyor ve temizleniyor..."
+msgstr "Scanning and cleaning files..."
+
+msgid "Dosyayı AES-256 ile şifreleyerek P2P gönder."
+msgstr "Send the file P2P encrypted with AES-256."
+
+msgid "Dosyayı yerel ağ üzerinden hızlıca gönder."
+msgstr "Send the file quickly over the local network."
+
+msgid "Durdur"
+msgstr "Stop"
+
+msgid "Durum"
+msgstr "Status"
+
+msgid "Duyuru"
+msgstr "Announcement"
+
+msgid "EXIF ve GPS meta verileri ExifTool ile sıfırlandı."
+msgstr "EXIF and GPS metadata reset with ExifTool."
+
+msgid "Ekle"
+msgstr "Add"
+
+msgid "Ekran Paylaşımı"
+msgstr "Screen Sharing"
+
+msgid "Ekran Yansıt"
+msgstr "Mirror Screen"
+
+msgid "Ekran Yayınını Başlat"
+msgstr "Start Screen Broadcast"
+
+msgid "Ekranımı Yayınla (Sunucu)"
+msgstr "Share My Screen (Server)"
+
+msgid "Fotoğraf, PDF ve ofis belgelerindeki GPS konumu, yazar adı, cihaz bilgisi gibi gizlilik risklerini tespit edin ve temizleyin."
+msgstr "Detect and remove privacy risks such as GPS location, author name and device info in photos, PDFs and office documents."
+
+msgid "Genel Ayarlar"
+msgstr "General Settings"
+
+msgid "Gerekli araçlar (MAT2/ExifTool) kurulu değil. Bu dosya türü için yerleşik temizleyici desteklenmiyor. Dosya temizlenmedi."
+msgstr "Required tools (MAT2/ExifTool) are not installed. The built-in cleaner does not support this file type. File was not cleaned."
+
+msgid "Geri"
+msgstr "Back"
+
+msgid "Geçersiz eşleştirme bağlantısı."
+msgstr "Invalid pairing link."
+
+msgid "Geçersiz port numarası."
+msgstr "Invalid port number."
+
+msgid "Gizlilik Raporu"
+msgstr "Privacy Report"
+
+msgid "Gizlilik Riski:"
+msgstr "Privacy Risk:"
+
+msgid "Gönder"
+msgstr "Send"
+
+msgid "Gönderildi"
+msgstr "Sent"
+
+msgid "Gönderiliyor…"
+msgstr "Sending…"
+
+msgid "Gönderim-öncesi temizliği atla"
+msgstr "Skip pre-send cleaning"
+
+msgid "Göndermeden önce dosya metadata bilgisini temizle"
+msgstr "Clean file metadata before sending"
+
+msgid "Gözat"
+msgstr "Browse"
+
+msgid "Güven"
+msgstr "Trust"
+
+msgid "Güveni kaldır"
+msgstr "Remove trust"
+
+msgid "Güvenilir"
+msgstr "Trusted"
+
+msgid "Hassas Metin ve Pano Maskeleyici"
+msgstr "Sensitive Text & Clipboard Masker"
+
+msgid "Hassas veri tespit edilmedi."
+msgstr "No sensitive data detected."
+
+msgid "Hata"
+msgstr "Error"
+
+msgid "Hazır"
+msgstr "Ready"
+
+msgid "Henüz bildirim yok."
+msgstr "No notifications yet."
+
+msgid "Henüz dosya seçilmedi."
+msgstr "No file selected yet."
+
+msgid "Henüz kayıt yok."
+msgstr "No records yet."
+
+msgid "Henüz taranmadı"
+msgstr "Not scanned yet"
+
+msgid "Henüz yayın yok"
+msgstr "No broadcast yet"
+
+msgid "Kaldır"
+msgstr "Remove"
+
+msgid "Kapat"
+msgstr "Close"
+
+msgid "Kaydet"
+msgstr "Save"
+
+msgid "Keşif"
+msgstr "Discovery"
+
+msgid "Klasör"
+msgstr "Folder"
+
+msgid "Klasör Gönder"
+msgstr "Send Folder"
+
+msgid "Kontrolü Bırak"
+msgstr "Release Control"
+
+msgid "Kontrolü Durdur"
+msgstr "Stop Control"
+
+msgid "Kontrolü İste"
+msgstr "Request Control"
+
+msgid "Kopyala"
+msgstr "Copy"
+
+msgid "Kullanılamıyor"
+msgstr "Unavailable"
+
+msgid "Lütfen maskelenecek metni girin."
+msgstr "Please enter the text to mask."
+
+msgid "Lütfen sunucu IP adresini girin."
+msgstr "Please enter the server IP address."
+
+msgid "Lütfen taranacak metni girin."
+msgstr "Please enter the text to scan."
+
+msgid "Maskelenecek metin"
+msgstr "Text to mask"
+
+msgid "Maskelenmiş Metin:"
+msgstr "Masked Text:"
+
+msgid "Mesaj Yayını"
+msgstr "Message Broadcast"
+
+msgid "Mesh Ağı"
+msgstr "Mesh Network"
+
+msgid "Metin içindeki T.C. Kimlik No, kredi kartı, IBAN, e-posta, \n telefon ve API anahtarı gibi hassas bilgileri otomatik tespit eder ve maskeler."
+msgstr "Automatically detects and masks sensitive data such as national ID, credit card, IBAN, e-mail, phone and API keys in text."
+
+msgid "Motor:"
+msgstr "Engine:"
+
+msgid "Ofis belgesi meta verileri (author, company, XML props) temizlendi."
+msgstr "Office document metadata (author, company, XML props) removed."
+
+msgid "Onayla"
+msgstr "Approve"
+
+msgid "Otomatik Maskele"
+msgstr "Auto-mask"
+
+msgid "Otomatik Pano Koruması"
+msgstr "Automatic Clipboard Protection"
+
+msgid "PIN Kodu"
+msgstr "PIN Code"
+
+msgid "Pano Geçmişi (yalnız bu oturum):"
+msgstr "Clipboard History (this session only):"
+
+msgid "Pano boş; gönderilecek metin yok."
+msgstr "Clipboard is empty; nothing to send."
+
+msgid "Pano metni alındı"
+msgstr "Clipboard text received"
+
+msgid "Panodan Yapıştır"
+msgstr "Paste from Clipboard"
+
+msgid "Panoyu Gönder"
+msgstr "Send Clipboard"
+
+msgid "Pardus Güvenli Paylaşım ve Süreklilik Merkezi"
+msgstr "Pardus Secure Sharing & Continuity Center"
+
+msgid "Pardus Paylaşım"
+msgstr "Pardus Share"
+
+msgid "Pardus Paylaşım'a Hoş Geldiniz"
+msgstr "Welcome to Pardus Share"
+
+msgid "Parmak izi"
+msgstr "Fingerprint"
+
+msgid "Parmak izi panoya kopyalandı."
+msgstr "Fingerprint copied to clipboard."
+
+msgid "Parmak izi üretilemedi (cryptography gerekli)."
+msgstr "Could not generate fingerprint (cryptography required)."
+
+msgid "Parmak İzi ve Güven"
+msgstr "Fingerprint & Trust"
+
+msgid "Parça-parça P2P transfer ve çevrimdışı kuyruk.\nTüm veriler cihazınızda kalır — buluta gönderilmez."
+msgstr "Chunked P2P transfer and offline queue.\nAll data stays on your device — nothing is sent to the cloud."
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Reddet"
+msgstr "Reject"
+
+msgid "Rol seç"
+msgstr "Choose role"
+
+msgid "Seç"
+msgstr "Select"
+
+msgid "Sonuç"
+msgstr "Result"
+
+msgid "Sunucu IP Adresi"
+msgstr "Server IP Address"
+
+msgid "Sınav"
+msgstr "Exam"
+
+msgid "Sınav Cevapla"
+msgstr "Answer Exam"
+
+msgid "Sınav Dağıt"
+msgstr "Distribute Exam"
+
+msgid "Sınav Oluştur"
+msgstr "Create Exam"
+
+msgid "Sınıf"
+msgstr "Classroom"
+
+msgid "Sınıf Adı"
+msgstr "Class Name"
+
+msgid "Sınıf Rolü"
+msgstr "Class Role"
+
+msgid "Tahta modu"
+msgstr "Board mode"
+
+msgid "Tahtalar"
+msgstr "Boards"
+
+msgid "Tara"
+msgstr "Scan"
+
+msgid "Taramayı Durdur"
+msgstr "Stop Scan"
+
+msgid "Taranacak Metin"
+msgstr "Text to scan"
+
+msgid "Taranacak Metin:"
+msgstr "Text to scan:"
+
+msgid "Temiz"
+msgstr "Clean"
+
+msgid "Temiz Kopya:"
+msgstr "Clean Copy:"
+
+msgid "Temizle"
+msgstr "Clean"
+
+msgid "Temizlendi"
+msgstr "Cleaned"
+
+msgid "Temizlenmiş Kopya:"
+msgstr "Cleaned Copy:"
+
+msgid "Tespit Edilen Gizlilik Riskleri:"
+msgstr "Detected Privacy Risks:"
+
+msgid "Tespit Edilen Risk Sayısı:"
+msgstr "Number of Risks Detected:"
+
+msgid "Transfer Geçmişi"
+msgstr "Transfer History"
+
+msgid "Tüm meta veriler MAT2 ile başarıyla temizlendi."
+msgstr "All metadata was successfully removed with MAT2."
+
+msgid "Uyarı"
+msgstr "Warning"
+
+msgid "Uygulama bildirimleri"
+msgstr "Application notifications"
+
+msgid "Uzak Ekrana Bağlan"
+msgstr "Connect to Remote Screen"
+
+msgid "Uzak Ekrana Bağlan (İstemci)"
+msgstr "Connect to Remote Screen (Client)"
+
+msgid "Uzaktan Kontrole İzin Ver"
+msgstr "Allow Remote Control"
+
+msgid "Uzaktan kontrole izin ver"
+msgstr "Allow remote control"
+
+msgid "Wi-Fi ve Bluetooth Cihaz Tanıma"
+msgstr "Wi-Fi & Bluetooth Device Discovery"
+
+msgid "Yayın başlatılmadı"
+msgstr "Broadcast not started"
+
+msgid "Yayın başlatılıyor..."
+msgstr "Starting broadcast..."
+
+msgid "Yayın durduruldu."
+msgstr "Broadcast stopped."
+
+msgid "Yayını Durdur"
+msgstr "Stop Broadcast"
+
+msgid "Yenile"
+msgstr "Refresh"
+
+msgid "Yerel ağda ve Bluetooth üzerinden Pardus cihazlarını keşfedin."
+msgstr "Discover Pardus devices on the local network and over Bluetooth."
+
+msgid "Yerel ağdaki Pardus cihazları arasında güvenli, düşük gecikmeli ekran yayını."
+msgstr "Secure, low-latency screen broadcast between Pardus devices on the local network."
+
+msgid "Yükle"
+msgstr "Upload"
+
+msgid "Çalışıyor (manuel eş ekleyin)"
+msgstr "Running (add a peer manually)"
+
+msgid "Çalışıyor (otomatik keşif açık)"
+msgstr "Running (auto-discovery on)"
+
+msgid "İleri"
+msgstr "Next"
+
+msgid "İndir"
+msgstr "Download"
+
+msgid "İndirme Konumu"
+msgstr "Download Location"
+
+msgid "İndirme konumunu değiştir"
+msgstr "Change download location"
+
+msgid "İptal"
+msgstr "Cancel"
+
+msgid "İptal edildi."
+msgstr "Cancelled."
+
+msgid "İptal ediliyor…"
+msgstr "Cancelling…"

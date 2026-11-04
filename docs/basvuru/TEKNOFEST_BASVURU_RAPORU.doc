@@ -21,7 +21,7 @@ li { margin-bottom: 5px; }
 <p><span class="bold">Yarışma Kategorisi:</span> Geliştirme Kategorisi<br>
 <span class="bold">Proje Adı:</span> Pardus Güvenli Paylaşım (Pardus Secure Share)<br>
 <span class="bold">Hedef İşletim Sistemi:</span> Pardus İşletim Sistemi (Debian tabanlı)<br>
-<span class="bold">Açık Kaynak Kod Deposu:</span> <a href="https://github.com/tefografi/pardus-paylasim">https://github.com/tefografi/pardus-paylasim</a> <i>(Yarışma şartnamesi Madde 3.b ve Madde 27 gereğince başvuru esnasında açık/public hale getirilmelidir.)</i></p>
+<span class="bold">Açık Kaynak Kod Deposu:</span> <a href="https://github.com/Lennebraha38/pardus-paylasim">https://github.com/Lennebraha38/pardus-paylasim</a> <i>(Yarışma şartnamesi Madde 3.b ve Madde 27 gereğince başvuru esnasında açık/public hale getirilmelidir.)</i></p>
 
 <hr>
 
@@ -62,7 +62,7 @@ li { margin-bottom: 5px; }
     <li><b>Kategori Uygunluğu:</b> Şartname'de belirtilen <b>"yeni bir yazılım geliştirmeleri"</b> kapsamında tamamen Pardus ekosistemine özgür yazılım olarak kazandırılmak üzere tasarlanmıştır.</li>
 </ul>
 
-<p><i>Önemli Not (Madde 3.b): Uygulama kaynak kodları sisteme (talep.pardus.org.tr) girilirken, depo linkinin (https://github.com/tefografi/pardus-paylasim) erişilebilir (public) olması gerekmektedir. İlgili bağlantı başvuru formunda "Geliştirme Kategorisi - Çözüm Bağlantısı" alanına eklenecektir.</i></p>
+<p><i>Önemli Not (Madde 3.b): Uygulama kaynak kodları sisteme (talep.pardus.org.tr) girilirken, depo linkinin (https://github.com/Lennebraha38/pardus-paylasim) erişilebilir (public) olması gerekmektedir. İlgili bağlantı başvuru formunda "Geliştirme Kategorisi - Çözüm Bağlantısı" alanına eklenecektir.</i></p>
 
 </body>
 </html>

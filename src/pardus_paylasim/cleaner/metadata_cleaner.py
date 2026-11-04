@@ -7,10 +7,15 @@ import logging
 import os
 import shutil
 import subprocess
-import xml.etree.ElementTree as ET
+
+try:
+    # OOXML/ODF paketleri kullanıcıdan gelir; entity/billion-laughs saldırılarına
+    # karşı sertleştirilmiş parser tercih edilir.
+    from defusedxml import ElementTree as ET
+except ImportError:  # pragma: no cover - defusedxml kurulu değilse
+    import xml.etree.ElementTree as ET  # noqa: S314
 import zipfile
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from pardus_paylasim.i18n import _
 
@@ -31,7 +36,7 @@ class CleaningResult:
     original_path: str
     cleaned_path: str
     success: bool
-    risks_found: List[PrivacyRiskItem] = field(default_factory=list)
+    risks_found: list[PrivacyRiskItem] = field(default_factory=list)
     risks_removed_count: int = 0
     engine_used: str = "Pardus Native Redactor"
     message: str = ""
@@ -58,19 +63,21 @@ class MetadataCleaner:
     }
 
     def __init__(self):
-        self.has_mat2 = self._check_command("mat2")
-        self.has_exiftool = self._check_command("exiftool")
+        self.mat2_path = shutil.which("mat2")
+        self.exiftool_path = shutil.which("exiftool")
+        self.has_mat2 = self.mat2_path is not None
+        self.has_exiftool = self.exiftool_path is not None
 
     def _check_command(self, cmd: str) -> bool:
         return shutil.which(cmd) is not None
 
-    def scan_file(self, file_path: str) -> List[PrivacyRiskItem]:
+    def scan_file(self, file_path: str) -> list[PrivacyRiskItem]:
         """Scans a file for metadata risks."""
         if not os.path.exists(file_path):
             return []
 
         ext = os.path.splitext(file_path)[1].lower()
-        risks: List[PrivacyRiskItem] = []
+        risks: list[PrivacyRiskItem] = []
 
         if ext in [".jpg", ".jpeg", ".png", ".heic", ".tiff"]:
             risks.extend(self._scan_image(file_path))
@@ -83,12 +90,12 @@ class MetadataCleaner:
 
         return risks
 
-    def _scan_image(self, file_path: str) -> List[PrivacyRiskItem]:
+    def _scan_image(self, file_path: str) -> list[PrivacyRiskItem]:
         risks = []
         if self.has_exiftool:
             try:
-                res = subprocess.run(
-                    ["exiftool", "-json", file_path],
+                res = subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                    [self.exiftool_path or "exiftool", "-json", file_path],
                     capture_output=True,
                     text=True,
                     timeout=5,
@@ -113,8 +120,8 @@ class MetadataCleaner:
                                             description=desc,
                                         )
                                     )
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
         if not risks:
             # Fallback simple binary scan for GPS or EXIF strings
@@ -139,11 +146,11 @@ class MetadataCleaner:
                                 ),
                             )
                         )
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
         return risks
 
-    def _scan_pdf(self, file_path: str) -> List[PrivacyRiskItem]:
+    def _scan_pdf(self, file_path: str) -> list[PrivacyRiskItem]:
         risks = []
         try:
             with open(file_path, "rb") as f:
@@ -173,11 +180,11 @@ class MetadataCleaner:
                                 ),
                             )
                         )
-        except Exception as e:
-            pass
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
         return risks
 
-    def _scan_office_zip(self, file_path: str) -> List[PrivacyRiskItem]:
+    def _scan_office_zip(self, file_path: str) -> list[PrivacyRiskItem]:
         risks = []
         try:
             if zipfile.is_zipfile(file_path):
@@ -186,7 +193,7 @@ class MetadataCleaner:
                         if "core.xml" in name or "app.xml" in name or "meta.xml" in name:
                             raw = zf.read(name)
                             try:
-                                root = ET.fromstring(raw)
+                                root = ET.fromstring(raw)  # noqa: S314 - defusedxml varsa o kullanılır
                                 for elem in root.iter():
                                     tag = elem.tag.split("}")[-1].lower()
                                     text = (elem.text or "").strip()
@@ -208,16 +215,16 @@ class MetadataCleaner:
                                                 ),
                                             )
                                         )
-                            except Exception as e:
-                                pass
-        except Exception as e:
-            pass
+                            except Exception:
+                                logger.debug("istisna yutuldu", exc_info=True)
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
         return risks
 
-    def _scan_generic(self, file_path: str) -> List[PrivacyRiskItem]:
+    def _scan_generic(self, file_path: str) -> list[PrivacyRiskItem]:
         return []
 
-    def clean_file(self, file_path: str, output_path: Optional[str] = None) -> CleaningResult:
+    def clean_file(self, file_path: str, output_path: str | None = None) -> CleaningResult:
         """Cleans file and writes to output_path (defaults to <name>_temiz.<ext>)."""
         if not os.path.exists(file_path):
             return CleaningResult(
@@ -235,8 +242,8 @@ class MetadataCleaner:
         # 1. Try MAT2
         if self.has_mat2:
             try:
-                res = subprocess.run(
-                    ["mat2", "--no-sandbox", file_path],
+                res = subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                    [self.mat2_path or "mat2", "--no-sandbox", file_path],
                     capture_output=True,
                     text=True,
                     timeout=15,
@@ -273,8 +280,8 @@ class MetadataCleaner:
         if self.has_exiftool and ext in [".jpg", ".jpeg", ".png", ".tiff"]:
             try:
                 shutil.copy2(file_path, output_path)
-                res = subprocess.run(
-                    ["exiftool", "-all=", "-overwrite_original", output_path],
+                res = subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                    [self.exiftool_path or "exiftool", "-all=", "-overwrite_original", output_path],
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -285,8 +292,8 @@ class MetadataCleaner:
                 if os.path.exists(backup_path):
                     try:
                         os.remove(backup_path)
-                    except Exception as e:
-                        pass
+                    except Exception:
+                        logger.debug("istisna yutuldu", exc_info=True)
                 if res.returncode == 0:
                     return CleaningResult(
                         original_path=file_path,
@@ -305,7 +312,7 @@ class MetadataCleaner:
         return self._clean_native_fallback(file_path, output_path, risks, ext)
 
     def _clean_native_fallback(
-        self, file_path: str, output_path: str, risks: List[PrivacyRiskItem], ext: str
+        self, file_path: str, output_path: str, risks: list[PrivacyRiskItem], ext: str
     ) -> CleaningResult:
         try:
             if ext in [".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp"]:
@@ -379,7 +386,7 @@ class MetadataCleaner:
                             data = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"></cp:coreProperties>'
                     zout.writestr(item, data)
             return True
-        except Exception as e:
+        except Exception:
             return False
 
 
@@ -411,7 +418,7 @@ def prepare_send_file(src_path: str, clean_first: bool, tmpdir: str):
         try:
             os.unlink(tmp_path)
         except OSError:
-            pass
+            logger.debug("istisna yutuldu", exc_info=True)
     except Exception as e:
         logger.debug("Gönderim-öncesi temizlik atlandı: %s", e)
     return src_path, None

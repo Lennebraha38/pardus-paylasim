@@ -15,7 +15,6 @@ import logging
 import os
 import threading
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ _DEFAULT_READ_LIMIT = 200
 class TransferHistory:
     """Thread-safe JSONL transfer geçmişi deposu."""
 
-    def __init__(self, path: Optional[str] = None) -> None:
+    def __init__(self, path: str | None = None) -> None:
         self._path = path or _HISTORY_PATH
         self._lock = threading.Lock()
 
@@ -56,7 +55,7 @@ class TransferHistory:
         peer: str,
         status: str,
         secret: bool,
-    ) -> Dict:
+    ) -> dict:
         """Tek bir geçmiş kaydını (dict) oluşturup dosyaya ekler."""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -84,7 +83,7 @@ class TransferHistory:
         peer: str,
         status: str = STATUS_OK,
         secret: bool = False,
-    ) -> Dict:
+    ) -> dict:
         """Gönderilen bir dosyayı geçmişe ekler."""
         return self._record(DIRECTION_SENT, file_name, size_bytes, peer, status, secret)
 
@@ -95,7 +94,7 @@ class TransferHistory:
         peer: str,
         status: str = STATUS_OK,
         secret: bool = False,
-    ) -> Dict:
+    ) -> dict:
         """Alınan bir dosyayı geçmişe ekler."""
         return self._record(DIRECTION_RECEIVED, file_name, size_bytes, peer, status, secret)
 
@@ -104,7 +103,7 @@ class TransferHistory:
         peer: str,
         status: str,
         detail: str = "",
-    ) -> Dict:
+    ) -> dict:
         """Uzaktan kontrol oturumu denetim kaydı ekler.
 
         `status` = STATUS_CONTROL_START (yetki verildi) ya da
@@ -114,7 +113,7 @@ class TransferHistory:
         """
         return self._record(DIRECTION_CONTROL, detail or "-", 0, peer, status, False)
 
-    def read_all(self, limit: int = _DEFAULT_READ_LIMIT) -> List[Dict]:
+    def read_all(self, limit: int = _DEFAULT_READ_LIMIT) -> list[dict]:
         """En yeni kayıtları (en fazla `limit` adet) yeni→eski döndürür.
 
         Bozuk satırlar sessizce atlanır (kısmi yazım toleransı).
@@ -123,13 +122,13 @@ class TransferHistory:
             if not os.path.exists(self._path):
                 return []
             try:
-                with open(self._path, "r", encoding="utf-8") as f:
+                with open(self._path, encoding="utf-8") as f:
                     lines = f.readlines()
             except OSError as e:
                 logger.error("Transfer geçmişi okunamadı: %s", e)
                 return []
 
-        entries: List[Dict] = []
+        entries: list[dict] = []
         for line in lines:
             line = line.strip()
             if not line:

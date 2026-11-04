@@ -11,14 +11,17 @@ macOS-style ecosystem awareness:
 """
 
 import json
+import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 from pardus_paylasim.discovery.ble_discovery import BLEDiscovery
 from pardus_paylasim.discovery.mdns_discovery import MDNSDiscovery
+
+logger = logging.getLogger(__name__)
 
 # Persistence file path
 PERSISTENCE_DIR = os.path.expanduser("~/.local/share/pardus-paylasim")
@@ -35,7 +38,7 @@ class PardusDevice:
     port: int  # Port number for services
     connection_type: str  # "Wi-Fi (mDNS)", "Bluetooth LE", "Ethernet"
     os_info: str  # "Pardus 25 GNU/Linux"
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     rssi: str = "-60 dBm"  # Signal strength
     last_seen: float = field(default_factory=time.time)
     status: str = "Açık (Hazır)"  # "Açık (Hazır)", "Eşleşti", "Ekran Paylaşılıyor", "Güvenilir"
@@ -44,7 +47,7 @@ class PardusDevice:
     # mDNS/QR ile gelen cihaz sertifika parmak izi (hex, yoksa "").
     fingerprint: str = ""
     # Servis portları (mDNS TXT'den): screen_port/file_port/clip_port/control_port
-    service_ports: Dict[str, int] = field(default_factory=dict)
+    service_ports: dict[str, int] = field(default_factory=dict)
 
 
 class DeviceManager:
@@ -56,10 +59,10 @@ class DeviceManager:
     def __init__(self, local_device_name: str = "Pardus Masaüstü"):
         self.local_device_name = local_device_name
         self._lock = threading.Lock()
-        self.devices: Dict[str, PardusDevice] = {}
+        self.devices: dict[str, PardusDevice] = {}
         self.mdns = MDNSDiscovery(device_name=local_device_name)
         self.ble = BLEDiscovery(device_name=local_device_name)
-        self._listeners: List[Callable[[List[PardusDevice]], None]] = []
+        self._listeners: list[Callable[[list[PardusDevice]], None]] = []
 
         # Load trusted devices from persistence
         self._trusted_ids: set = self._load_trusted_devices()
@@ -70,14 +73,14 @@ class DeviceManager:
         """Load previously trusted/paired device IDs from disk."""
         try:
             if os.path.exists(PERSISTENCE_FILE):
-                with open(PERSISTENCE_FILE, "r", encoding="utf-8") as f:
+                with open(PERSISTENCE_FILE, encoding="utf-8") as f:
                     data = json.load(f)
                     trusted = set()
                     for entry in data.get("trusted", []):
                         trusted.add(entry.get("id", ""))
                     return trusted
-        except Exception as e:
-            pass
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
         return set()
 
     def _save_trusted_devices(self):
@@ -107,8 +110,8 @@ class DeviceManager:
             with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump({"trusted": trusted}, f, indent=2, ensure_ascii=False)
             os.replace(tmp_file, PERSISTENCE_FILE)
-        except Exception as e:
-            pass
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
 
     def trust_device(self, device_id: str):
         """Mark a device as trusted and persist."""
@@ -132,7 +135,7 @@ class DeviceManager:
 
     # ── Discovery ────────────────────────────────
 
-    def register_listener(self, callback: Callable[[List[PardusDevice]], None]):
+    def register_listener(self, callback: Callable[[list[PardusDevice]], None]):
         """Register a callback for device list updates. Deduplicates by identity."""
         with self._lock:
             if callback not in self._listeners:
@@ -164,8 +167,8 @@ class DeviceManager:
         for cb in listeners:
             try:
                 cb(device_list)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def start_discovery(self):
         """Starts real-time background scanning on Wi-Fi and Bluetooth."""
@@ -274,17 +277,17 @@ class DeviceManager:
         self.notify_listeners()
         return dev
 
-    def get_devices(self) -> List[PardusDevice]:
+    def get_devices(self) -> list[PardusDevice]:
         """Get current device list sorted by trust and proximity."""
         with self._lock:
             return list(self.devices.values())
 
-    def get_device_by_id(self, device_id: str) -> Optional[PardusDevice]:
+    def get_device_by_id(self, device_id: str) -> PardusDevice | None:
         """Get a specific device by its ID."""
         with self._lock:
             return self.devices.get(device_id)
 
-    def get_trusted_devices(self) -> List[PardusDevice]:
+    def get_trusted_devices(self) -> list[PardusDevice]:
         """Get only trusted devices."""
         with self._lock:
             return [d for d in self.devices.values() if d.is_trusted]

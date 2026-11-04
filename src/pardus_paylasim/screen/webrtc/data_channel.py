@@ -12,7 +12,6 @@ Tam WebRTC (libdatachannel/native) yerine Python saf implementasyon:
 - Hedef: MJPEG'den 3-5x düşük gecikme
 """
 
-import asyncio
 import json
 import logging
 import socket
@@ -20,8 +19,8 @@ import struct
 import threading
 import time
 import zlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ class SDPMessage:
     """Basitleştirilmiş SDP benzeri mesaj formatı (JSON)."""
 
     @staticmethod
-    def create_offer(session_id: str, capabilities: Dict) -> str:
+    def create_offer(session_id: str, capabilities: dict) -> str:
         return json.dumps({
             "type": "offer",
             "session_id": session_id,
@@ -62,7 +61,7 @@ class SDPMessage:
         })
 
     @staticmethod
-    def create_answer(session_id: str, capabilities: Dict) -> str:
+    def create_answer(session_id: str, capabilities: dict) -> str:
         return json.dumps({
             "type": "answer",
             "session_id": session_id,
@@ -105,9 +104,9 @@ class DataChannel:
     def __init__(
         self,
         socket_: socket.socket,
-        on_message: Optional[Callable[[bytes], None]] = None,
-        on_open: Optional[Callable[[], None]] = None,
-        on_close: Optional[Callable[[], None]] = None,
+        on_message: Callable[[bytes], None] | None = None,
+        on_open: Callable[[], None] | None = None,
+        on_close: Callable[[], None] | None = None,
     ):
         self.socket = socket_
         self.on_message = on_message
@@ -118,13 +117,13 @@ class DataChannel:
         self._recv_seq = 0
         self._frag_msg_id = 0
         # msg_id -> {"total": int, "flags": int, "at": float, "parts": {idx: bytes}}
-        self._frag_buf: Dict[int, dict] = {}
-        self._out_queue: List[bytes] = []
+        self._frag_buf: dict[int, dict] = {}
+        self._out_queue: list[bytes] = []
         self._send_lock = threading.Lock()
         self._running = False
         self._closed = False
-        self._send_thread: Optional[threading.Thread] = None
-        self._recv_thread: Optional[threading.Thread] = None
+        self._send_thread: threading.Thread | None = None
+        self._recv_thread: threading.Thread | None = None
 
     def start(self):
         if self._running:
@@ -246,14 +245,14 @@ class DataChannel:
                 self._recv_seq = max(self._recv_seq, seq + 1)
                 if self.on_message:
                     self.on_message(payload)
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except OSError as e:
                 logger.debug("DataChannel recv hatası: %s", e)
                 break
         self.close()
 
-    def _handle_fragment(self, flags: int, seq: int, payload: bytes) -> Optional[bytes]:
+    def _handle_fragment(self, flags: int, seq: int, payload: bytes) -> bytes | None:
         """Bir parça işler; mesaj tamamlanınca çözülmüş baytı döndürür."""
         hdr_len = struct.calcsize(self.FRAG_HEADER)
         if len(payload) < hdr_len:
@@ -289,7 +288,7 @@ class DataChannel:
             ordered = zlib.decompress(ordered)
         return ordered
 
-    def _recv_exact(self, n: int) -> Optional[bytes]:
+    def _recv_exact(self, n: int) -> bytes | None:
         buf = bytearray()
         while len(buf) < n:
             try:
@@ -310,7 +309,7 @@ class WebRTCScreenSession:
         session_id: str,
         peer_id: str,
         is_offerer: bool,
-        on_frame: Optional[Callable[[bytes], None]] = None,
+        on_frame: Callable[[bytes], None] | None = None,
     ):
         self.session_id = session_id
         self.peer_id = peer_id
@@ -319,7 +318,7 @@ class WebRTCScreenSession:
         self.state = SessionState(
             session_id=session_id, peer_id=peer_id, is_offerer=is_offerer
         )
-        self.channel: Optional[DataChannel] = None
+        self.channel: DataChannel | None = None
         self._lock = threading.Lock()
 
     def attach_channel(self, channel: DataChannel):
@@ -330,7 +329,7 @@ class WebRTCScreenSession:
     def _on_message(self, data: bytes):
         try:
             msg = json.loads(data.decode("utf-8"))
-        except Exception as e:
+        except Exception:
             return
         if msg.get("type") == "frame":
             self.state.frames_received += 1
@@ -366,9 +365,9 @@ class WebRTCScreenNode:
     def __init__(
         self,
         peer_id: str,
-        on_session_offer: Optional[Callable[[WebRTCScreenSession, str], None]] = None,
-        on_session_answer: Optional[Callable[[WebRTCScreenSession, str], None]] = None,
-        on_frame: Optional[Callable[[WebRTCScreenSession, bytes], None]] = None,
+        on_session_offer: Callable[[WebRTCScreenSession, str], None] | None = None,
+        on_session_answer: Callable[[WebRTCScreenSession, str], None] | None = None,
+        on_frame: Callable[[WebRTCScreenSession, bytes], None] | None = None,
         port: int = WEBRTC_PORT,
     ):
         self.peer_id = peer_id
@@ -376,10 +375,10 @@ class WebRTCScreenNode:
         self.on_session_answer = on_session_answer
         self.on_frame = on_frame
         self.port = port
-        self.sessions: Dict[str, WebRTCScreenSession] = {}
+        self.sessions: dict[str, WebRTCScreenSession] = {}
         self._running = False
-        self._server_socket: Optional[socket.socket] = None
-        self._accept_thread: Optional[threading.Thread] = None
+        self._server_socket: socket.socket | None = None
+        self._accept_thread: threading.Thread | None = None
         self._lock = threading.Lock()
 
     def start(self):
@@ -389,7 +388,7 @@ class WebRTCScreenNode:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            self._server_socket.bind(("0.0.0.0", self.port))
+            self._server_socket.bind(("0.0.0.0", self.port))  # noqa: S104 - LAN keşfi için bilinçli
             self._server_socket.listen(10)
             self._server_socket.settimeout(1.0)
             if self.port == 0:
@@ -441,11 +440,11 @@ class WebRTCScreenNode:
             self.sessions[sid] = sess
         return sess
 
-    def handle_sdp(self, message: str) -> Optional[WebRTCScreenSession]:
+    def handle_sdp(self, message: str) -> WebRTCScreenSession | None:
         """Gelen SDP mesajını işler."""
         try:
             msg = json.loads(message)
-        except Exception as e:
+        except Exception:
             return None
         msg_type = msg.get("type")
         sid = msg.get("session_id")
@@ -499,7 +498,7 @@ class WebRTCScreenNode:
             line, _, rest = header.partition(b"\n")
             try:
                 msg = json.loads(line.decode("utf-8"))
-            except Exception as e:
+            except Exception:
                 return
             sid = msg.get("session_id")
             if not sid:

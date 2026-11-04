@@ -14,7 +14,6 @@ import logging
 import secrets
 import threading
 import time
-from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +35,9 @@ class ScreenPairingManager:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         # target_ip -> {pin, name, timestamp, verified}
-        self.pending_pairs: Dict[str, dict] = {}
-        self._fail_counts: Dict[str, int] = {}
-        self._blocked_until: Dict[str, float] = {}
+        self.pending_pairs: dict[str, dict] = {}
+        self._fail_counts: dict[str, int] = {}
+        self._blocked_until: dict[str, float] = {}
 
     def _cleanup_expired(self) -> None:
         """Süresi dolan PIN taleplerini ve biten kilitleri temizler.
@@ -133,7 +132,7 @@ class SessionManager:
 
     def __init__(self):
         self._lock = threading.Lock()
-        self.sessions: Dict[str, dict] = {}
+        self.sessions: dict[str, dict] = {}
         self._SESSION_TTL = 3600  # 1 saat
 
     def create_session(self, capabilities=None) -> str:

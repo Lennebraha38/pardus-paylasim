@@ -5,9 +5,8 @@ pytest gerekmez, doğrudan python3 ile çalıştırılabilir.
 
 import os
 import sys
-import time
-import threading
 import tempfile
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -15,8 +14,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 def test_mesh():
     print("\n--- MESH NETWORK ---")
     from pardus_paylasim.discovery.mesh.mesh_network import (
-        MeshProtocol, MeshNode, MeshPeer,
-        CHUNK_SIZE, MAX_RELAY_HOPS, FRAG_DATA,
+        CHUNK_SIZE,
+        FRAG_DATA,
+        MAX_RELAY_HOPS,
+        MeshNode,
+        MeshPeer,
+        MeshProtocol,
     )
 
     packed = MeshProtocol.pack_fragment(
@@ -62,8 +65,11 @@ def test_mesh():
 def test_webrtc():
     print("\n--- WEBRTC DATA CHANNEL ---")
     import json as _json
+
     from pardus_paylasim.screen.webrtc.data_channel import (
-        SDPMessage, DataChannel, WebRTCScreenNode, WebRTCScreenSession,
+        SDPMessage,
+        WebRTCScreenNode,
+        WebRTCScreenSession,
     )
 
     offer = _json.loads(SDPMessage.create_offer("sid1", {"codecs": ["jpeg"]}))
@@ -118,7 +124,9 @@ def test_webrtc():
 def test_async_transfer():
     print("\n--- ASYNC TRANSFER ---")
     from pardus_paylasim.discovery.async_transfer.manager import (
-        AsyncTransfer, AsyncTransferStore, AsyncTransferManager,
+        AsyncTransfer,
+        AsyncTransferManager,
+        AsyncTransferStore,
     )
 
     tmp = tempfile.mkdtemp()
@@ -127,7 +135,7 @@ def test_async_transfer():
     t1 = AsyncTransfer(
         id="t1", file_name="a.txt", file_size=100, file_hash="h1",
         sender_id="s1", sender_name="Ahmet", receiver_id="r1",
-        status="pending", file_path="/tmp/a.txt",
+        status="pending", file_path=os.path.join(tmp, "a.txt"),
     )
     assert store.queue_transfer(t1) is True
     print("  queue transfer: PASS")
@@ -144,7 +152,7 @@ def test_async_transfer():
     t2 = AsyncTransfer(
         id="t2", file_name="b.txt", file_size=200, file_hash="h2",
         sender_id="s1", sender_name="Ahmet", receiver_id="r1",
-        status="pending", file_path="/tmp/b.txt",
+        status="pending", file_path=os.path.join(tmp, "b.txt"),
     )
     store.queue_transfer(t2)
     store.cancel_transfer("t2")
@@ -154,7 +162,7 @@ def test_async_transfer():
     t3 = AsyncTransfer(
         id="t3", file_name="c.txt", file_size=300, file_hash="samehash",
         sender_id="s1", sender_name="A", receiver_id="r2",
-        status="pending", file_path="/tmp/c.txt",
+        status="pending", file_path=os.path.join(tmp, "c.txt"),
     )
     store.queue_transfer(t3)
     found = store.get_transfer_by_hash("samehash")

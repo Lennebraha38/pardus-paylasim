@@ -40,7 +40,7 @@ class TestCancelEvent(unittest.TestCase):
             sender = FileSender("127.0.0.1", 1)
             sender.ssl_context = None
             # Bağlantı reddedilmeli (iptal değil) — iptal yolu tetiklenmedi.
-            with self.assertRaises(Exception) as ctx:
+            with self.assertRaises((OSError, FileTransferError)) as ctx:
                 sender.send_file(path, cancel_event=threading.Event())
             self.assertNotIn("iptal", str(ctx.exception).lower())
         finally:

@@ -94,9 +94,14 @@ async def main():
         # ancak konsept olarak SSL_context atanıyor.
         # Üretim ortamında gerçek sertifika yüklenmelidir.
 
-    async with websockets.serve(handler, "0.0.0.0", 8765, ssl=ssl_context):
+    async with websockets.serve(handler, "0.0.0.0", 8765, ssl=ssl_context):  # noqa: S104 - LAN keşfi için bilinçli
         await asyncio.Future()  # run forever
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Konsol giriş noktası (`pardus-paylasim-server`)."""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    cli()

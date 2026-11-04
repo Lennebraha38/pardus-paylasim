@@ -13,7 +13,6 @@ import logging
 import os
 import threading
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,21 +25,21 @@ class TrustedDevice:
     device_name: str
     public_key: str  # SHA-256 parmak izi (hex)
     added_at: float
-    last_ip: Optional[str] = None
+    last_ip: str | None = None
 
 
 class TrustStore:
-    def __init__(self, file_path: Optional[str] = None):
+    def __init__(self, file_path: str | None = None):
         self._lock = threading.Lock()
         self._file_path = file_path or _STORE_FILE
-        self._devices: Dict[str, TrustedDevice] = {}
+        self._devices: dict[str, TrustedDevice] = {}
         self._load()
 
     def _load(self):
         if not os.path.exists(self._file_path):
             return
         try:
-            with open(self._file_path, "r", encoding="utf-8") as f:
+            with open(self._file_path, encoding="utf-8") as f:
                 data = json.load(f)
                 for k, v in data.items():
                     if not isinstance(v, dict):
@@ -84,7 +83,7 @@ class TrustStore:
             self._save()
 
     def record_pairing(self, fingerprint: str, device_name: str,
-                       ip: Optional[str] = None) -> bool:
+                       ip: str | None = None) -> bool:
         """Eşleştirmede güven kaydı (QR/mDNS onayı sonrası çağrılır)."""
         if not fingerprint or len(fingerprint) != 64 or any(
             c not in "0123456789abcdef" for c in fingerprint.lower()
@@ -112,7 +111,7 @@ class TrustStore:
         with self._lock:
             return (public_key or "").lower() in self._devices
 
-    def find_by_ip(self, ip: Optional[str]) -> Optional[TrustedDevice]:
+    def find_by_ip(self, ip: str | None) -> TrustedDevice | None:
         """Son görülen IP'ye göre güvenilir cihaz bulur."""
         if not ip:
             return None
@@ -122,15 +121,15 @@ class TrustStore:
                     return dev
         return None
 
-    def is_ip_trusted(self, ip: Optional[str]) -> bool:
+    def is_ip_trusted(self, ip: str | None) -> bool:
         return self.find_by_ip(ip) is not None
 
-    def get_all(self) -> List[TrustedDevice]:
+    def get_all(self) -> list[TrustedDevice]:
         with self._lock:
             return list(self._devices.values())
 
 
-def should_auto_accept(sender_ip: Optional[str], store: TrustStore,
+def should_auto_accept(sender_ip: str | None, store: TrustStore,
                        auto_accept_enabled: bool) -> bool:
     """Otomatik kabul kararı (saf fonksiyon; test edilebilir).
 

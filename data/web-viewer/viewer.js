@@ -258,7 +258,7 @@
     setStatus("canlı", "live");
     els.upload.disabled = false;
     els.fm.disabled = false;
-    els.chatPanel.style.display = "flex";
+    els.chatPanel.hidden = false;
     fetchInfo();
   }
 
@@ -271,7 +271,7 @@
     els.control.disabled = true;
     els.upload.disabled = true;
     els.fm.disabled = true;
-    els.chatPanel.style.display = "none";
+    els.chatPanel.hidden = true;
     setStatus("bağlantı yok (PIN?/akış kapalı)", "err");
     if (state.controlling) {
       teardownControl();

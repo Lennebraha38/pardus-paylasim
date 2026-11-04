@@ -111,7 +111,10 @@ async def test_invalid_cert_rejected():
 @pytest.fixture
 def agent_server():
     """Local E2E testleri için StreamServer başlatır."""
-    config = StreamConfig(port=0)  # OS seçsin
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        free_port = s.getsockname()[1]
+    config = StreamConfig(port=free_port)
     server = ScreenStreamServer(device_name="TestAgent", config=config)
 
     pin = []
@@ -143,7 +146,7 @@ async def test_agent_invalid_token_and_scope(agent_server):
             assert resp.status == 403 or resp.status == 401
 
         # 2. Geçersiz token ile control ws
-        with pytest.raises(Exception):
+        with pytest.raises((aiohttp.ClientError, OSError)):
             async with session.ws_connect(
                 f"wss://127.0.0.1:{port}/control", headers={"X-Pardus-Session": "wrong"}
             ):

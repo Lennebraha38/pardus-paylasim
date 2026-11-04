@@ -63,8 +63,8 @@ class WebRTCManager:
                             message=message,
                             notification_id="chat-msg",
                         )
-                    except Exception as e:
-                        pass
+                    except Exception:
+                        logger.debug("istisna yutuldu", exc_info=True)
 
         # Video (Ekran) Ekle
         try:
@@ -93,7 +93,7 @@ class WebRTCManager:
         try:
             await asyncio.wait_for(wait_for_ice(), timeout=5.0)
         except asyncio.TimeoutError:
-            pass
+            logger.debug("istisna yutuldu", exc_info=True)
 
         return pc.localDescription
 

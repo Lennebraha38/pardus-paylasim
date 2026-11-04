@@ -9,7 +9,7 @@ import os
 import socket
 import threading
 import time
-from typing import Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
 
 from pardus_paylasim import platform_info
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # durumuna geçilir. Geçmişte fallback prod'a sahte 192.168.1.101 sızdırıyordu.
 SIMULATE_ENV = "PARDUS_MDNS_SIMULATE"
 
-SERVICE_VERSION = "1.0.0"
+SERVICE_VERSION = "1.1.0"
 
 # Servis portları (TXT kayıtlarında yayınlanır; keşfeden taraf okur).
 # Ekran = MJPEG HTTP(S); dosya = transfer; pano = clipboard_sync.
@@ -64,8 +64,8 @@ try:
         params = list(sig.parameters.keys())
         if "type_" in params:
             ZEROCONF_API_V2 = True
-    except Exception as e:
-        pass  # Fallback: try version-based detection
+    except Exception:
+        logger.debug("zeroconf API algılama hatası", exc_info=True)
     if not ZEROCONF_API_V2:
         try:
             from zeroconf import __version__ as zc_version
@@ -109,8 +109,8 @@ class PardusZeroconfListener(ServiceListener):
             try:
                 name_clean = name.split(".")[0] if "." in name else name
                 self.remove_callback(name_clean)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def add_service(self, zeroconf: Zeroconf, type_: str, name: str):
         info = zeroconf.get_service_info(type_, name)
@@ -132,8 +132,8 @@ class PardusZeroconfListener(ServiceListener):
             try:
                 if hasattr(info, "parsed_addresses") and info.parsed_addresses:
                     ip = info.parsed_addresses[0]
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
             try:
                 if ip == "127.0.0.1" and hasattr(info, "addresses"):
                     addresses = info.addresses
@@ -141,8 +141,8 @@ class PardusZeroconfListener(ServiceListener):
                         addresses = addresses()
                     if addresses and len(addresses) > 0:
                         ip = inet_ntoa(addresses[0])
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
             try:
                 if ip == "127.0.0.1" and hasattr(info, "address"):
                     addr = info.address
@@ -152,8 +152,8 @@ class PardusZeroconfListener(ServiceListener):
                         ip = inet_ntoa(addr)
                     elif addr:
                         ip = str(addr)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
             # Get port safely (could be a callable in some API versions)
             port = DEFAULT_SCREEN_PORT
@@ -163,7 +163,7 @@ class PardusZeroconfListener(ServiceListener):
                     p = p()
                 if p:
                     port = int(p)
-            except Exception as e:
+            except Exception:
                 port = DEFAULT_SCREEN_PORT
 
             # Parse properties (bytes or strings depending on API version)
@@ -178,7 +178,7 @@ class PardusZeroconfListener(ServiceListener):
                         key = k.decode("utf-8", errors="ignore") if isinstance(k, bytes) else k
                         val = v.decode("utf-8", errors="ignore") if isinstance(v, bytes) else v
                         properties[key] = val
-            except Exception as e:
+            except Exception:
                 properties = {}
 
             # Extract device name from service name (remove domain suffix)
@@ -203,7 +203,7 @@ class MDNSDiscovery:
         file_port: int = DEFAULT_FILE_PORT,
         clip_port: int = DEFAULT_CLIP_PORT,
         control_port: int = DEFAULT_CONTROL_PORT,
-        capabilities: Optional[Iterable[str]] = None,
+        capabilities: Iterable[str] | None = None,
     ):
         self.device_name = device_name
         self.port = port  # Ekran (MJPEG) portu — SRV kaydının ana portu.
@@ -214,13 +214,13 @@ class MDNSDiscovery:
         self.capabilities = frozenset(
             capabilities if capabilities is not None else DEFAULT_CAPABILITIES
         )
-        self.zeroconf: Optional[Zeroconf] = None
-        self.browser: Optional[ServiceBrowser] = None
+        self.zeroconf: Zeroconf | None = None
+        self.browser: ServiceBrowser | None = None
         self.running = False
         # Zeroconf başlatılamadığında dolar (UI hata durumu göstersin diye).
-        self.error: Optional[str] = None
-        self._on_device_found: Optional[Callable[[str, str, int, dict], None]] = None
-        self._on_error: Optional[Callable[[str], None]] = None
+        self.error: str | None = None
+        self._on_device_found: Callable[[str, str, int, dict], None] | None = None
+        self._on_error: Callable[[str], None] | None = None
 
     def _build_txt_props(self) -> dict:
         """
@@ -255,8 +255,8 @@ class MDNSDiscovery:
             own_fp = own_fingerprint()
             if own_fp:
                 props["fp"] = own_fp
-        except Exception as e:
-            pass
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
         return props
 
     def start_broadcasting_and_scanning(
@@ -354,8 +354,8 @@ class MDNSDiscovery:
         if self._on_error:
             try:
                 self._on_error(message)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def _start_simulation(self, on_device_found: Callable[[str, str, int, dict], None]):
         """Simulated device discovery — YALNIZ test/demo (env-gated)."""
@@ -373,13 +373,13 @@ class MDNSDiscovery:
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
             return ip
-        except Exception as e:
+        except Exception:
             return "127.0.0.1"
         finally:
             try:
                 s.close()
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def _simulate_local_scan(self, on_device_found: Callable[[str, str, int, dict], None]):
         """
@@ -406,6 +406,6 @@ class MDNSDiscovery:
         if HAS_ZEROCONF and self.zeroconf:
             try:
                 self.zeroconf.close()
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
             self.zeroconf = None

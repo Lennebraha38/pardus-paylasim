@@ -38,7 +38,6 @@ import socket
 import ssl
 import struct
 import threading
-from typing import Optional, Tuple
 
 from pardus_paylasim.screen import control_protocol as cp
 from pardus_paylasim.screen import tls_util
@@ -81,7 +80,7 @@ def map_widget_to_normalized(
     image_h: float,
     px: float,
     py: float,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Widget piksel konumunu normalize 0..1 görüntü koordinatına eşle.
 
     Görüntü, en-boy oranı korunarak widget'a sığdırılır (aspect-fit): fazlalık
@@ -154,7 +153,7 @@ def build_handshake_request(
     return "\r\n".join(lines).encode("ascii")
 
 
-def parse_handshake_response(raw: bytes) -> Tuple[int, dict]:
+def parse_handshake_response(raw: bytes) -> tuple[int, dict]:
     """El sıkışma yanıt başlıklarını çöz → (status_code, headers).
 
     `headers` küçük-harfli anahtarlı sözlük. Yalnız başlık bloğu beklenir
@@ -295,7 +294,7 @@ _GDK_SUPER_MASK = 1 << 26  # 67108864
 _GDK_META_MASK = 1 << 28  # 268435456
 
 
-def keyval_to_key_code(keyval: int) -> Optional[str]:
+def keyval_to_key_code(keyval: int) -> str | None:
     """GDK keyval (X11 keysym) → layout-bağımsız `KEY_*` enum; bilinmeyen → None.
 
     Saf: GDK keyval'leri X11 keysym'leriyle aynı olduğundan tablo derleme-zamanı
@@ -305,7 +304,7 @@ def keyval_to_key_code(keyval: int) -> Optional[str]:
     return _KEYVAL_MAP.get(int(keyval))
 
 
-def gdk_state_to_mods(state: int) -> Tuple[str, ...]:
+def gdk_state_to_mods(state: int) -> tuple[str, ...]:
     """GDK modifier durum bit maskesini nötr mod adları demetine çevir.
 
     Dönen demet `control_protocol.MODIFIERS` adlarını (`ctrl/shift/alt/meta`)
@@ -342,10 +341,10 @@ class ControlChannelClient:
         host: str,
         port: int = DEFAULT_PORT,
         pin: str = "",
-        pinned_fingerprint: Optional[str] = None,
-        use_tls: Optional[bool] = None,
-        require_tls: Optional[bool] = None,
-        session_token: Optional[str] = None,
+        pinned_fingerprint: str | None = None,
+        use_tls: bool | None = None,
+        require_tls: bool | None = None,
+        session_token: str | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -359,16 +358,16 @@ class ControlChannelClient:
         self.use_tls = use_tls
         self.require_tls: bool = tls_util.HAS_TLS if require_tls is None else require_tls
 
-        self._sock: Optional[socket.socket] = None
+        self._sock: socket.socket | None = None
         self._rfile = None  # sock.makefile("rb") — çerçeve okuması için
-        self._session_token: Optional[str] = None
+        self._session_token: str | None = None
         self._send_lock = threading.Lock()  # gönderimleri sırala (thread-safe)
         self.is_connected = False
 
     # --- Bağlantı ----------------------------------------------------------
 
     @property
-    def session_token(self) -> Optional[str]:
+    def session_token(self) -> str | None:
         """Grant edilen oturum token'ı (`sid`). None → henüz izin yok."""
         return self._session_token
 
@@ -595,7 +594,7 @@ class ControlChannelClient:
         """Kaydırma gönder (göreli adım)."""
         return self._send_event(cp.ScrollEvent(dx=dx, dy=dy))
 
-    def send_key(self, code: str, down: bool, mods: Tuple[str, ...] = ()) -> bool:
+    def send_key(self, code: str, down: bool, mods: tuple[str, ...] = ()) -> bool:
         """Klavye tuşu bas/bırak gönder (layout-bağımsız `KEY_*` enum)."""
         return self._send_event(cp.KeyEvent(code=code, down=down, mods=mods))
 
@@ -605,7 +604,7 @@ class ControlChannelClient:
 
     # --- Host→istemci okuma ------------------------------------------------
 
-    def read_message(self) -> Optional[cp.ControlEvent]:
+    def read_message(self) -> cp.ControlEvent | None:
         """Sunucudan tek bir kontrol mesajı oku (revoke/pong/ping).
 
         Kontrol/PING çerçeveleri işlenir (PING→otomatik PONG); metin çerçeveleri

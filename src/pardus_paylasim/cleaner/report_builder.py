@@ -5,7 +5,6 @@ Generates Privacy Audit Reports in JSON, Markdown, and Plain Text formats.
 
 import json
 import time
-from typing import List
 
 from pardus_paylasim.cleaner.metadata_cleaner import CleaningResult
 from pardus_paylasim.i18n import _
@@ -15,10 +14,10 @@ class ReportBuilder:
     """Generates detailed reports of privacy audit and cleaning sessions."""
 
     @staticmethod
-    def to_json(results: List[CleaningResult]) -> str:
+    def to_json(results: list[CleaningResult]) -> str:
         data = {
             "app": "Pardus Güvenli Paylaşım",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "total_files": len(results),
             "files": [
@@ -45,7 +44,7 @@ class ReportBuilder:
         return json.dumps(data, indent=2, ensure_ascii=False)
 
     @staticmethod
-    def to_markdown(results: List[CleaningResult]) -> str:
+    def to_markdown(results: list[CleaningResult]) -> str:
         lines = [
             "# 🛡️ Pardus Güvenli Paylaşım - " + _("Gizlilik Raporu"),
             f"**{_('Tarih:')}** {time.strftime('%Y-%m-%d %H:%M:%S')}",
@@ -80,7 +79,7 @@ class ReportBuilder:
         return "\n".join(lines)
 
     @staticmethod
-    def to_txt(results: List[CleaningResult]) -> str:
+    def to_txt(results: list[CleaningResult]) -> str:
         lines = [
             "=" * 60,
             " PARDUS GÜVENLİ PAYLAŞIM - " + _("GİZLİLİK VE DETAY RAPORU"),

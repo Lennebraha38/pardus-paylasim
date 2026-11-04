@@ -3,11 +3,9 @@ import json
 import logging
 import random
 import ssl
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import websockets
-
-from pardus_paylasim.screen.webrtc_server import webrtc_manager
 
 logger = logging.getLogger("RendezvousClient")
 
@@ -15,10 +13,12 @@ logger = logging.getLogger("RendezvousClient")
 class RendezvousClient:
     def __init__(self, router_url: str):
         self.router_url = router_url
-        self.ws: Optional[websockets.WebSocketClientProtocol] = None
-        self.device_id: Optional[str] = None
+        self.ws: websockets.WebSocketClientProtocol | None = None
+        self.device_id: str | None = None
         self.running = False
         self._on_id_callback = None
+        # Onay callback'i: (sender_id, offer_type) -> bool. Tanımsızsa RED.
+        self._consent_callback = None
 
         # Faz 9.1: Server Certificate Validation
         self.ssl_context = ssl.create_default_context()
@@ -27,6 +27,10 @@ class RendezvousClient:
 
     def set_id_callback(self, callback: Callable[[str], None]):
         self._on_id_callback = callback
+
+    def set_consent_callback(self, callback: Callable[[str, str], bool]) -> None:
+        """Gelen WebRTC teklifleri için kullanıcı onayı sağlayıcısı."""
+        self._consent_callback = callback
 
     async def connect(self):
         self.running = True
@@ -57,13 +61,36 @@ class RendezvousClient:
                             offer_type = data.get("offer_type")
                             monitor_index = data.get("monitor_index", 0)
 
-                            # Faz 9.1: Target consent (Basit Onay Simülasyonu)
-                            logger.warning(
-                                f"Gelen Rendezvous offer: {sender_id}. Lütfen arayüzden onaylayın (Otomatik test için geçici olarak onaylandı)."
-                            )
-
-                            logger.info(f"Rendezvous offer received from {sender_id}")
+                            # Fail-closed: onay callback'i yoksa veya False dönerse
+                            # teklif reddedilir; otomatik kabul yoktur.
+                            approved = False
+                            if self._consent_callback is not None:
+                                try:
+                                    approved = bool(
+                                        self._consent_callback(sender_id, offer_type or "")
+                                    )
+                                except Exception as e:
+                                    logger.warning("Onay callback hatası: %s", e)
+                            if not approved:
+                                logger.warning(
+                                    "Rendezvous teklifi reddedildi (onay yok): %s",
+                                    sender_id,
+                                )
+                                await ws.send(
+                                    json.dumps(
+                                        {"type": "reject", "target_id": sender_id}
+                                    )
+                                )
+                                continue
+                            logger.info("Rendezvous offer onaylandı: %s", sender_id)
                             try:
+                                # aiortc ağır bir bağımlılık; yalnız gerçek
+                                # teklif işlenirken yüklenir (headless testler
+                                # ve CLI bu modülü hafifçe import edebilsin).
+                                from pardus_paylasim.screen.webrtc_server import (
+                                    webrtc_manager,
+                                )
+
                                 # Webrtc manager process
                                 desc = await webrtc_manager.handle_offer(
                                     sdp, offer_type, monitor_index
@@ -83,7 +110,7 @@ class RendezvousClient:
 
             except Exception as e:
                 # Faz 9.1: Exponential Backoff + Jitter
-                jitter = random.uniform(0, 0.3 * backoff)
+                jitter = random.SystemRandom().uniform(0, 0.3 * backoff)
                 sleep_time = backoff + jitter
                 logger.warning(
                     f"Rendezvous bağlantı hatası: {e}. {sleep_time:.2f} saniye sonra tekrar denenecek."

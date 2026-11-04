@@ -24,4 +24,4 @@ class PardusPaylasimNautilus(GObject.GObject, Nautilus.MenuProvider):
     def menu_activate_cb(self, menu, files):
         file_paths = [f.get_location().get_path() for f in files if f.get_location().get_path()]
         if file_paths:
-            subprocess.Popen(["pardus-paylasim", "--clean"] + file_paths)
+            subprocess.Popen(["pardus-paylasim", "--clean"] + file_paths)  # noqa: S603, S607

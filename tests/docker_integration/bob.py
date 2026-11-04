@@ -46,7 +46,7 @@ def main():
     while not os.path.exists("/shared/pins.json"):
         time.sleep(1)
 
-    with open("/shared/pins.json", "r") as f:
+    with open("/shared/pins.json") as f:
         pins = json.load(f)
 
     file_pin = pins.get("file_pin", "")
@@ -80,9 +80,12 @@ def main():
         sys.exit(1)
 
     # 3. Test File Transfer
+    import tempfile
+
     print("\n[Bob] Sending a test file to Alice...")
     payload = "Hello Alice! This is a test file from Bob via Pardus Share."
-    with open("/tmp/test_file.txt", "w") as f:
+    test_file_path = os.path.join(tempfile.gettempdir(), "test_file.txt")
+    with open(test_file_path, "w") as f:
         f.write(payload)
 
     sender = FileSender(alice_ip, alice_file_port)
@@ -91,18 +94,18 @@ def main():
         pass
 
     try:
-        sender.send_file("/tmp/test_file.txt", file_pin, progress_callback=progress)
+        sender.send_file(test_file_path, file_pin, progress_callback=progress)
         print("[Bob] File sent, awaiting server-side confirmation...")
     except Exception as e:
         print(f"[Bob] FAILED: File send error: {e}")
         sys.exit(1)
 
     # Dogrulama: karsi taraf (Alice) dosyayi gercekten yazdi mi?
-    # Alice /shared/received.json'a onay + md5 yazar (alice.py on_completed).
+    # Alice /shared/received.json'a onay + sha256 yazar (alice.py on_completed).
     received = None
     for _ in range(15):
         if os.path.exists("/shared/received.json"):
-            with open("/shared/received.json", "r") as f:
+            with open("/shared/received.json") as f:
                 received = json.load(f)
             break
         time.sleep(1)
@@ -113,11 +116,11 @@ def main():
 
     import hashlib
 
-    sent_md5 = hashlib.md5(payload.encode()).hexdigest()
-    if received.get("md5") == sent_md5:
-        print(f"[Bob] SUCCESS: File verified end-to-end (md5={sent_md5}).")
+    sent_sha256 = hashlib.sha256(payload.encode()).hexdigest()
+    if received.get("sha256") == sent_sha256:
+        print(f"[Bob] SUCCESS: File verified end-to-end (sha256={sent_sha256}).")
     else:
-        print(f"[Bob] FAILED: md5 mismatch sent={sent_md5} got={received.get('md5')}")
+        print(f"[Bob] FAILED: sha256 mismatch sent={sent_sha256} got={received.get('sha256')}")
         sys.exit(1)
 
     print("\n[Bob] All integration tests passed! Exiting.")

@@ -25,7 +25,7 @@ def generate_receipt(filepath):
     print(f"[*] SHA256 Doğrulama Özeti (Receipt) Oluşturuldu: {receipt_path}")
 
 APP_NAME = "pardus-paylasim"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 BUILD_DIR = f"build/{APP_NAME}_standalone"
 SINGLE_DEB_NAME = "pardus-paylasim.deb"
 
@@ -76,9 +76,10 @@ def build_all_in_one_deb():
     control_content = f"""Package: {APP_NAME}
 Version: {VERSION}
 Architecture: all
-Maintainer: Pardus Geliştirici Ekibi <iletisim@pardus.org.tr>
-Depends: python3, python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, mat2, libimage-exiftool-perl, avahi-daemon, avahi-utils, bluez, gstreamer1.0-tools, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, python3-zeroconf, python3-cryptography
-Recommends: gstreamer1.0-pipewire, nautilus-python, python3-qrcode
+Maintainer: Lennebraha38 <farukhilmi12345@gmail.com>
+Depends: python3 (>= 3.10), python3-gi, python3-gi-cairo, gir1.2-gtk-4.0, gir1.2-adw-1, python3-cryptography, python3-zeroconf, python3-websockets, python3-pil, python3-pyperclip, python3-defusedxml
+Recommends: mat2, libimage-exiftool-perl, avahi-daemon, avahi-utils, bluez, gstreamer1.0-tools, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-pipewire, python3-qrcode, python3-xlib, nautilus-python, ydotool
+Homepage: https://github.com/Lennebraha38/pardus-paylasim
 Section: utils
 Priority: optional
 Description: Pardus Güvenli Paylaşım, Cihaz Tanıma ve Ekran Paylaşımı Merkezi
@@ -102,26 +103,39 @@ exit 0
     postinst_path = f"{BUILD_DIR}/DEBIAN/postinst"
     with open(postinst_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(postinst_content)
-    os.chmod(postinst_path, 0o755)
+    os.chmod(postinst_path, 0o755)  # noqa: S103 - debian postinst script must be executable
 
-    # 3. Yürütücü Çalıştırma Betiği
-    launcher_content = """#!/bin/sh
-export PYTHONPATH=/usr/lib/python3/dist-packages:$PYTHONPATH
-exec python3 -m pardus_paylasim.app "$@"
+    # 3. Yürütücü Çalıştırma Betikleri
+    launchers = [
+        (APP_NAME, "pardus_paylasim.app"),
+        (f"{APP_NAME}-agent", "pardus_paylasim_agent.agent"),
+        (f"{APP_NAME}-server", "pardus_paylasim_server.router"),
+    ]
+    for bin_name, mod_name in launchers:
+        launcher_content = f"""#!/bin/sh
+export PYTHONPATH="/usr/lib/python3/dist-packages${{PYTHONPATH:+:$PYTHONPATH}}"
+exec python3 -m {mod_name} "$@"
 """
-    launcher_path = f"{BUILD_DIR}/usr/bin/{APP_NAME}"
-    with open(launcher_path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(launcher_content)
-    os.chmod(launcher_path, 0o755)
+        launcher_path = f"{BUILD_DIR}/usr/bin/{bin_name}"
+        with open(launcher_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(launcher_content)
+        os.chmod(launcher_path, 0o755)  # noqa: S103 - binary launcher must be executable
 
     # 4. Kod ve Masaüstü Entegrasyon Dosyalarını Kopyala
-    shutil.copytree("src/pardus_paylasim", f"{BUILD_DIR}/usr/lib/python3/dist-packages/pardus_paylasim", dirs_exist_ok=True)
+    for pkg in ("pardus_paylasim", "pardus_paylasim_agent", "pardus_paylasim_server"):
+        shutil.copytree(
+            f"src/{pkg}",
+            f"{BUILD_DIR}/usr/lib/python3/dist-packages/{pkg}",
+            dirs_exist_ok=True,
+        )
 
-    # Exclude __pycache__
-    for root, dirs, files in os.walk(f"{BUILD_DIR}/usr/lib/python3/dist-packages/pardus_paylasim", topdown=False):
-        for name in dirs:
-            if name == "__pycache__":
-                shutil.rmtree(os.path.join(root, name))
+    # Exclude __pycache__ (tüm paketler)
+    for pkg in ("pardus_paylasim", "pardus_paylasim_agent", "pardus_paylasim_server"):
+        pkg_dir = f"{BUILD_DIR}/usr/lib/python3/dist-packages/{pkg}"
+        for root, dirs, _files in os.walk(pkg_dir, topdown=False):
+            for name in dirs:
+                if name == "__pycache__":
+                    shutil.rmtree(os.path.join(root, name))
 
     shutil.copy("data/tr.org.pardus.paylasim.desktop", f"{BUILD_DIR}/usr/share/applications/")
 
@@ -145,17 +159,38 @@ exec python3 -m pardus_paylasim.app "$@"
         os.makedirs(f"{BUILD_DIR}/usr/share/Thunar/sendto", exist_ok=True)
         shutil.copy("data/thunar/pardus-paylasim-thunar.desktop", f"{BUILD_DIR}/usr/share/Thunar/sendto/")
 
+    # Web Viewer static assets
+    if os.path.exists("data/web-viewer"):
+        shutil.copytree("data/web-viewer", f"{BUILD_DIR}/usr/share/pardus-paylasim/web-viewer", dirs_exist_ok=True)
+
+    # Debian Copyright
+    doc_dir = f"{BUILD_DIR}/usr/share/doc/pardus-paylasim"
+    os.makedirs(doc_dir, exist_ok=True)
+    if os.path.exists("debian/copyright"):
+        shutil.copy("debian/copyright", f"{doc_dir}/copyright")
+    elif os.path.exists("LICENSE"):
+        shutil.copy("LICENSE", f"{doc_dir}/copyright")
+
     # 4.5. i18n Translations (Locale)
-    if os.path.exists("locale"):
-        for lang in os.listdir("locale"):
-            po_path = os.path.join("locale", lang, "LC_MESSAGES", "pardus-paylasim.po")
-            mo_path = os.path.join("locale", lang, "LC_MESSAGES", "pardus-paylasim.mo")
+    locale_roots = ["src/pardus_paylasim/locale", "locale"]
+    for locale_root in locale_roots:
+        if not os.path.isdir(locale_root):
+            continue
+        for lang in os.listdir(locale_root):
+            po_path = os.path.join(locale_root, lang, "LC_MESSAGES", "pardus-paylasim.po")
+            mo_path = os.path.join(locale_root, lang, "LC_MESSAGES", "pardus-paylasim.mo")
             if os.path.exists(po_path):
                 # Try to compile with msgfmt if available (usually available on Linux CI)
-                try:
-                    subprocess.run(["msgfmt", "-o", mo_path, po_path], check=True, capture_output=True)
-                except Exception:
-                    pass
+                msgfmt_bin = shutil.which("msgfmt")
+                if msgfmt_bin:
+                    try:
+                        subprocess.run(  # noqa: S603
+                            [msgfmt_bin, "-o", mo_path, po_path],
+                            check=True,
+                            capture_output=True,
+                        )
+                    except Exception as err:
+                        print(f"msgfmt uyarı: {err}")
 
                 # Copy .mo file if it exists (either just compiled or pre-compiled)
                 if os.path.exists(mo_path):
@@ -247,10 +282,11 @@ exec python3 -m pardus_paylasim.app "$@"
             deb.write(b"\n")
 
     # Mirror to standard name as well
-    shutil.copy(SINGLE_DEB_NAME, f"{APP_NAME}_1.0.0_all.deb")
+    versioned_name = f"{APP_NAME}_{VERSION}_all.deb"
+    shutil.copy(SINGLE_DEB_NAME, versioned_name)
 
     generate_receipt(SINGLE_DEB_NAME)
-    generate_receipt(f"{APP_NAME}_1.0.0_all.deb")
+    generate_receipt(versioned_name)
 
     print(f"[SUCCESS] TEK PARÇA PARDUS PAKETİ DERLENDİ: {os.path.abspath(SINGLE_DEB_NAME)}")
 

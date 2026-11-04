@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-11-04
+
+### Fixed
+- `window.py` içindeki tanımsız `inspect` kullanımı (10 nokta) ve `_` gölgelemesi
+  (`UnboundLocalError`) giderildi.
+- Ruff lint: 690 hata → 0 (src + tests); CI lint adımı yeşil.
+- `pip install` sonrası GUI import hatası: `window` artık yalnız GUI yolunda
+  yükleniyor; CLI `PyGObject` olmadan çalışıyor.
+- `.deb` paketi `pardus_paylasim_agent` ve `pardus_paylasim_server` paketlerini
+  ve gettext kataloglarını içeriyor; bağımlılık listesi gerçek importlarla eşlendi.
+- `Containerfile`: `uv sync` yerine sistem Python'ına `pip install`; `locale/`
+  ve `python -m pardus_paylasim` (yeni `__main__.py`) çalışıyor.
+- Flatpak manifestindeki sahte sha256'lar kaldırıldı; gerçek kaynak/bağımlılık
+  akışı belgelendi.
+- Mesh ağına HMAC-SHA256 kimlik doğrulaması, rendezvous'a açık onay akışı.
+- `LICENSE` tam GPL-3.0 metni; lisans `GPL-3.0-or-later` olarak tekilleştirildi.
+- Testler: docker işaretleri, `FileTransferError` beklentisi ve `/tmp` kullanımı.
+
+### Added
+- `scripts/i18n_build.py` + `locale/en` kataloğu (158 çekirdek çeviri).
+- `__main__.py` (ana paket, agent, server) ve `pardus-paylasim-server` giriş noktası.
+- `scripts/verify_claims.sh` ile README/ölçüm tutarlılık denetimi.
+
 ## [Unreleased]
 
 ### Added

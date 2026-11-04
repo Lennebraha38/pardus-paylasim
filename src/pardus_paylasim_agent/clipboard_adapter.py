@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class ClipboardAdapter(Protocol):
     """Pano erişim sözleşmesi."""
 
-    def get_text(self) -> Optional[str]: ...
+    def get_text(self) -> str | None: ...
 
     def set_text(self, text: str) -> None: ...
 
@@ -28,7 +28,7 @@ class Win32ClipboardAdapter:
     ECC: kapsamlı hata yönetimi, erken dönüşler.
     """
 
-    def get_text(self) -> Optional[str]:
+    def get_text(self) -> str | None:
         """Panodan metin oku. Hata → None."""
         try:
             import ctypes
@@ -83,7 +83,7 @@ class Win32ClipboardAdapter:
 class NoOpClipboardAdapter:
     """No-op fallback (Windows dışı veya ctypes sorunlu)."""
 
-    def get_text(self) -> Optional[str]:
+    def get_text(self) -> str | None:
         return None
 
     def set_text(self, text: str) -> None:

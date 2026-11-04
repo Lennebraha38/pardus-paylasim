@@ -1,9 +1,9 @@
 FROM python:3.12-slim
 
-LABEL maintainer="Pardus Paylaşım Ekibi"
+LABEL maintainer="Lennebraha38 <farukhilmi12345@gmail.com>"
 LABEL description="Pardus Güvenli Paylaşım - Container"
 
-# System dependencies
+# System dependencies (GUI/GTK ve ekran yakalama araçları)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-tools \
     gstreamer1.0-plugins-base \
@@ -18,23 +18,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY pyproject.toml uv.lock ./
-RUN pip install --no-cache-dir uv && \
-    uv sync --frozen --no-dev
-
-# Copy source
+# Önce metadata + kaynak: pip install tek adımda ve .venv'e değil,
+# sistem Python'ına kurulur (ENTRYPOINT `python -m pardus_paylasim`).
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
-COPY data/ ./data/
 COPY locale/ ./locale/
+COPY data/ ./data/
 
-# Install package
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir .
 
 # Non-root user
 RUN useradd -m -s /bin/bash pardus
 USER pardus
 
-EXPOSE 52345 8900 8901
+EXPOSE 52345 8900 8901 8920
 
+# Varsayılan olarak CLI yardımını göster; GUI için X11/Wayland soketi gerekir.
 ENTRYPOINT ["python", "-m", "pardus_paylasim"]
+CMD ["--help"]

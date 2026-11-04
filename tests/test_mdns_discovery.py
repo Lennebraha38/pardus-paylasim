@@ -99,7 +99,7 @@ class TestSourceHasNoFakePeer(unittest.TestCase):
 
     def test_fake_ip_literal_removed(self):
         source = md.__file__
-        with open(source, "r", encoding="utf-8") as fh:
+        with open(source, encoding="utf-8") as fh:
             text = fh.read()
         # Yorumda "kaldırıldı" geçebilir ama kod literali olmamalı:
         # tırnak içinde IP yok.

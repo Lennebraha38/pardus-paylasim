@@ -7,11 +7,10 @@ Provides 4-tab interface:
 4.  Hassas Metin & Pano Maskeleme
 """
 
+import inspect
 import logging
 import os
 import threading
-
-logger = logging.getLogger(__name__)
 
 from pardus_paylasim.config import AppConfig
 from pardus_paylasim.discovery.clipboard_sync import (
@@ -55,8 +54,11 @@ try:
 
     HAS_GTK = True
 except Exception as e:
-    logger.warning("GTK import failed: %s", e)
+    logging.getLogger(__name__).warning("GTK import failed: %s", e)
     HAS_GTK = False
+
+
+logger = logging.getLogger(__name__)
 
 
 class MainWindow:
@@ -1050,7 +1052,7 @@ class MainWindow:
 
         # Sınıf Modu: rol + sınıf adı (P2P; merkezi kayıt yok, kimlik =
         # cihaz adı + parmak izi).
-        from pardus_paylasim.discovery.classroom import ROLES, ROLE_LABELS
+        from pardus_paylasim.discovery.classroom import ROLE_LABELS, ROLES
 
         row_role = Adw.ActionRow(
             title=_("Sınıf Rolü"),
@@ -1372,7 +1374,7 @@ class MainWindow:
 
     def _show_login_window(self):
         """Tam-pencere giriş ekranı: yalnız kullanıcı türü seçilir (tek seferlik)."""
-        from pardus_paylasim.discovery.classroom import ROLES, ROLE_LABELS
+        from pardus_paylasim.discovery.classroom import ROLE_LABELS, ROLES
 
         login = Gtk.Window(title=_("Pardus Paylaşım'a Hoş Geldiniz"))
         login.set_transient_for(self.win)
@@ -1445,7 +1447,7 @@ class MainWindow:
             try:
                 self.combo_role.set_active(ROLES.index(role))
             except (ValueError, TypeError, AttributeError):
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
         except Exception as e:
             logger.debug("rol kaydedilemedi: %s", e)
         self._apply_role_ui()
@@ -1485,7 +1487,7 @@ class MainWindow:
                 try:
                     grp.set_visible(visible)
                 except Exception:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
         try:
             if hasattr(self, "page_classroom"):
                 self.page_classroom.set_visible(is_teacher or is_board)
@@ -1496,7 +1498,7 @@ class MainWindow:
             try:
                 visible = self.view_stack.get_visible_child_name() or ""
             except Exception:
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
             if is_teacher:
                 self.view_stack.set_visible_child_name("classroom")
             elif is_board:
@@ -2064,9 +2066,10 @@ class MainWindow:
         dialog.open(self.win, None, on_response)
 
     def _on_mesh_toggle(self, btn):
-        from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
         import socket
         import uuid
+
+        from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
         if not hasattr(self, "_mesh_node") or self._mesh_node is None:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -2114,7 +2117,7 @@ class MainWindow:
             return
         raw = self.entry_mesh_peer.get_text().strip()
         try:
-            ip, _, port_s = raw.rpartition(":")
+            ip, _sep, port_s = raw.rpartition(":")
             port = int(port_s)
             if not ip or not 1 <= port <= 65535:
                 raise ValueError("bad peer")
@@ -2176,9 +2179,9 @@ class MainWindow:
         except Exception as e:
             self._show_error(_("Klasör seçimi hatası: {error}").format(error=e))
 
-    # 
+    #
     #  EVENT HANDLERS – Privacy Tab
-    # 
+    #
 
     def _on_choose_file(self, btn):
         dialog = Gtk.FileDialog()
@@ -2328,9 +2331,9 @@ class MainWindow:
         except Exception as e:
             self._show_error(f"Rapor kaydedilemedi: {e}")
 
-    # 
+    #
     #  EVENT HANDLERS – Discovery Tab
-    # 
+    #
 
     def _on_toggle_discovery(self, btn):
         if self._discovery_active:
@@ -2425,7 +2428,7 @@ class MainWindow:
         name = self.entry_manual_name.get_text().strip()
         raw = self.entry_manual_ip.get_text().strip()
         try:
-            ip, _, port_s = raw.rpartition(":")
+            ip, _sep, port_s = raw.rpartition(":")
             if not port_s or ":" not in raw:
                 ip, port_s = raw, "8900"
             port = int(port_s)
@@ -2694,7 +2697,7 @@ class MainWindow:
                     try:
                         os.unlink(tmp_path)
                     except OSError:
-                        pass
+                        logger.debug("istisna yutuldu", exc_info=True)
                 GLib.idle_add(self._show_transfer_progress, False)
 
         threading.Thread(target=run, daemon=True).start()
@@ -2808,7 +2811,7 @@ class MainWindow:
                                 try:
                                     os.unlink(tmp_path)
                                 except OSError:
-                                    pass
+                                    logger.debug("istisna yutuldu", exc_info=True)
                     if cancel_event.is_set():
                         break
             finally:
@@ -3225,9 +3228,9 @@ class MainWindow:
             self.entry_remote_ip.set_text(self._selected_device.address)
             self.entry_remote_port.set_text(str(self._selected_device.port))
 
-    # 
+    #
     #  EVENT HANDLERS – Screen Share Tab
-    # 
+    #
 
     def _on_host_mode_toggled(self, btn):
         if self._guard_toggle:
@@ -3307,8 +3310,8 @@ class MainWindow:
         finally:
             try:
                 s.close()
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
         host_port = self.screen_handler.host_port
         self.lbl_host_ip.set_label(_("Sunucu IP: {ip}:{port}").format(ip=local_ip, port=host_port))
         self.lbl_host_status.set_label(
@@ -3413,9 +3416,9 @@ class MainWindow:
         # Ekran koptu → kontrol istenemez.
         self.btn_request_control.set_sensitive(False)
 
-    # 
+    #
     #  UZAKTAN KONTROL – Girdi Yakalama (1.7 — C5)
-    # 
+    #
     #
     # GTK4 EventController'lar canlı görüntü Picture'ına (fare) ve pencereye
     # (klavye) bağlanır; olaylar nötr protokol biçimine çevrilip kontrol
@@ -3533,9 +3536,9 @@ class MainWindow:
         self._control_client.send_key(code, down, mods)
         return True  # Kontrol aktif: olayı tüket (yerel çift-işlem yok).
 
-    # 
+    #
     #  UZAKTAN KONTROL – Consent / Yaşam Döngüsü (1.8 — C6)
-    # 
+    #
     #
     # Sunucu tarafı (`ControlChannelServer.handle_upgrade`) consent açıkken +
     # PIN geçerli + enjeksiyon backend'i varsa token'ı OTOMATİK verir; ayrı bir
@@ -3703,11 +3706,11 @@ class MainWindow:
         try:
             self.btn_request_control.disconnect_by_func(self._on_request_control)
         except (TypeError, ImportError):
-            pass
+            logger.debug("istisna yutuldu", exc_info=True)
         try:
             self.btn_request_control.disconnect_by_func(self._on_release_control)
         except (TypeError, ImportError):
-            pass
+            logger.debug("istisna yutuldu", exc_info=True)
         if release:
             self.btn_request_control.connect("clicked", self._on_release_control)
         else:
@@ -3738,9 +3741,9 @@ class MainWindow:
                 "(uzak host)", STATUS_CONTROL_STOP, detail="client kontrolü bıraktı"
             )
 
-    # 
+    #
     #  EVENT HANDLERS – Clipboard Tab
-    # 
+    #
 
     def _get_textview_text(self, textview):
         buf = textview.get_buffer()
@@ -3855,9 +3858,9 @@ class MainWindow:
             row.set_child(label)
             self.clip_findings_list.append(row)
 
-    # 
+    #
     #  TRANSFER HISTORY
-    # 
+    #
 
     def _on_show_history(self, btn):
         """Transfer geçmişini kaydırılabilir liste diyaloğunda gösterir."""
@@ -3947,9 +3950,9 @@ class MainWindow:
         except (ValueError, TypeError):
             return iso_str
 
-    # 
+    #
     #  UTILITY
-    # 
+    #
 
     def _on_window_close(self, window):
         """Clean up background operations when window is closed."""
@@ -4096,13 +4099,13 @@ class MainWindow:
                 try:
                     self._notifications.clear()
                 except Exception:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
             if resp in ("clear", "read"):
                 self._notif_unread = 0
                 try:
                     self.btn_notifications.set_label(_("Bildirimler"))
                 except Exception:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
 
         dialog.connect("response", on_response)
         dialog.present()

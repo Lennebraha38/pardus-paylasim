@@ -28,14 +28,18 @@ class TestTransferCrypto(unittest.TestCase):
         self.assertNotEqual(a[: transfer.SALT_LEN], b[: transfer.SALT_LEN])
 
     def test_wrong_pin_fails(self):
+        from cryptography.exceptions import InvalidTag
+
         blob = transfer.encrypt_data("222222", b"secret")
-        with self.assertRaises(Exception):
+        with self.assertRaises((InvalidTag, ValueError, RuntimeError)):
             transfer.decrypt_data("999999", blob)
 
     def test_tampered_ciphertext_fails(self):
+        from cryptography.exceptions import InvalidTag
+
         blob = bytearray(transfer.encrypt_data("333333", b"secret"))
         blob[-1] ^= 0x01  # flip a tag/ciphertext bit
-        with self.assertRaises(Exception):
+        with self.assertRaises((InvalidTag, ValueError, RuntimeError)):
             transfer.decrypt_data("333333", bytes(blob))
 
 

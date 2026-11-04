@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional, Tuple, Union
 
 # Tel protokol sürümü. `v` alanı eksikse bu varsayılır; farklı ana sürüm gelirse
 # reddedilir (geriye-uyumsuz yorumla çökmek yerine açık hata).
@@ -131,7 +130,7 @@ class MoveEvent:
 
     x: float
     y: float
-    sid: Optional[str] = None
+    sid: str | None = None
 
 
 @dataclass(frozen=True)
@@ -142,7 +141,7 @@ class ButtonEvent:
     down: bool
     x: float
     y: float
-    sid: Optional[str] = None
+    sid: str | None = None
 
 
 @dataclass(frozen=True)
@@ -151,7 +150,7 @@ class ScrollEvent:
 
     dx: float
     dy: float
-    sid: Optional[str] = None
+    sid: str | None = None
 
 
 @dataclass(frozen=True)
@@ -161,8 +160,8 @@ class KeyEvent:
 
     code: str
     down: bool
-    mods: Tuple[str, ...] = ()
-    sid: Optional[str] = None
+    mods: tuple[str, ...] = ()
+    sid: str | None = None
 
 
 @dataclass(frozen=True)
@@ -194,20 +193,20 @@ class ClipboardEvent:
     """Pano eşitleme (çift yönlü metin)."""
 
     text: str
-    sid: Optional[str] = None
+    sid: str | None = None
 
 
-ControlEvent = Union[
-    MoveEvent,
-    ButtonEvent,
-    ScrollEvent,
-    KeyEvent,
-    GrantEvent,
-    RevokeEvent,
-    PingEvent,
-    PongEvent,
-    ClipboardEvent,
-]
+ControlEvent = (
+    MoveEvent
+    | ButtonEvent
+    | ScrollEvent
+    | KeyEvent
+    | GrantEvent
+    | RevokeEvent
+    | PingEvent
+    | PongEvent
+    | ClipboardEvent
+)
 
 
 # --- Yardımcılar --------------------------------------------------------------
@@ -252,7 +251,7 @@ def _as_bool(obj: dict, key: str) -> bool:
     return val
 
 
-def _opt_sid(obj: dict) -> Optional[str]:
+def _opt_sid(obj: dict) -> str | None:
     """Opsiyonel oturum token'ı (`sid`). Varsa string olmalı."""
     if "sid" not in obj:
         return None
@@ -262,7 +261,7 @@ def _opt_sid(obj: dict) -> Optional[str]:
     return sid
 
 
-def _canonical_mods(raw) -> Tuple[str, ...]:
+def _canonical_mods(raw) -> tuple[str, ...]:
     """`mods` listesini doğrula → sıralı, tekilleştirilmiş tuple. Bilinmeyen
     değiştirici reddedilir."""
     if raw is None:
@@ -311,13 +310,13 @@ def encode(msg: ControlEvent) -> str:
     return json.dumps(body, separators=(",", ":"))
 
 
-def _attach_sid(body: dict, sid: Optional[str]) -> None:
+def _attach_sid(body: dict, sid: str | None) -> None:
     """Zarfa oturum token'ı ekle (yalnız verilmişse)."""
     if sid is not None:
         body["sid"] = sid
 
 
-def decode(raw: Union[str, bytes]) -> ControlEvent:
+def decode(raw: str | bytes) -> ControlEvent:
     """Tel JSON'unu doğrulanmış kontrol mesajına çöz.
 
     Bozuk/geçersiz/aşırı-boy girdi → ProtocolError (asla sessiz kabul).

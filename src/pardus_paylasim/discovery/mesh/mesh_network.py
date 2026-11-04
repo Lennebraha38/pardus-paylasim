@@ -12,6 +12,7 @@ Her cihaz hem istemci hem sunucu hem de röle olarak çalışır.
 """
 
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -19,8 +20,8 @@ import socket
 import struct
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Set
 
 from pardus_paylasim.discovery import net_util
 
@@ -39,6 +40,24 @@ FRAG_COMPLETE = 0x05
 FRAG_RELAY = 0x06
 FRAG_PEER_LIST = 0x07
 FRAG_CANCEL = 0x08
+AUTH_TAG_LEN = 32
+
+
+def load_mesh_key() -> bytes | None:
+    """`PARDUS_MESH_KEY` ortam değişkeninden paylaşılan anahtarı yükle.
+
+    Değer 64 karakterlik hex ise doğrudan, değilse parola olarak SHA-256
+    özeti kullanılır. Tanımsızsa `None` döner (kimlik doğrulama kapalı).
+    """
+    raw = os.environ.get("PARDUS_MESH_KEY", "").strip()
+    if not raw:
+        return None
+    try:
+        if len(raw) == 64:
+            return bytes.fromhex(raw)
+    except ValueError:
+        pass
+    return hashlib.sha256(raw.encode("utf-8")).digest()
 
 
 @dataclass
@@ -48,8 +67,8 @@ class MeshPeer:
     port: int
     is_online: bool = True
     last_seen: float = field(default_factory=time.time)
-    capabilities: Set[str] = field(default_factory=set)
-    relayed_through: Optional[str] = None
+    capabilities: set[str] = field(default_factory=set)
+    relayed_through: str | None = None
 
 
 @dataclass
@@ -59,13 +78,13 @@ class TransferJob:
     file_size: int
     total_chunks: int
     file_hash: str
-    received_chunks: Dict[int, bytes] = field(default_factory=dict)
-    pending_requests: Set[int] = field(default_factory=set)
+    received_chunks: dict[int, bytes] = field(default_factory=dict)
+    pending_requests: set[int] = field(default_factory=set)
     status: str = "pending"
-    source_peer_id: Optional[str] = None
+    source_peer_id: str | None = None
     created_at: float = field(default_factory=time.time)
     is_sender: bool = False
-    file_path: Optional[str] = None
+    file_path: str | None = None
 
 
 class MeshProtocol:
@@ -81,6 +100,7 @@ class MeshProtocol:
         source_peer_id: str,
         hop_count: int,
         file_hash: str,
+        auth_key: bytes | None = None,
     ) -> bytes:
         tid = transfer_id.encode("utf-8")[:8].ljust(8, b"\x00")
         fh = file_hash.encode("utf-8")[:32].ljust(32, b"\x00")
@@ -97,12 +117,23 @@ class MeshProtocol:
             src,
             hop_count,
         )
-        return FRAG_MAGIC + header + data
+        body = FRAG_MAGIC + header + data
+        if auth_key:
+            body += hmac.new(auth_key, body, hashlib.sha256).digest()
+        return body
 
     @staticmethod
-    def unpack_fragment(raw: bytes) -> Optional[Dict]:
+    def unpack_fragment(raw: bytes, auth_key: bytes | None = None) -> dict | None:
         if len(raw) < 4 + 90 or raw[:4] != FRAG_MAGIC:
             return None
+        if auth_key:
+            if len(raw) < 4 + 90 + AUTH_TAG_LEN:
+                return None
+            body, tag = raw[:-AUTH_TAG_LEN], raw[-AUTH_TAG_LEN:]
+            expected = hmac.new(auth_key, body, hashlib.sha256).digest()
+            if not hmac.compare_digest(tag, expected):
+                return None
+            raw = body
         try:
             hdr = struct.unpack("!BB8s III 32s 32s I", raw[4 : 4 + 90])
             ftype, nlen, tid, cidx, total, dlen, fh, src, hop = hdr
@@ -120,7 +151,7 @@ class MeshProtocol:
                 "source_peer_id": src_str,
                 "hop_count": hop,
             }
-        except Exception as e:
+        except Exception:
             return None
 
 
@@ -130,8 +161,9 @@ class MeshNode:
         peer_id: str,
         local_ip: str,
         mesh_port: int = MESH_PORT,
-        on_transfer_complete: Optional[Callable] = None,
-        on_peer_discovered: Optional[Callable] = None,
+        on_transfer_complete: Callable | None = None,
+        on_peer_discovered: Callable | None = None,
+        auth_key: bytes | None = None,
     ):
         self.peer_id = peer_id
         self.local_ip = local_ip
@@ -139,15 +171,21 @@ class MeshNode:
         self.on_transfer_complete = on_transfer_complete
         self.on_peer_discovered = on_peer_discovered
         self.on_peer_lost = None  # Callback(peer_id) — keşif kaybında UI tazeler.
-        self.peers: Dict[str, MeshPeer] = {}
-        self.transfers: Dict[str, TransferJob] = {}
+        # Paylaşılan HMAC anahtarı: verilmezse PARDUS_MESH_KEY okunur.
+        self.auth_key = auth_key if auth_key is not None else load_mesh_key()
+        if self.auth_key is None:
+            logger.warning(
+                "Mesh kimlik doğrulaması kapalı. Üretimde PARDUS_MESH_KEY ayarlayın."
+            )
+        self.peers: dict[str, MeshPeer] = {}
+        self.transfers: dict[str, TransferJob] = {}
         self._lock = threading.RLock()
         self._running = False
-        self._server: Optional[socket.socket] = None
-        self._accept_thread: Optional[threading.Thread] = None
+        self._server: socket.socket | None = None
+        self._accept_thread: threading.Thread | None = None
         self._discovery = None
         self.protocol = MeshProtocol()
-        self._relay_seen: Set[tuple] = set()  # (tid, type, chunk, source) tekrar-iletim önleme
+        self._relay_seen: set[tuple] = set()  # (tid, type, chunk, source) tekrar-iletim önleme
 
     def start(self):
         if self._running:
@@ -156,7 +194,7 @@ class MeshNode:
         self._server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            self._server.bind(("0.0.0.0", self.mesh_port))
+            self._server.bind(("0.0.0.0", self.mesh_port))  # noqa: S104 - LAN keşfi için bilinçli
             self._server.listen(15)
             self._server.settimeout(1.0)
             if self.mesh_port == 0:
@@ -165,7 +203,7 @@ class MeshNode:
             try:
                 self._server.close()
             except OSError:
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
             self._server = None
             self._running = False
             return
@@ -229,10 +267,10 @@ class MeshNode:
                 try:
                     self._server.shutdown(socket.SHUT_RDWR)
                 except OSError:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
                 self._server.close()
             except OSError:
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
             finally:
                 self._server = None
         thread, self._accept_thread = self._accept_thread, None
@@ -281,7 +319,8 @@ class MeshNode:
         data: bytes, chash: str, target: str, hop: int
     ):
         packed = self.protocol.pack_fragment(
-            FRAG_DATA, tid, idx, total, data, self.peer_id, hop, chash
+            FRAG_DATA, tid, idx, total, data, self.peer_id, hop, chash,
+            auth_key=self.auth_key,
         )
         with self._lock:
             peer = self.peers.get(target)
@@ -296,7 +335,8 @@ class MeshNode:
             return
         # Doğrudan ulaşılamadı: parçayı komşu bir düğüm üzerinden ile.
         relay_payload = self.protocol.pack_fragment(
-            FRAG_DATA, tid, idx, total, data, self.peer_id, hop + 1, chash
+            FRAG_DATA, tid, idx, total, data, self.peer_id, hop + 1, chash,
+            auth_key=self.auth_key,
         )
         for relay in relays:
             if self._send_raw(relay.ip, relay.port, relay_payload):
@@ -347,10 +387,10 @@ class MeshNode:
             raw = net_util.recv_exact(conn, size)
             if not raw:
                 return
-            frag = self.protocol.unpack_fragment(raw)
+            frag = self.protocol.unpack_fragment(raw, auth_key=self.auth_key)
             if frag:
                 self._process(frag, addr[0])
-            else:
+            elif self.auth_key is None:
                 try:
                     msg = json.loads(raw.decode("utf-8"))
                     if msg.get("type") == "presence":
@@ -360,14 +400,14 @@ class MeshNode:
                             port=msg.get("port", self.mesh_port),
                         )
                         self.add_peer(p)
-                except Exception as e:
-                    pass
-        except Exception as e:
-            pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
         finally:
             conn.close()
 
-    def _process(self, frag: Dict, source_ip: Optional[str] = None):
+    def _process(self, frag: dict, source_ip: str | None = None):
         t = frag["type"]
         tid = frag["transfer_id"]
         if t == FRAG_DATA:
@@ -375,7 +415,7 @@ class MeshNode:
         elif t == FRAG_ACK:
             logger.debug("ACK: %s chunk %d", tid, frag["chunk_index"])
 
-    def _relay_data(self, frag: Dict, source_ip: Optional[str] = None):
+    def _relay_data(self, frag: dict, source_ip: str | None = None):
         """Bu düğüme ait olmayan parçayı komşulara iletir (ara düğüm rolü).
 
         Döngüler `_relay_seen` tekillaştırması ve kaynak dışlama ile önlenir.
@@ -405,11 +445,12 @@ class MeshNode:
             frag["source_peer_id"],
             frag["hop_count"] + 1,
             frag["file_hash"],
+            auth_key=self.auth_key,
         )
         for peer in targets:
             self._send_raw(peer.ip, peer.port, relay_payload)
 
-    def _handle_data(self, frag: Dict, source_ip: Optional[str] = None):
+    def _handle_data(self, frag: dict, source_ip: str | None = None):
         tid = frag["transfer_id"]
         idx = frag["chunk_index"]
         data = frag["data"]

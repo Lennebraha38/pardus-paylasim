@@ -15,8 +15,9 @@ import socket
 import ssl
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from pardus_paylasim.screen import tls_util
 from pardus_paylasim.screen.stream_config import DEFAULT_PORT
@@ -24,30 +25,40 @@ from pardus_paylasim.screen.stream_config import DEFAULT_PORT
 logger = logging.getLogger(__name__)
 
 
+def _open_http(req, **kwargs):
+    """Yalnız http/https şemalarına izin ver (file:/ftp: SSRF yüzeyini kapatır)."""
+    url = req.full_url if hasattr(req, "full_url") else str(req)
+    scheme = urllib.parse.urlsplit(url).scheme.lower()
+    if scheme not in ("http", "https"):
+        raise ValueError(f"Desteklenmeyen URL şeması: {scheme!r}")
+    return urllib.request.urlopen(req, **kwargs)  # noqa: S310 - şema doğrulandı
+
+
+
 class ScreenStreamClient:
     """Client for receiving and displaying remote Pardus screen streams."""
 
     def __init__(
         self,
-        require_tls: Optional[bool] = None,
-        trust_callback: Optional[Callable[[str], bool]] = None,
+        require_tls: bool | None = None,
+        trust_callback: Callable[[str], bool] | None = None,
     ):
         self.is_connected = False
-        self.target_ip: Optional[str] = None
+        self.target_ip: str | None = None
         self.target_port: int = DEFAULT_PORT
-        self.target_device_id: Optional[str] = None
-        self._frame_callback: Optional[Callable[[bytes], None]] = None
+        self.target_device_id: str | None = None
+        self._frame_callback: Callable[[bytes], None] | None = None
         self._pin: str = ""
         self.trust_callback = trust_callback
         # /auth ile alınan oturum token'ı. PIN tek kullanımlık olduğu için
         # native istemci PIN'i bir kez /auth'a verir, ardından /stream ve
         # /control'ü bu token ile açar (web viewer ile aynı yol).
-        self.session_token: Optional[str] = None
+        self.session_token: str | None = None
         # TLS durumu: sunucu keşfedildiğinde belirlenir. use_tls None iken
         # şema bilinmiyor; ilk /info veya /ping ile çözülür.
-        self.use_tls: Optional[bool] = None
-        self.pinned_fingerprint: Optional[str] = None
-        self._ssl_context: Optional[ssl.SSLContext] = None
+        self.use_tls: bool | None = None
+        self.pinned_fingerprint: str | None = None
+        self._ssl_context: ssl.SSLContext | None = None
         # TLS-strip koruması: require_tls True iken düz HTTP'ye asla düşülmez
         # ve pinlenmemiş/şifresiz akış reddedilir. Varsayılan HAS_TLS: istemci
         # TLS yapabiliyorsa (cryptography kurulu → üretim) zorunlu kılar;
@@ -78,7 +89,7 @@ class ScreenStreamClient:
                     try:
                         os.remove(cert_path)
                     except OSError:
-                        pass
+                        logger.debug("istisna yutuldu", exc_info=True)
         return self._ssl_context
 
     def _open(self, host_ip: str, port: int, path: str, timeout: float):
@@ -119,12 +130,12 @@ class ScreenStreamClient:
         """Tek şema ile bağlantı açar (fallback yok)."""
         scheme = "https" if tls else "http"
         url = f"{scheme}://{host_ip}:{port}{path}"
-        req = urllib.request.Request(url)
+        req = urllib.request.Request(url)  # noqa: S310 - şema _open_http'te doğrulanır
         if tls:
-            return urllib.request.urlopen(
+            return _open_http(
                 req, timeout=timeout, context=self._client_ctx(host_ip, port)
             )
-        return urllib.request.urlopen(req, timeout=timeout)
+        return _open_http(req, timeout=timeout)
 
     def _verify_pinned_fingerprint(self) -> bool:
         """Akıştan önce sunucu sertifikasını pinlenmiş parmak izine karşı
@@ -193,7 +204,7 @@ class ScreenStreamClient:
 
     # ---- Genel API --------------------------------------------------------
 
-    def request_pin(self, host_ip: str, port: int = DEFAULT_PORT) -> Optional[str]:
+    def request_pin(self, host_ip: str, port: int = DEFAULT_PORT) -> str | None:
         """Request a PIN from the remote server.
 
         Yanıttaki cert_fingerprint'i pinler (TOFU) — akış öncesi doğrulanır.
@@ -207,14 +218,14 @@ class ScreenStreamClient:
             logger.warning("PIN isteği başarısız: %s", e)
             return None
 
-    def get_server_info(self, host_ip: str, port: int = DEFAULT_PORT) -> Optional[dict]:
+    def get_server_info(self, host_ip: str, port: int = DEFAULT_PORT) -> dict | None:
         """Get server information (cert_fingerprint dahil)."""
         try:
             with self._open(host_ip, port, "/info", 5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             self._pin_fingerprint_from(data)
             return data
-        except Exception as e:
+        except Exception:
             return None
 
     def _pin_fingerprint_from(self, data: dict) -> None:
@@ -224,7 +235,7 @@ class ScreenStreamClient:
             self.pinned_fingerprint = fp
 
     @staticmethod
-    def _extract_session_token(headers) -> Optional[str]:
+    def _extract_session_token(headers) -> str | None:
         """Yanıt başlıklarından `pardus_session` cookie token'ını çözer."""
         values = []
         if hasattr(headers, "get_all"):
@@ -256,7 +267,7 @@ class ScreenStreamClient:
         scheme = "https" if tls else "http"
         url = f"{scheme}://{host_ip}:{port}/auth"
         body = json.dumps({"pin": pin}).encode("utf-8")
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310 - şema _open_http'te doğrulanır
             url,
             data=body,
             headers={"Content-Type": "application/json"},
@@ -266,7 +277,7 @@ class ScreenStreamClient:
         if tls:
             kwargs["context"] = self._client_ctx(host_ip, port)
         try:
-            with urllib.request.urlopen(req, **kwargs) as resp:
+            with _open_http(req, **kwargs) as resp:
                 if resp.status != 200:
                     logger.warning("Kimlik doğrulama reddedildi (HTTP %s).", resp.status)
                     return False
@@ -289,7 +300,7 @@ class ScreenStreamClient:
             with self._open(host_ip, port, "/ping", 3) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data.get("status") == "ok"
-        except Exception as e:
+        except Exception:
             # Ham soket ile son çare (şema/TLS bağımsız erişilebilirlik).
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -297,7 +308,7 @@ class ScreenStreamClient:
                 result = sock.connect_ex((host_ip, port))
                 sock.close()
                 return result == 0
-            except Exception as e:
+            except Exception:
                 return False
 
     def connect_to_stream(
@@ -305,8 +316,8 @@ class ScreenStreamClient:
         host_ip: str,
         port: int = DEFAULT_PORT,
         pin: str = "",
-        on_frame: Optional[Callable[[bytes], None]] = None,
-        device_id: Optional[str] = None,
+        on_frame: Callable[[bytes], None] | None = None,
+        device_id: str | None = None,
     ) -> bool:
         """Connect to remote host's screen stream with PIN authentication."""
         self.target_ip = host_ip
@@ -347,7 +358,7 @@ class ScreenStreamClient:
         url = f"{scheme}://{self.target_ip}:{self.target_port}/stream"
 
         try:
-            req = urllib.request.Request(url)
+            req = urllib.request.Request(url)  # noqa: S310 - şema _open_http'te doğrulanır
             # PIN header ile gönderilir (URL'e sızmaz — access-log/proxy/Referer
             # güvenli). Sunucu X-Pardus-PIN'i query'den önce okur.
             if self._pin:
@@ -365,7 +376,7 @@ class ScreenStreamClient:
             if self.use_tls:
                 open_kwargs["context"] = self._client_ctx(self.target_ip, self.target_port)
             try:
-                with urllib.request.urlopen(req, **open_kwargs) as resp:
+                with _open_http(req, **open_kwargs) as resp:
                     # Check if we got JSON error instead of stream
                     content_type = resp.headers.get("Content-type", "")
                     if "application/json" in content_type:
@@ -376,8 +387,8 @@ class ScreenStreamClient:
                                 "Kimlik doğrulama hatası: %s",
                                 err.get("message", "Bilinmeyen hata"),
                             )
-                        except Exception as e:
-                            pass
+                        except Exception:
+                            logger.debug("istisna yutuldu", exc_info=True)
                         self.is_connected = False
                         return
 
@@ -386,7 +397,7 @@ class ScreenStreamClient:
                     while self.is_connected:
                         try:
                             chunk = resp.read(8192)
-                        except Exception as e:
+                        except Exception:
                             break  # Read timeout or connection error
                         if not chunk:
                             break

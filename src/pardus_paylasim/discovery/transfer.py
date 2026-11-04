@@ -6,10 +6,10 @@ import os
 import socket
 import ssl
 import struct
-import threading
 import tempfile
+import threading
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from . import net_util
 
@@ -168,7 +168,7 @@ def build_peer_tls_context(host: str, port: int) -> "ssl.SSLContext":
 
 
 class FileSender:
-    def __init__(self, target_ip, target_port=8900, ssl_context: Optional[ssl.SSLContext] = None):
+    def __init__(self, target_ip, target_port=8900, ssl_context: ssl.SSLContext | None = None):
         self.target_ip = target_ip
         self.target_port = target_port
         self.ssl_context = ssl_context
@@ -200,9 +200,9 @@ class FileSender:
         return _once()
 
     def send_file(self, file_path, secret_pin=None, progress_callback=None, rel_name=None,
-                  stats_callback: Optional[Callable[[int, int, float], None]] = None,
+                  stats_callback: Callable[[int, int, float], None] | None = None,
                   resume=False, verify_hash=False,
-                  cancel_event: Optional[threading.Event] = None):
+                  cancel_event: threading.Event | None = None):
         """Tek dosya gönderir.
 
         rel_name verilirse tel-üzeri ad olarak kullanılır (klasör transferinde
@@ -318,7 +318,7 @@ class FileSender:
 
     def _send_resume(self, file_path, file_name, file_size,
                      progress_callback=None, stats_callback=None,
-                     cancel_event: Optional[threading.Event] = None):
+                     cancel_event: threading.Event | None = None):
         """Kaldığı yerden devam: alıcıdaki offset'i öğrenip kalanı gönderir."""
         if file_size > MAX_PAYLOAD_SIZE:
             raise FileTransferError("Dosya boyutu aktarım sınırını aşıyor.")
@@ -366,7 +366,7 @@ class FileSender:
 
     def send_files(self, file_paths, secret_pin=None, progress_callback=None,
                    stats_callback=None, resume=False, verify_hash=False,
-                   cancel_event: Optional[threading.Event] = None):
+                   cancel_event: threading.Event | None = None):
         """Birden çok dosyayı sırayla gönderir (her biri ayrı bağlantı).
 
         progress_callback(oran, gonderilen_index, toplam) — genel ilerleme.
@@ -384,7 +384,7 @@ class FileSender:
 
     def send_folder(self, folder_path, secret_pin=None, progress_callback=None,
                     stats_callback=None, resume=False, verify_hash=False,
-                    cancel_event: Optional[threading.Event] = None):
+                    cancel_event: threading.Event | None = None):
         """Bir klasörü, iç yapısını koruyarak (göreli yollarla) gönderir.
 
         Klasörün üst dizini taban alınır; her dosya 'klasoradi/alt/dosya'
@@ -418,7 +418,7 @@ class FileSender:
 
 
 class FileReceiverServer:
-    def __init__(self, download_dir, port=8900, ssl_context: Optional[ssl.SSLContext] = None):
+    def __init__(self, download_dir, port=8900, ssl_context: ssl.SSLContext | None = None):
         self.download_dir = download_dir
         self.port = port
         self.ssl_context = ssl_context
@@ -447,7 +447,7 @@ class FileReceiverServer:
 
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind(("0.0.0.0", self.port))
+        self.server_socket.bind(("0.0.0.0", self.port))  # noqa: S104 - LAN keşfi için bilinçli
         self.server_socket.listen(5)
         if self.ssl_context:
             self.server_socket = self.ssl_context.wrap_socket(self.server_socket, server_side=True)
@@ -543,7 +543,6 @@ class FileReceiverServer:
                     return
                 try:
                     temp_path = self._receive_secret_payload(conn, payload_size, pin)
-                    file_data = temp_path
                 except Exception as e:
                     logger.error("Şifre çözme hatası: %s", e)
                     conn.sendall(b"\x00")
@@ -558,7 +557,6 @@ class FileReceiverServer:
                     if digest_data is None:
                         raise FileTransferError("Hash özeti alınamadı.")
                     self._verify_file_hash(temp_path, digest_data)
-                file_data = temp_path
 
             # Güvenli hedef yol: alt klasörlere izin verir (klasör transferi),
             # ama '../' / mutlak yol ile download_dir dışına çıkışı engeller.
@@ -627,7 +625,7 @@ class FileReceiverServer:
     def _read_sidecar(self, sidecar: str, total_size: int, mtime_ns: int):
         """Geçerli sidecar varsa kaldığı baytı döner, yoksa 0."""
         try:
-            with open(sidecar, "r", encoding="utf-8") as f:
+            with open(sidecar, encoding="utf-8") as f:
                 meta = json.load(f)
             if (meta.get("size") == total_size
                     and meta.get("mtime_ns") == mtime_ns
@@ -797,7 +795,7 @@ class FileReceiverServer:
                 temp.write(chunk)
                 received += len(chunk)
             return temp.name
-        except Exception as e:
+        except Exception:
             try:
                 os.unlink(temp.name)
             except OSError:
@@ -842,7 +840,7 @@ class FileReceiverServer:
             if remaining != 0:
                 raise FileTransferError("Şifreli aktarım boyutu tutarsız.")
             return temp.name
-        except Exception as e:
+        except Exception:
             try:
                 os.unlink(temp.name)
             except OSError:

@@ -30,7 +30,6 @@ import secrets
 import struct
 import threading
 import time
-from typing import Dict, Optional, Tuple
 
 from pardus_paylasim import platform_info
 from pardus_paylasim.discovery.history import (
@@ -88,7 +87,10 @@ def compute_accept_key(client_key: str) -> str:
     başlığını verir; sunucu bu sabit dönüşümle yanıtlar → istemci gerçekten
     WebSocket handshake beklediğini doğrular.
     """
-    digest = hashlib.sha1((client_key + _WS_GUID).encode("ascii")).digest()
+    # RFC6455 §4.2.2 SHA-1'i zorunlu kılar; kriptografik imza amaçlı değildir.
+    digest = hashlib.sha1(
+        (client_key + _WS_GUID).encode("ascii"), usedforsecurity=False
+    ).digest()
     return base64.b64encode(digest).decode("ascii")
 
 
@@ -139,7 +141,7 @@ def encode_close_frame(code: int = CLOSE_NORMAL, reason: str = "") -> bytes:
     return build_frame(OP_CLOSE, struct.pack("!H", code) + reason.encode("utf-8"))
 
 
-def build_client_frame(opcode: int, payload: bytes = b"", mask: Optional[bytes] = None) -> bytes:
+def build_client_frame(opcode: int, payload: bytes = b"", mask: bytes | None = None) -> bytes:
     """İstemci→sunucu WebSocket çerçevesi kur (FIN=1, MASK=1).
 
     İstemci çerçeveleri RFC6455 §5.1 gereği MASKELİ olmalı: uzunluk baytının en
@@ -160,12 +162,12 @@ def build_client_frame(opcode: int, payload: bytes = b"", mask: Optional[bytes] 
     return header + mask + mask_payload(payload, mask)
 
 
-def encode_client_text_frame(text: str, mask: Optional[bytes] = None) -> bytes:
+def encode_client_text_frame(text: str, mask: bytes | None = None) -> bytes:
     """Maskeli metin (JSON) çerçevesi kur (istemci→sunucu)."""
     return build_client_frame(OP_TEXT, text.encode("utf-8"), mask)
 
 
-def read_server_frame(reader) -> Tuple[int, bytes]:
+def read_server_frame(reader) -> tuple[int, bytes]:
     """Sunucu→istemci WebSocket çerçevesi oku → (opcode, payload).
 
     `read_client_frame`'in karşıtı: sunucu çerçeveleri RFC6455 §5.1 gereği
@@ -217,7 +219,7 @@ def _read_exact(reader, n: int) -> bytes:
     return b"".join(chunks)
 
 
-def read_client_frame(reader) -> Tuple[int, bytes]:
+def read_client_frame(reader) -> tuple[int, bytes]:
     """İstemci→sunucu WebSocket çerçevesi oku → (opcode, çözülmüş payload).
 
     İstemci çerçeveleri RFC6455 §5.1 gereği maskeli OLMALI → maskesiz çerçeve
@@ -249,7 +251,7 @@ def read_client_frame(reader) -> Tuple[int, bytes]:
 # --- Ekran çözünürlüğü çözücü -------------------------------------------------
 
 
-def resolve_screen_size() -> Tuple[int, int]:
+def resolve_screen_size() -> tuple[int, int]:
     """Host ekran çözünürlüğünü (piksel) çöz; başarısızsa güvenli varsayılan.
 
     Normalize 0..1 koordinat gerçek piksele çarpılacağı için host ekran boyutu
@@ -300,7 +302,7 @@ class ControlConsent:
         self._allowed: bool = False
         self._granted_permissions = {"mouse": True, "keyboard": True, "clipboard": True}
         # client_ip -> token (yalnız o token o IP'den input sürebilir).
-        self._tokens: Dict[str, str] = {}
+        self._tokens: dict[str, str] = {}
 
     def is_allowed(self) -> bool:
         """Host kontrole izin verdi mi? (upgrade ön-koşulu)."""
@@ -323,7 +325,7 @@ class ControlConsent:
             self._granted_permissions["keyboard"] = bool(keyboard)
             self._granted_permissions["clipboard"] = bool(clipboard)
 
-    def grant(self, session_token: str) -> Optional[str]:
+    def grant(self, session_token: str) -> str | None:
         """İlgili session token'ına bağlı yeni kontrol token'ı (sid) üret. Toggle kapalıysa None."""
         with self._lock:
             if not self._allowed:
@@ -337,7 +339,7 @@ class ControlConsent:
         with self._lock:
             self._tokens.pop(session_token, None)
 
-    def validate(self, session_token: str, sid: Optional[str]) -> bool:
+    def validate(self, session_token: str, sid: str | None) -> bool:
         """Mesaj token'ını doğrula: toggle açık, oturum kayıtlı, token eşleşiyor.
 
         Sabit-zamanlı karşılaştırma (`secrets.compare_digest`) — token tahmin
@@ -365,7 +367,7 @@ class ControlChannelServer:
     çağırır.
     """
 
-    def __init__(self, stream_server, history: Optional[TransferHistory] = None) -> None:
+    def __init__(self, stream_server, history: TransferHistory | None = None) -> None:
         self._server = stream_server
         self.consent = ControlConsent()
         # Kontrol oturumu denetim günlüğü (start/stop). Enjekte edilebilir (test).
@@ -388,7 +390,7 @@ class ControlChannelServer:
     def is_dangerous_keys_allowed(self) -> bool:
         return self._allow_dangerous_keys
 
-    def available_backend_name(self) -> Optional[str]:
+    def available_backend_name(self) -> str | None:
         """Enjekte etmeden, bu oturumda seçilecek backend adını döndür (probe).
 
         `/info` bunu yayar → istemci kontrol İSTEMEDEN önce kontrolün mümkün
@@ -399,7 +401,7 @@ class ControlChannelServer:
         try:
             availability = input_inject.detect_availability()
             return input_inject.select_backend_name(platform_info.session_type(), availability)
-        except Exception as e:  # pragma: no cover - ortama bağlı
+        except Exception:  # pragma: no cover - ortama bağlı
             return None
 
     # --- Upgrade ---
@@ -515,8 +517,8 @@ class ControlChannelServer:
             self.consent.revoke(session_token)
             try:
                 backend.close()
-            except Exception as e:  # pragma: no cover
-                pass
+            except Exception:  # pragma: no cover
+                logger.debug("backend kapatma hatası", exc_info=True)
             # Denetim: kontrol oturumu bitti (normal kapanış/kill-switch/kopma).
             self._audit(client_ip, STATUS_CONTROL_STOP, "ended")
             logger.info("Kontrol oturumu bitti: %s", client_ip)
@@ -639,8 +641,8 @@ class ControlChannelServer:
                     elif current_clipboard and current_clipboard != self._last_clipboard:
                         self._last_clipboard = current_clipboard
                         self._send(handler, cp.encode(cp.ClipboardEvent(text=current_clipboard)))
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
 
     # --- Denetim (audit) ---
     def _audit(self, client_ip: str, status: str, detail: str) -> None:

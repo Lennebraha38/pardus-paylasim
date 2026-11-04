@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pardus-paylasim"
-version = "1.0.0"
+version = "1.1.0"
 description = "Pardus Güvenli Paylaşım ve Süreklilik Merkezi"
 readme = "README.md"
 license = {text = "GPL-3.0-only"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Pardus Ekibi"},
+    {name = "Lennebraha38", email = "farukhilmi12345@gmail.com"},
 ]
 keywords = ["pardus", "file-sharing", "screen-share", "privacy", "security"]
 classifiers = [
@@ -28,33 +28,57 @@ classifiers = [
 ]
 dependencies = [
     "cryptography>=41.0",
+    "defusedxml>=0.7",
+    "filelock>=3.12",
+    "Pillow>=10.0",
+    "pyperclip>=1.8",
+    "qrcode[pil]>=7.4",
+    "websockets>=12.0",
+    "zeroconf>=0.80",
 ]
 
 [project.optional-dependencies]
+# PyGObject pip ile derlenirken sistem başlıkları gerekir; Pardus/Debian'da
+# `apt install python3-gi` tercih edilir. CLI bu extra olmadan da çalışır.
 gui = [
     "PyGObject>=3.42",
 ]
-network = [
-    "zeroconf>=0.80",
+screen = [
+    "aiortc>=1.6",
+    "av>=12.0",
+    "mss>=9.0",
+    "numpy>=1.26",
+    "soundcard>=0.4.3",
 ]
 input = [
+    "pydbus>=0.6",
     "pynput>=1.7",
+    "python-xlib>=0.33",
+]
+agent = [
+    "plyer>=2.1",
+    "pystray>=0.19",
 ]
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21",
-    "zeroconf>=0.80",
-    "qrcode>=7.4",
+    "pytest-timeout>=2.2",
 ]
 dev = [
-    "ruff>=0.4",
+    "build>=1.0",
     "mypy>=1.8",
     "pre-commit>=3.0",
+    "ruff>=0.4",
+]
+full = [
+    "pardus-paylasim[gui,screen,input,agent]",
 ]
 
 [project.scripts]
 pardus-paylasim = "pardus_paylasim.app:main"
+pardus-paylasim-agent = "pardus_paylasim_agent.agent:main"
+pardus-paylasim-server = "pardus_paylasim_server.router:cli"
 
 [project.urls]
 Homepage = "https://github.com/Lennebraha38/pardus-paylasim"
@@ -63,6 +87,9 @@ Issues = "https://github.com/Lennebraha38/pardus-paylasim/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+pardus_paylasim = ["py.typed", "locale/**/*.mo", "locale/**/*.po"]
 
 [tool.ruff]
 line-length = 100
@@ -84,7 +111,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]   # assert allowed in tests
+# Testlerde assert ve sabit /tmp yolları normaldir; üretim kodunda yasaktır.
+"tests/**" = ["S101", "S106", "S108", "S310", "S603"]
 
 [tool.mypy]
 python_version = "3.10"

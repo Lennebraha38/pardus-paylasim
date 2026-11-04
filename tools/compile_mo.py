@@ -39,7 +39,7 @@ def parse_po(path: str) -> dict[str, str]:
             if val or key == "":
                 entries[key] = val
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"):

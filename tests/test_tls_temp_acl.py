@@ -11,6 +11,7 @@ dalları monkeypatch'lenir, gerçek `icacls` gerektirmez.
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -51,20 +52,22 @@ class TestLockTempPermissions(unittest.TestCase):
 
     def test_posix_uses_chmod(self):
         # Arrange
+        fake_key = os.path.join(tempfile.gettempdir(), "x.key")
         with mock.patch.object(os, "name", "posix"), mock.patch.object(os, "chmod") as chmod:
             # Act
-            result = tls_util._lock_temp_permissions("/tmp/x.key")
+            result = tls_util._lock_temp_permissions(fake_key)
             # Assert
-            chmod.assert_called_once_with("/tmp/x.key", 0o600)
+            chmod.assert_called_once_with(fake_key, 0o600)
             self.assertTrue(result)
 
     def test_posix_chmod_failure_returns_false(self):
         # chmod patlarsa best-effort False, istisna sızmaz.
+        fake_key = os.path.join(tempfile.gettempdir(), "x.key")
         with (
             mock.patch.object(os, "name", "posix"),
             mock.patch.object(os, "chmod", side_effect=OSError("izin yok")),
         ):
-            self.assertFalse(tls_util._lock_temp_permissions("/tmp/x.key"))
+            self.assertFalse(tls_util._lock_temp_permissions(fake_key))
 
     def test_nt_delegates_to_icacls(self):
         # Arrange

@@ -3,8 +3,8 @@ Unit tests for DeviceManager & Discovery logic.
 """
 
 import time
-from unittest.mock import patch
 import unittest
+from unittest.mock import patch
 
 from pardus_paylasim.discovery.device_manager import DeviceManager, PardusDevice
 

@@ -4,7 +4,6 @@ import re
 import shutil
 import tempfile
 import time
-from typing import Optional
 
 from filelock import FileLock
 
@@ -33,15 +32,17 @@ def _load_store() -> dict:
     if not os.path.exists(TRUST_STORE_FILE):
         return {}
     try:
-        with open(TRUST_STORE_FILE, "r") as f:
+        with open(TRUST_STORE_FILE) as f:
             data = json.load(f)
             if not isinstance(data, dict):
                 raise TrustStoreError("Trust store formatı geçersiz (kök eleman dict değil).")
             return data
     except json.JSONDecodeError as e:
-        raise TrustStoreError(f"Trust store JSON parse hatası (bozuk dosya): {e}")
+        raise TrustStoreError(
+            f"Trust store JSON parse hatası (bozuk dosya): {e}"
+        ) from e
     except OSError as e:
-        raise TrustStoreError(f"Trust store okunamadı: {e}")
+        raise TrustStoreError(f"Trust store okunamadı: {e}") from e
 
 
 def _save_store(store: dict) -> None:
@@ -60,10 +61,10 @@ def _save_store(store: dict) -> None:
         shutil.move(temp_path, TRUST_STORE_FILE)
     except Exception as e:
         os.remove(temp_path)
-        raise TrustStoreError(f"Trust store yazılamadı: {e}")
+        raise TrustStoreError(f"Trust store yazılamadı: {e}") from e
 
 
-def get_trusted_fingerprint(device_id: str) -> Optional[str]:
+def get_trusted_fingerprint(device_id: str) -> str | None:
     os.makedirs(_config_dir, exist_ok=True)
     with FileLock(LOCK_FILE, timeout=5):
         store = _load_store()

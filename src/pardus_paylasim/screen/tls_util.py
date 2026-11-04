@@ -12,10 +12,10 @@ import datetime
 import hashlib
 import logging
 import os
+import shutil
 import socket
 import ssl
 import tempfile
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ DEVICE_CERT_PATH = os.path.join(DEVICE_ID_DIR, "device_cert.pem")
 DEVICE_KEY_PATH = os.path.join(DEVICE_ID_DIR, "device_key.pem")
 
 
-def get_or_create_device_cert() -> Tuple[str, str, str]:
+def get_or_create_device_cert() -> tuple[str, str, str]:
     """Kalıcı cihaz kimliği: ilk çalışta üretilir, sonra yeniden kullanılır.
 
     Returns:
@@ -91,7 +91,7 @@ def get_or_create_device_cert() -> Tuple[str, str, str]:
     return DEVICE_CERT_PATH, DEVICE_KEY_PATH, fp
 
 
-def generate_self_signed_cert() -> Tuple[str, str, str]:
+def generate_self_signed_cert() -> tuple[str, str, str]:
     """Ephemeral self-signed sertifika + anahtar üretir.
 
     Returns:
@@ -186,14 +186,14 @@ def _restrict_windows_acl(path: str) -> bool:
 
     try:
         user = getpass.getuser()
-    except Exception as e:  # kullanıcı adı çözülemedi
+    except Exception:  # kullanıcı adı çözülemedi
         return False
     if not user:
         return False
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 - sabit komut, shell yok
             [
-                "icacls",
+                shutil.which("icacls") or "icacls",
                 path,
                 "/inheritance:r",  # miras alınan tüm ACE'leri kaldır
                 "/grant:r",  # yerini yalnız geçerli kullanıcıya ver
@@ -223,7 +223,7 @@ def build_server_context(cert_path: str, key_path: str) -> "ssl.SSLContext":
     return context
 
 
-def build_client_context(server_cert_path: Optional[str] = None) -> "ssl.SSLContext":
+def build_client_context(server_cert_path: str | None = None) -> "ssl.SSLContext":
     """İstemci tarafı SSLContext: CERT_REQUIRED ile güvenli doğrulamayı zorunlu kılar."""
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
@@ -236,7 +236,7 @@ def build_client_context(server_cert_path: Optional[str] = None) -> "ssl.SSLCont
 
 def get_peer_fingerprint(
     host: str, port: int, timeout: float = _TLS_PROBE_TIMEOUT
-) -> Optional[str]:
+) -> str | None:
     """Uzak TLS sunucusunun sunduğu sertifikanın SHA-256 parmak izini alır.
 
     Fingerprint pinning için canlı el sıkışmadan sertifikayı çeker. Bağlantı
@@ -257,7 +257,7 @@ def get_peer_fingerprint(
         return None
 
 
-def fetch_server_cert_to_tempfile(host: str, port: int, expected_fingerprint: str) -> Optional[str]:
+def fetch_server_cert_to_tempfile(host: str, port: int, expected_fingerprint: str) -> str | None:
     """Sunucudan sertifikayı indirip fingerprint kontrolü yapar.
 
     Yalnızca sertifikanın DER SHA-256 parmak izi `expected_fingerprint` ile

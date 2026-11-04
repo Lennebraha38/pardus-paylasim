@@ -14,7 +14,7 @@ import io
 import logging
 import threading
 import time
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class CaptureBackend(Protocol):
 
     name: str
 
-    def grab_jpeg(self, quality: int = _DEFAULT_QUALITY) -> Optional[bytes]:
+    def grab_jpeg(self, quality: int = _DEFAULT_QUALITY) -> bytes | None:
         """Tek kare yakala → JPEG bytes. Hata → None."""
         ...
 
@@ -59,7 +59,7 @@ class MssCaptureBackend:
 
             self._sct = mss.mss()
 
-    def grab_jpeg(self, quality: int = _DEFAULT_QUALITY) -> Optional[bytes]:
+    def grab_jpeg(self, quality: int = _DEFAULT_QUALITY) -> bytes | None:
         """Ekran yakala → JPEG bytes. Hata → None (dürüst, çökmez).
 
         ECC: kapsamlı hata yönetimi, başarısızlıkta erken dönüş.
@@ -83,7 +83,7 @@ class MssCaptureBackend:
             try:
                 self._sct.close()
             except Exception:
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
             self._sct = None
 
 
@@ -108,7 +108,7 @@ class AgentCaptureLoop:
         self._server = server
         self._fps = fps
         self._quality = quality
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
     def start(self) -> None:

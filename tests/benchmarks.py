@@ -37,8 +37,8 @@ def bench(fn, iterations=1000, warmup=50):
 
 
 def main():
-    from pardus_paylasim.discovery.mesh.mesh_network import FRAG_DATA, MeshProtocol
     from pardus_paylasim.clipboard.sensitive_masker import SensitiveMasker
+    from pardus_paylasim.discovery.mesh.mesh_network import FRAG_DATA, MeshProtocol
 
     # Senaryo 1: pano maskeleme (tipik metin, ~150 karakter)
     sample = "Toplantı notu: Ahmet Yılmaz (a.yilmaz@ornek.com), TCKN 10000000146, tel 0532 123 45 67."
@@ -80,8 +80,9 @@ def main():
         results["sqlite_queue"] = bench(queue_one, iterations=500, warmup=20)
 
     # Senaryo 4: WebRTC frame gönderimi (30KB JPEG benzeri — kanal limiti 64KB)
-    from pardus_paylasim.screen.webrtc.data_channel import DataChannel
     import threading
+
+    from pardus_paylasim.screen.webrtc.data_channel import DataChannel
     frame = os.urandom(30 * 1024)
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -131,6 +132,7 @@ def main():
     srv2.settimeout(15.0)
     port2 = srv2.getsockname()[1]
     arrived = threading.Event()
+    done_event = threading.Event()
 
     def serve2():
         try:
@@ -138,8 +140,7 @@ def main():
             dc = DataChannel(conn)
             dc.on_message = lambda d: arrived.set()
             dc.start()
-            arrived.wait(timeout=60.0)
-            time.sleep(0.5)
+            done_event.wait(timeout=60.0)
             dc.close()
         except OSError:
             pass
@@ -177,6 +178,7 @@ def main():
         "ops": 1000.0 / (sum(e2e_times) / n2),
     }
     cdc2.close()
+    done_event.set()
     t2.join(timeout=3.0)
 
     print(f"{'senaryo':<20} {'min':>9} {'p50':>9} {'p95':>9} {'mean':>9} {'ops/s':>10}")

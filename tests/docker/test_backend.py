@@ -56,7 +56,7 @@ def test_file_transfer_normal(tmp_path):
     assert len(received_files) == 1
     assert "test_normal.txt" in received_files[0]
 
-    with open(received_files[0], "r") as f:
+    with open(received_files[0]) as f:
         content = f.read()
     assert content == "Hello Pardus Normal Transfer!"
 
@@ -93,12 +93,13 @@ def test_file_transfer_secret(tmp_path):
 
     sender = FileSender("127.0.0.1", 8902)
     sender.ssl_context = client_ctx
-    sender.send_file(str(test_file), secret_pin="999999")
+    test_pin = "999999"
+    sender.send_file(str(test_file), secret_pin=test_pin)
 
     time.sleep(2)
     receiver.stop()
 
     assert len(received_files) == 1
-    with open(received_files[0], "r") as f:
+    with open(received_files[0]) as f:
         content = f.read()
     assert content == "Hello Pardus Secret AES-256 Transfer!"

@@ -9,6 +9,7 @@ varsayılana/kırpılmış değere düşer. `from_app_config` GSettings/JSON fal
 Saf stdlib; GTK/GStreamer'a bağımlı değil (headless).
 """
 
+import dataclasses
 import io
 import struct
 import unittest
@@ -113,7 +114,7 @@ class TestImmutability(unittest.TestCase):
 
     def test_frozen_no_field_assignment(self):
         cfg = StreamConfig()
-        with self.assertRaises(Exception):
+        with self.assertRaises(dataclasses.FrozenInstanceError):
             cfg.jpeg_quality = 50  # type: ignore[misc]
 
     def test_with_quality_returns_new_copy(self):

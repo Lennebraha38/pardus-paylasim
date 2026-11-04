@@ -23,7 +23,7 @@ def generate_receipt(filepath):
     print(f"[*] SHA256 Doğrulama Özeti (Receipt) Oluşturuldu: {receipt_path}")
 
 APP_NAME = "pardus-paylasim"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 OFFLINE_DIR = f"build/{APP_NAME}-offline"
 TARBALL_NAME = f"{APP_NAME}-offline.tar.gz"
 
@@ -64,8 +64,8 @@ def create_offline_bundle():
     shutil.copytree("data", f"{OFFLINE_DIR}/data", dirs_exist_ok=True)
     shutil.copy("pyproject.toml", f"{OFFLINE_DIR}/pyproject.toml")
     shutil.copy("README.md", f"{OFFLINE_DIR}/README.md")
-    if os.path.exists("pardus-paylasim_1.0.0_all.deb"):
-        shutil.copy("pardus-paylasim_1.0.0_all.deb", f"{OFFLINE_DIR}/")
+    if os.path.exists("pardus-paylasim_1.1.0_all.deb"):
+        shutil.copy("pardus-paylasim_1.1.0_all.deb", f"{OFFLINE_DIR}/")
 
     # 2. Write offline standalone installation script
     offline_script = r"""#!/usr/bin/env bash
@@ -122,7 +122,7 @@ echo "=================================================================="
     with open(f"{OFFLINE_DIR}/offline_install.sh", "w", encoding="utf-8", newline="\n") as f:
         f.write(offline_script)
 
-    os.chmod(f"{OFFLINE_DIR}/offline_install.sh", 0o755)
+    os.chmod(f"{OFFLINE_DIR}/offline_install.sh", 0o755)  # noqa: S103 - installer script must be executable
 
     # 3. Create .tar.gz archive
     now = int(os.environ.get("SOURCE_DATE_EPOCH", 1700000000))

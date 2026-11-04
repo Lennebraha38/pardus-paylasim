@@ -12,7 +12,7 @@ import time
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
-from pardus_paylasim.discovery.mesh.mesh_network import (
+from pardus_paylasim.discovery.mesh.mesh_network import (  # noqa: E402
     MAX_RELAY_HOPS,
     MeshNode,
     MeshPeer,

@@ -6,9 +6,8 @@ Modül testleri:
 """
 
 import os
-import sys
-import time
 import threading
+import time
 
 import pytest
 
@@ -25,7 +24,8 @@ class TestMeshProtocol:
     def test_pack_unpack_data(self):
         """Parça paketlenip geri açılabilmeli."""
         from pardus_paylasim.discovery.mesh.mesh_network import (
-            MeshProtocol, FRAG_DATA,
+            FRAG_DATA,
+            MeshProtocol,
         )
         packed = MeshProtocol.pack_fragment(
             FRAG_DATA, "abc12345", 0, 3, b"hello world",
@@ -86,8 +86,14 @@ class TestMeshNode:
 
     def test_frag_types_distinct(self):
         from pardus_paylasim.discovery.mesh.mesh_network import (
-            FRAG_REQUEST, FRAG_OFFER, FRAG_DATA, FRAG_ACK,
-            FRAG_COMPLETE, FRAG_RELAY, FRAG_PEER_LIST, FRAG_CANCEL,
+            FRAG_ACK,
+            FRAG_CANCEL,
+            FRAG_COMPLETE,
+            FRAG_DATA,
+            FRAG_OFFER,
+            FRAG_PEER_LIST,
+            FRAG_RELAY,
+            FRAG_REQUEST,
         )
         types = {FRAG_REQUEST, FRAG_OFFER, FRAG_DATA, FRAG_ACK,
                  FRAG_COMPLETE, FRAG_RELAY, FRAG_PEER_LIST, FRAG_CANCEL}
@@ -175,7 +181,8 @@ class TestWebRTCNode:
 
     def test_handle_sdp_offer(self):
         from pardus_paylasim.screen.webrtc.data_channel import (
-            WebRTCScreenNode, SDPMessage,
+            SDPMessage,
+            WebRTCScreenNode,
         )
         node = WebRTCScreenNode("p1", port=18924)
         offer = SDPMessage.create_offer("test_sid", {"codecs": ["jpeg"]})
@@ -200,7 +207,7 @@ class TestAsyncTransferStore:
 
     def test_queue_transfer(self, temp_store):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransfer, AsyncTransferStore,
+            AsyncTransfer,
         )
         t = AsyncTransfer(
             id="t1", file_name="a.txt", file_size=10, file_hash="abc",
@@ -211,7 +218,7 @@ class TestAsyncTransferStore:
 
     def test_get_pending_for_receiver(self, temp_store):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransfer, AsyncTransferStore,
+            AsyncTransfer,
         )
         t1 = AsyncTransfer(
             id="t1", file_name="a.txt", file_size=10, file_hash="abc",
@@ -231,7 +238,7 @@ class TestAsyncTransferStore:
 
     def test_mark_delivered(self, temp_store):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransfer, AsyncTransferStore,
+            AsyncTransfer,
         )
         t = AsyncTransfer(
             id="t1", file_name="a.txt", file_size=10, file_hash="abc",
@@ -245,7 +252,7 @@ class TestAsyncTransferStore:
 
     def test_cancel_transfer(self, temp_store):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransfer, AsyncTransferStore,
+            AsyncTransfer,
         )
         t = AsyncTransfer(
             id="t1", file_name="a.txt", file_size=10, file_hash="abc",
@@ -259,7 +266,7 @@ class TestAsyncTransferStore:
 
     def test_dedup_by_hash(self, temp_store):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransfer, AsyncTransferStore,
+            AsyncTransfer,
         )
         t = AsyncTransfer(
             id="t1", file_name="a.txt", file_size=10, file_hash="samehash",
@@ -273,7 +280,7 @@ class TestAsyncTransferStore:
 
     def test_history_logging(self, temp_store):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransfer, AsyncTransferStore,
+            AsyncTransfer,
         )
         t = AsyncTransfer(
             id="t1", file_name="a.txt", file_size=10, file_hash="abc",
@@ -290,7 +297,8 @@ class TestAsyncTransferManager:
 
     def test_queue_offline_file(self, tmp_path):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransferManager, AsyncTransferStore,
+            AsyncTransferManager,
+            AsyncTransferStore,
         )
         f = tmp_path / "test.txt"
         f.write_text("hello world")
@@ -311,7 +319,8 @@ class TestAsyncTransferManager:
 
     def test_check_pending_for_marks_delivered(self, tmp_path):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransferManager, AsyncTransferStore,
+            AsyncTransferManager,
+            AsyncTransferStore,
         )
         f = tmp_path / "test.txt"
         f.write_text("hello")
@@ -381,7 +390,8 @@ class TestAsyncDedupEdgeCases:
 
     def test_delivered_not_queued_again(self, tmp_path):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransferManager, AsyncTransferStore,
+            AsyncTransferManager,
+            AsyncTransferStore,
         )
         f = tmp_path / "dup.txt"
         f.write_text("icerik")
@@ -397,7 +407,8 @@ class TestAsyncDedupEdgeCases:
 
     def test_failed_transfer_not_deduped(self, tmp_path):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransferManager, AsyncTransferStore,
+            AsyncTransferManager,
+            AsyncTransferStore,
         )
         f = tmp_path / "failed.txt"
         f.write_text("icerik")
@@ -412,7 +423,8 @@ class TestAsyncDedupEdgeCases:
 
     def test_cancel_transfer(self, tmp_path):
         from pardus_paylasim.discovery.async_transfer.manager import (
-            AsyncTransferManager, AsyncTransferStore,
+            AsyncTransferManager,
+            AsyncTransferStore,
         )
         f = tmp_path / "cancel.txt"
         f.write_text("icerik")
@@ -432,8 +444,8 @@ class TestDataChannelProtocol:
     def test_data_channel_send_receive(self):
         """İki soket üzerinden mesaj gönderip alabilmeli."""
         import socket
-        import threading
         import time as _time
+
         from pardus_paylasim.screen.webrtc.data_channel import DataChannel
 
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -492,6 +504,7 @@ class TestDataChannelProtocol:
     def test_close_idempotent(self):
         """close() birden fazla çağrılabilmeli."""
         import socket
+
         from pardus_paylasim.screen.webrtc.data_channel import DataChannel
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         dc = DataChannel(s)
@@ -504,8 +517,8 @@ class TestDataChannelProtocol:
         """64KB üstü kare parçalanıp alıcıda birebir birleşmeli."""
         import os
         import socket
-        import threading
         import time as _time
+
         from pardus_paylasim.screen.webrtc.data_channel import DataChannel
 
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

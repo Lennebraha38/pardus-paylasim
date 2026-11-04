@@ -12,7 +12,7 @@ import logging
 import socket
 import struct
 import threading
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ SERVICE_TYPE = "_pardus-mesh._tcp.local."
 SERVICE_NAME_FMT = "pardus-mesh-{peer_id}._pardus-mesh._tcp.local."
 
 try:
-    from zeroconf import ServiceBrowser, ServiceInfo, ServiceListener, Zeroconf
+    from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
 
     HAS_ZEROCONF = True
 except ImportError:
@@ -33,11 +33,11 @@ def build_service_name(peer_id: str) -> str:
     return SERVICE_NAME_FMT.format(peer_id=safe or "anonim")
 
 
-def encode_txt(peer_id: str) -> Dict[bytes, bytes]:
+def encode_txt(peer_id: str) -> dict[bytes, bytes]:
     return {b"peer_id": peer_id.encode("utf-8")}
 
 
-def decode_peer_id(properties: Optional[Dict]) -> str:
+def decode_peer_id(properties: dict | None) -> str:
     """zeroconf properties sözlüğünden peer_id çıkarır (bayt/str tolerant)."""
     if not properties:
         return ""
@@ -56,7 +56,7 @@ class _MeshListener:
         self._on_peer = on_peer
         self._on_lost = on_peer_lost
         self._lock = threading.Lock()
-        self._known: Dict[str, str] = {}
+        self._known: dict[str, str] = {}
 
     def add_service(self, zc, type_, name):
         try:
@@ -107,8 +107,8 @@ class MeshDiscovery:
     """mDNS duyuru + tarama yaşam döngüsü (tek nesne, start/stop)."""
 
     def __init__(self, peer_id, local_ip, mesh_port,
-                 on_peer: Optional[Callable[[str, int, str], None]] = None,
-                 on_peer_lost: Optional[Callable[[str], None]] = None):
+                 on_peer: Callable[[str, int, str], None] | None = None,
+                 on_peer_lost: Callable[[str], None] | None = None):
         self.peer_id = peer_id
         self.local_ip = local_ip
         self.mesh_port = mesh_port
@@ -160,7 +160,7 @@ class MeshDiscovery:
                 try:
                     zc.close()
                 except Exception:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
                 return False
             self._zc, self._browser, self._info = zc, browser, info
             self._running = True
@@ -172,6 +172,11 @@ class MeshDiscovery:
             self._running = False
             zc, browser, info = self._zc, self._browser, self._info
             self._zc = self._browser = self._info = None
+        if browser is not None:
+            try:
+                browser.cancel()
+            except Exception as e:
+                logger.debug("ServiceBrowser iptal hatası: %s", e)
         if zc is not None:
             try:
                 if info is not None:

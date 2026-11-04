@@ -31,6 +31,7 @@ htmlcov/
 # Temp
 *.tmp
 *.bak
+.claude/
 
 # Binary (large files)
 *.deb

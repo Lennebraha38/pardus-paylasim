@@ -19,7 +19,6 @@ import argparse
 import logging
 import signal
 import threading
-from typing import Optional
 
 from pardus_paylasim.platform_info import current_os_label
 from pardus_paylasim.screen.stream_config import StreamConfig
@@ -46,10 +45,10 @@ class PardusAgent:
 
     def __init__(
         self,
-        device_name: Optional[str] = None,
+        device_name: str | None = None,
         port: int = _DEFAULT_PORT,
         *,
-        capabilities: Optional[AgentCapabilities] = None,
+        capabilities: AgentCapabilities | None = None,
     ) -> None:
         self._caps = capabilities or detect_agent_capabilities()
         self._device_name = device_name or f"{_DEFAULT_DEVICE_PREFIX} ({current_os_label()})"
@@ -59,7 +58,7 @@ class PardusAgent:
         self._capture_loop = None  # AgentCaptureLoop (Faz 3.2, tembel)
         self._file_receiver = None  # FileReceiverServer (Faz 5.2, tembel)
         self._running = threading.Event()
-        self._pin: Optional[str] = None
+        self._pin: str | None = None
 
     @property
     def capabilities(self) -> AgentCapabilities:
@@ -67,7 +66,7 @@ class PardusAgent:
         return self._caps
 
     @property
-    def pin(self) -> Optional[str]:
+    def pin(self) -> str | None:
         """Aktif oturum PIN'i veya None."""
         return self._pin
 
@@ -172,7 +171,7 @@ class PardusAgent:
                     "file-received",
                 )
             except Exception:
-                pass
+                logger.debug("istisna yutuldu", exc_info=True)
 
         self._file_receiver = FileReceiverServer(
             downloads_dir(), port=0, ssl_context=self._server._ssl_context if self._server else None
@@ -251,7 +250,7 @@ class PardusAgent:
         logger.info("Agent durduruldu.")
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: list | None = None) -> int:
     """CLI giriş noktası: pardus-paylasim-agent.
 
     ECC: print yalnız kullanıcıya yönelik CLI banner'ı için

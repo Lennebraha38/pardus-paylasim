@@ -2,7 +2,6 @@
 
 import os
 import sys
-import time
 import unittest
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")

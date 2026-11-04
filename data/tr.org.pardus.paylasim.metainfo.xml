@@ -4,7 +4,7 @@
   <name>Pardus Güvenli Paylaşım</name>
   <summary>Pardus cihazlar arası güvenli dosya ve ekran paylaşımı</summary>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>GPL-3.0-or-later</project_license>
+  <project_license>GPL-3.0-only</project_license>
   <description>
     <p>
       Pardus Güvenli Paylaşım, yerel ağınızdaki diğer Pardus cihazlarını mDNS ve Bluetooth LE
@@ -14,6 +14,20 @@
   </description>
   <launchable type="desktop-id">tr.org.pardus.paylasim.desktop</launchable>
   <icon type="stock">tr.org.pardus.paylasim</icon>
-  <developer_name>Pardus Geliştirici Ekibi</developer_name>
-  <url type="homepage">https://www.pardus.org.tr/</url>
+  <developer_name>Lennebraha38</developer_name>
+  <developer id="tr.org.pardus">
+    <name>Lennebraha38</name>
+  </developer>
+  <url type="homepage">https://github.com/Lennebraha38/pardus-paylasim</url>
+  <url type="bugtracker">https://github.com/Lennebraha38/pardus-paylasim/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.1.0" date="2026-11-04">
+      <description>
+        <p>Kalite ve güvenlik sürümü: ruff/lint temizliği, gettext EN kataloğu,
+        paketleme düzeltmeleri, mesh kimlik doğrulaması ve test kapsamı artışı.</p>
+      </description>
+    </release>
+    <release version="1.0.0" date="2025-09-01"/>
+  </releases>
 </component>

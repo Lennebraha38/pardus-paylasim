@@ -7,12 +7,10 @@ yerel yapılır. Zaman bonusu ve liderlik tablosu korunur.
 """
 
 import json
-import os
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
 
 QUIZ_FORMAT = "pardus-quiz-v1"
 ANSWERS_FORMAT = "pardus-answers-v1"
@@ -29,7 +27,7 @@ class QuizState(Enum):
 class Question:
     question_id: str
     text: str
-    options: List[str]
+    options: list[str]
     correct_answer: int  # 0-3 indeks
     time_limit: int = 30
     points: int = 100
@@ -82,14 +80,14 @@ class Answer:
 class Quiz:
     quiz_id: str
     title: str
-    questions: List[Question]
-    target_boards: List[str] = field(default_factory=list)
+    questions: list[Question]
+    target_boards: list[str] = field(default_factory=list)
     state: QuizState = QuizState.CREATED
     current_question_index: int = 0
     created_at: float = 0.0
     started_at: float = 0.0
     finished_at: float = 0.0
-    answers: List[Answer] = field(default_factory=list)
+    answers: list[Answer] = field(default_factory=list)
     scores: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -97,7 +95,7 @@ class Quiz:
             self.created_at = time.time()
 
     @property
-    def current_question(self) -> Optional[Question]:
+    def current_question(self) -> Question | None:
         if 0 <= self.current_question_index < len(self.questions):
             return self.questions[self.current_question_index]
         return None
@@ -115,10 +113,10 @@ class QuizEngine:
     """Sınav yaşam döngüsü (oluştur → yanıtla → puanla)."""
 
     def __init__(self):
-        self.quizzes: Dict[str, Quiz] = {}
+        self.quizzes: dict[str, Quiz] = {}
 
     def create_quiz(self, title: str, questions_data: list,
-                    target_boards: Optional[list] = None) -> Quiz:
+                    target_boards: list | None = None) -> Quiz:
         quiz_id = f"quiz_{int(time.time())}"
         questions = []
         for i, q in enumerate(questions_data):
@@ -137,7 +135,7 @@ class QuizEngine:
 
     def submit_answer(self, quiz_id: str, board_id: str, board_name: str,
                       question_id: str, answer_index: int,
-                      time_taken: float) -> Optional[dict]:
+                      time_taken: float) -> dict | None:
         quiz = self.quizzes.get(quiz_id)
         if not quiz or quiz.state != QuizState.ACTIVE:
             return None
@@ -184,7 +182,7 @@ class QuizEngine:
         return rows
 
 
-def parse_questions_text(text: str) -> List[dict]:
+def parse_questions_text(text: str) -> list[dict]:
     """Basit soru formatını ayrıştırır. Satır başına soru::
 
         Soru metni | A | B | C | D | doğru:2 | süre:30 | puan:100
@@ -204,7 +202,7 @@ def parse_questions_text(text: str) -> List[dict]:
         if len(parts) < 4:
             raise ValueError(f"Satır {lineno}: en az soru + 2 şık gerekli.")
         text_part = parts[0]
-        options: List[str] = []
+        options: list[str] = []
         correct = None
         time_limit = 30
         points = 100
@@ -268,7 +266,7 @@ def quiz_from_file(path: str) -> Quiz:
     return quiz
 
 
-def answers_to_file(quiz: Quiz, answers: List[Answer], board_id: str,
+def answers_to_file(quiz: Quiz, answers: list[Answer], board_id: str,
                     board_name: str, path: str) -> str:
     """Cevap dosyası soruları GÖMER (puanlama tek dosyayla yapılır)."""
     doc = {"format": ANSWERS_FORMAT, "quiz_id": quiz.quiz_id,

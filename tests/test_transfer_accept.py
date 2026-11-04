@@ -10,7 +10,11 @@ import tempfile
 import time
 import unittest
 
-from pardus_paylasim.discovery.transfer import FileReceiverServer, FileSender
+from pardus_paylasim.discovery.transfer import (
+    FileReceiverServer,
+    FileSender,
+    FileTransferError,
+)
 
 # Testler arası çakışmayı önlemek için ayrı portlar.
 _PORT_ACCEPT = 8951
@@ -80,7 +84,7 @@ class TestFileAcceptGate(unittest.TestCase):
         try:
             src = self._make_source_file()
             # Ret durumunda ACK \x01 gelmez -> FileTransferError beklenir.
-            with self.assertRaises(Exception):
+            with self.assertRaises(FileTransferError):
                 sender = FileSender("127.0.0.1", _PORT_REJECT)
                 sender.ssl_context = self.client_ctx
                 sender.send_file(src)
@@ -103,8 +107,8 @@ class TestFileAcceptGate(unittest.TestCase):
         server.start()
         try:
             src = self._make_source_file()
-            # Ret durumunda ACK \x01 gelmez -> Exception beklenir.
-            with self.assertRaises(Exception):
+            # Ret durumunda ACK \x01 gelmez -> FileTransferError beklenir.
+            with self.assertRaises(FileTransferError):
                 sender = FileSender("127.0.0.1", _PORT_DEFAULT)
                 sender.ssl_context = self.client_ctx
                 sender.send_file(src)
@@ -126,7 +130,9 @@ class TestFileAcceptGate(unittest.TestCase):
         server.on_file_request = lambda name, size, ip: True
         server.start()
         try:
-            evil_name = "../../../../tmp/pardus_evil.bin"
+            evil_dir = tempfile.gettempdir()
+            evil_target = os.path.join(evil_dir, "pardus_evil.bin")
+            evil_name = f"../../../../{evil_dir.lstrip('/')}/pardus_evil.bin"
             body = b"zararli icerik"
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(5)
@@ -150,7 +156,7 @@ class TestFileAcceptGate(unittest.TestCase):
                 f"Dosya dizin dışına yazıldı: {real_saved}",
             )
             # Aşım hedefi oluşmamalı.
-            self.assertFalse(os.path.exists("/tmp/pardus_evil.bin"))
+            self.assertFalse(os.path.exists(evil_target))
         finally:
             server.stop()
 
@@ -171,7 +177,8 @@ class TestFileAcceptGate(unittest.TestCase):
             content = b"secret data" * 10000
             src = self._make_source_file("secret.bin", content)
             sender = FileSender("127.0.0.1", _PORT_SECRET, self.client_ctx)
-            sender.send_file(src, secret_pin="123456")
+            test_pin = "123456"
+            sender.send_file(src, secret_pin=test_pin)
             self.assertTrue(_wait_for(lambda: len(received) == 1))
             with open(received[0], "rb") as f:
                 self.assertEqual(f.read(), content)

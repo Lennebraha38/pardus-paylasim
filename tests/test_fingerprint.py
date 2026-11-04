@@ -18,7 +18,6 @@ class TestTrustStore(unittest.TestCase):
         return TrustStore(file_path=os.path.join(tmp, "trust.json"))
 
     def test_record_and_lookup(self):
-        from pardus_paylasim.auth.trust_store import TrustStore
         with tempfile.TemporaryDirectory() as tmp:
             s = self._store(tmp)
             self.assertTrue(s.record_pairing(FP_A, "Ev PC", "192.168.1.10"))
@@ -49,6 +48,7 @@ class TestTrustStore(unittest.TestCase):
 
     def test_persistence_and_old_format(self):
         import json
+
         from pardus_paylasim.auth.trust_store import TrustStore
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "trust.json")
@@ -67,7 +67,7 @@ class TestTrustStore(unittest.TestCase):
             self.assertEqual(s2.find_by_ip("10.0.0.2").device_name, "Ofis")
 
     def test_should_auto_accept(self):
-        from pardus_paylasim.auth.trust_store import TrustStore, should_auto_accept
+        from pardus_paylasim.auth.trust_store import should_auto_accept
         with tempfile.TemporaryDirectory() as tmp:
             s = self._store(tmp)
             # Ayar kapalıysa güvenilir bile olsa ret.
@@ -103,8 +103,9 @@ class TestMdnsFingerprintFlow(unittest.TestCase):
         self.assertEqual(dev.fingerprint, FP_A)
 
     def test_mdns_without_fp_defaults_empty(self):
-        from pardus_paylasim.discovery.device_manager import DeviceManager
         import threading
+
+        from pardus_paylasim.discovery.device_manager import DeviceManager
         mgr = DeviceManager.__new__(DeviceManager)
         mgr._lock = threading.Lock()
         mgr.devices = {}
@@ -114,8 +115,9 @@ class TestMdnsFingerprintFlow(unittest.TestCase):
         self.assertEqual(mgr.devices["192.168.1.21"].fingerprint, "")
 
     def test_mdns_broken_fp_ignored(self):
-        from pardus_paylasim.discovery.device_manager import DeviceManager
         import threading
+
+        from pardus_paylasim.discovery.device_manager import DeviceManager
         mgr = DeviceManager.__new__(DeviceManager)
         mgr._lock = threading.Lock()
         mgr.devices = {}
@@ -127,8 +129,8 @@ class TestMdnsFingerprintFlow(unittest.TestCase):
 
 class TestDeviceCert(unittest.TestCase):
     def test_no_crypto_raises_clear_error(self):
-        from pardus_paylasim.screen import tls_util
         from pardus_paylasim.auth import trust_store as ts
+        from pardus_paylasim.screen import tls_util
         if tls_util.HAS_TLS:
             self.skipTest("cryptography kurulu; yokluk yolu test edilemez")
         with self.assertRaises(RuntimeError):

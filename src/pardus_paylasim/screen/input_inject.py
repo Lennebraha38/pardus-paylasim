@@ -26,7 +26,8 @@ from __future__ import annotations
 import logging
 import shutil
 import subprocess
-from typing import Callable, Dict, Optional, Protocol, Tuple, runtime_checkable
+from collections.abc import Callable
+from typing import Protocol, runtime_checkable
 
 from .. import platform_info
 from . import control_protocol as cp
@@ -41,7 +42,7 @@ BACKEND_PYNPUT = "pynput"
 
 # Oturum tipine göre backend öncelik listesi. Backend yalnız listede VE mevcutsa
 # seçilir. X11'de XTEST primary; Wayland'da portal(Faz4)→ydotool; Windows pynput.
-_SESSION_PRIORITY: Dict[str, Tuple[str, ...]] = {
+_SESSION_PRIORITY: dict[str, tuple[str, ...]] = {
     platform_info.SESSION_X11: (BACKEND_XTEST, BACKEND_YDOTOOL, BACKEND_PYNPUT),
     platform_info.SESSION_WAYLAND: (BACKEND_PORTAL, BACKEND_YDOTOOL),
     platform_info.SESSION_WINDOWS: (BACKEND_PYNPUT,),
@@ -85,7 +86,7 @@ class InjectionBackend(Protocol):
 # --- Saf koordinat eşleme -----------------------------------------------------
 
 
-def normalized_to_pixel(x: float, y: float, width: int, height: int) -> Tuple[int, int]:
+def normalized_to_pixel(x: float, y: float, width: int, height: int) -> tuple[int, int]:
     """Normalize 0..1 koordinatı host piksel koordinatına çevir.
 
     Fail-safe: girdiyi [0,1]'e kırpar (protokol katmanı da kırpar; burada
@@ -101,7 +102,7 @@ def normalized_to_pixel(x: float, y: float, width: int, height: int) -> Tuple[in
 # --- Saf backend seçimi -------------------------------------------------------
 
 
-def select_backend_name(session: str, availability: Dict[str, bool]) -> Optional[str]:
+def select_backend_name(session: str, availability: dict[str, bool]) -> str | None:
     """Oturum + mevcutluk haritasından backend adı seç (saf, I/O yok).
 
     `availability`: {"portal": bool, "ydotool": bool, "xtest": bool,
@@ -125,7 +126,7 @@ def _probe_xtest() -> bool:
         import Xlib.ext.xtest  # noqa: F401
 
         return True
-    except Exception as e:  # pragma: no cover - ortama bağlı
+    except Exception:  # pragma: no cover - ortama bağlı
         return False
 
 
@@ -135,7 +136,7 @@ def _probe_pynput() -> bool:
         import pynput  # noqa: F401
 
         return True
-    except Exception as e:  # pragma: no cover - ortama bağlı
+    except Exception:  # pragma: no cover - ortama bağlı
         return False
 
 
@@ -156,7 +157,7 @@ def _probe_portal() -> bool:
         return False
 
 
-def detect_availability() -> Dict[str, bool]:
+def detect_availability() -> dict[str, bool]:
     """Tüm backend'lerin mevcutluğunu probe et → harita."""
     return {
         BACKEND_PORTAL: _probe_portal(),
@@ -167,10 +168,10 @@ def detect_availability() -> Dict[str, bool]:
 
 
 # Backend adı → yapıcı (tembel; seçilen backend yalnız gerektiğinde kurulur).
-_FACTORIES: Dict[str, Callable[[], "InjectionBackend"]] = {}
+_FACTORIES: dict[str, Callable[[], InjectionBackend]] = {}
 
 
-def create_backend(session: Optional[str] = None) -> Optional[InjectionBackend]:
+def create_backend(session: str | None = None) -> InjectionBackend | None:
     """Oturuma uygun mevcut backend'i seç + kur. Yoksa None.
 
     `session` None ise `platform_info.session_type()` kullanılır (test için
@@ -225,7 +226,7 @@ def apply_event(backend: InjectionBackend, event: cp.ControlEvent, width: int, h
 
 # KEY_* → X11 keysym adı (Xlib.XK.string_to_keysym için). Harf/rakam programlı;
 # özel tuşlar açık. Taban (shift'siz) keysym; değiştiriciler ayrı KEY_* eventi.
-_XKEYSYM_NAMES: Dict[str, str] = {}
+_XKEYSYM_NAMES: dict[str, str] = {}
 for _c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
     _XKEYSYM_NAMES[f"KEY_{_c}"] = _c.lower()
 for _d in "0123456789":
@@ -274,7 +275,7 @@ _XKEYSYM_NAMES.update(
 
 # KEY_* → Linux evdev kod numarası (ydotool `key <code>:<1|0>`).
 # input-event-codes.h sabitleri. Yalnız desteklenen KEY_* alt kümesi.
-_EVDEV_CODES: Dict[str, int] = {
+_EVDEV_CODES: dict[str, int] = {
     "KEY_ESC": 1,
     "KEY_1": 2,
     "KEY_2": 3,
@@ -362,7 +363,7 @@ _EVDEV_CODES: Dict[str, int] = {
 
 # KEY_* → pynput özel tuş adı (pynput.keyboard.Key.<ad>). Harf/rakam bu
 # haritada yok → KeyCode.from_char ile karaktere düşülür.
-_PYNPUT_SPECIAL: Dict[str, str] = {
+_PYNPUT_SPECIAL: dict[str, str] = {
     "KEY_ENTER": "enter",
     "KEY_ESC": "esc",
     "KEY_BACKSPACE": "backspace",
@@ -402,7 +403,7 @@ _PYNPUT_SPECIAL: Dict[str, str] = {
 }
 
 # KEY_* → shift'siz düz karakter (pynput KeyCode + shift'siz noktalama).
-_CHAR_KEYS: Dict[str, str] = {}
+_CHAR_KEYS: dict[str, str] = {}
 for _c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
     _CHAR_KEYS[f"KEY_{_c}"] = _c.lower()
 for _d in "0123456789":
@@ -490,8 +491,8 @@ class XTestBackend:
     def close(self) -> None:
         try:
             self._display.close()
-        except Exception as e:  # pragma: no cover
-            pass
+        except Exception:  # pragma: no cover
+            logger.debug("X11 display kapatma hatası", exc_info=True)
 
 
 class YdotoolBackend:
@@ -509,7 +510,7 @@ class YdotoolBackend:
 
     def _run(self, args) -> None:
         try:
-            subprocess.run(
+            subprocess.run(  # noqa: S603 - sabit komut, shell yok
                 [self._exe, *args],
                 check=False,
                 stdout=subprocess.DEVNULL,
@@ -607,8 +608,8 @@ class PortalBackend:
     def __init__(self) -> None:
         try:
             import pydbus
-        except ImportError:
-            raise InjectionUnavailable("pydbus kurulu değil")
+        except ImportError as e:
+            raise InjectionUnavailable("pydbus kurulu değil") from e
 
         self.bus = pydbus.SessionBus()
         self.portal = self.bus.get(
@@ -625,8 +626,8 @@ class PortalBackend:
         if self._session_path:
             try:
                 self.portal.NotifyPointerMotion(self._session_path, {}, x, y)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def button(self, button: str, down: bool) -> None:
         btn = self._BTN_MAP.get(button)
@@ -634,8 +635,8 @@ class PortalBackend:
             state = 1 if down else 0
             try:
                 self.portal.NotifyPointerButton(self._session_path, {}, btn, state)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def scroll(self, dx: float, dy: float) -> None:
         if self._session_path:
@@ -645,8 +646,8 @@ class PortalBackend:
                     self.portal.NotifyPointerAxis(self._session_path, {}, 1, dy)
                 if dx != 0:
                     self.portal.NotifyPointerAxis(self._session_path, {}, 0, dx)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def key(self, code: str, down: bool) -> None:
         evcode = _EVDEV_CODES.get(code)
@@ -654,8 +655,8 @@ class PortalBackend:
             state = 1 if down else 0
             try:
                 self.portal.NotifyKeyboardKeycode(self._session_path, {}, evcode, state)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
     def close(self) -> None:
         if self._session_path:

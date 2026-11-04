@@ -6,6 +6,7 @@ kaynak (Türkçe) string aynen döner — Windows/dev ortamı bozulmaz.
 
 import gettext as _gettext
 import os
+import sys
 
 DOMAIN = "pardus-paylasim"
 
@@ -13,6 +14,7 @@ DOMAIN = "pardus-paylasim"
 _PKG_LOCALE = os.path.join(os.path.dirname(__file__), "locale")
 _ROOT_LOCALE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "locale")
 _SYS_LOCALE = "/usr/share/locale"
+_PREFIX_LOCALE = os.path.join(sys.prefix, "share", "locale")
 
 _translation = None
 
@@ -22,6 +24,8 @@ def _pick_localedir() -> str:
         return _PKG_LOCALE
     if os.path.isdir(_ROOT_LOCALE):
         return _ROOT_LOCALE
+    if os.path.isdir(_PREFIX_LOCALE):
+        return _PREFIX_LOCALE
     return _SYS_LOCALE
 
 

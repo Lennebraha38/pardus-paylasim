@@ -18,7 +18,7 @@ import socket
 import ssl
 import struct
 import threading
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from . import net_util
 
@@ -40,7 +40,7 @@ class ClipboardSyncClient:
         self,
         target_ip: str,
         target_port: int = CLIPBOARD_PORT,
-        ssl_context: Optional[ssl.SSLContext] = None,
+        ssl_context: ssl.SSLContext | None = None,
     ) -> None:
         self.target_ip = target_ip
         self.target_port = target_port
@@ -72,19 +72,19 @@ class ClipboardSyncServer:
     """Gelen pano metnini dinler; alınca on_clipboard_received(metin, ip)."""
 
     def __init__(
-        self, port: int = CLIPBOARD_PORT, ssl_context: Optional[ssl.SSLContext] = None
+        self, port: int = CLIPBOARD_PORT, ssl_context: ssl.SSLContext | None = None
     ) -> None:
         self.port = port
         self.ssl_context = ssl_context
-        self.server_socket: Optional[socket.socket] = None
+        self.server_socket: socket.socket | None = None
         self._running = False
         # Callback(text, sender_ip); None ise alınan metin yalnız yutulur.
-        self.on_clipboard_received: Optional[Callable[[str, str], None]] = None
+        self.on_clipboard_received: Callable[[str, str], None] | None = None
 
     def start(self) -> None:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind(("0.0.0.0", self.port))
+        self.server_socket.bind(("0.0.0.0", self.port))  # noqa: S104 - LAN keşfi için bilinçli
         self.server_socket.listen(5)
         if self.ssl_context:
             self.server_socket = self.ssl_context.wrap_socket(self.server_socket, server_side=True)

@@ -11,7 +11,6 @@ genelindeki zarif-düşüş (graceful degradation) kalıbıyla tutarlı.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ _PRIORITY_HIGH = "high"
 
 
 def send_notification(
-    app: Optional[object],
+    app: object | None,
     title: str,
     body: str,
     notification_id: str = "pardus-paylasim",
@@ -67,9 +66,9 @@ def send_notification(
         # Uygulama ikonunu ekle (tema ikonu bulunamazsa GTK yok sayar).
         try:
             notification.set_icon(Gio.ThemedIcon.new(icon_name))
-        except Exception as e:
+        except Exception as icon_err:
             # İkon kritik değil; başarısızsa bildirim ikonsuz gönderilir.
-            pass
+            logger.debug("Bildirim ikonu ayarlanamadı (%s): %s", icon_name, icon_err)
 
         if priority == _PRIORITY_HIGH:
             notification.set_priority(Gio.NotificationPriority.HIGH)
@@ -84,7 +83,7 @@ def send_notification(
         return False
 
 
-def withdraw_notification(app: Optional[object], notification_id: str) -> None:
+def withdraw_notification(app: object | None, notification_id: str) -> None:
     """Gösterilen bir bildirimi geri çeker (varsa). Hata durumunda sessizdir."""
     if not HAS_GTK or app is None:
         return

@@ -13,8 +13,8 @@ import os
 import sqlite3
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +35,15 @@ class AsyncTransfer:
     status: str  # pending, delivered, failed, cancelled
     file_path: str
     created_at: float = field(default_factory=time.time)
-    delivered_at: Optional[float] = None
+    delivered_at: float | None = None
     attempts: int = 0
-    last_attempt: Optional[float] = None
+    last_attempt: float | None = None
 
 
 class AsyncTransferStore:
     """Asenkron transferleri SQLite'da saklar."""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         self.db_path = db_path or DB_PATH
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._lock = threading.RLock()
@@ -135,7 +135,7 @@ class AsyncTransferStore:
                 logger.error("Transfer kuyruğa eklenemedi: %s", e)
                 return False
 
-    def get_pending_for_receiver(self, receiver_id: str) -> List[AsyncTransfer]:
+    def get_pending_for_receiver(self, receiver_id: str) -> list[AsyncTransfer]:
         """Bir alıcı için bekleyen transferleri döndürür."""
         with self._lock:
             conn = self._conn
@@ -152,7 +152,7 @@ class AsyncTransferStore:
             ).fetchall()
             return [self._row_to_transfer(r) for r in rows]
 
-    def get_all_pending(self) -> List[AsyncTransfer]:
+    def get_all_pending(self) -> list[AsyncTransfer]:
         """Tüm bekleyen transferler (alıcıdan bağımsız özet için)."""
         with self._lock:
             conn = self._conn
@@ -177,7 +177,7 @@ class AsyncTransferStore:
             ).fetchone()
             return int(row[0]) if row else 0
 
-    def get_pending_for_sender(self, sender_id: str) -> List[AsyncTransfer]:
+    def get_pending_for_sender(self, sender_id: str) -> list[AsyncTransfer]:
         """Bir gönderici tarafından yapılan bekleyen transferleri döndürür."""
         with self._lock:
             conn = self._conn
@@ -234,7 +234,7 @@ class AsyncTransferStore:
             conn.commit()
             self._log_event(transfer_id, "cancelled", {})
 
-    def get_transfer_by_hash(self, file_hash: str) -> Optional[AsyncTransfer]:
+    def get_transfer_by_hash(self, file_hash: str) -> AsyncTransfer | None:
         """Belirli bir hash'e sahip transferi bulur (dedup için)."""
         with self._lock:
             conn = self._conn
@@ -251,7 +251,7 @@ class AsyncTransferStore:
 
     def get_history(
         self, transfer_id: str, limit: int = 50
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Bir transferin olay geçmişini döndürür."""
         with self._lock:
             conn = self._conn
@@ -314,22 +314,22 @@ class AsyncTransferManager:
         self,
         device_id: str,
         device_name: str,
-        store: Optional[AsyncTransferStore] = None,
-        on_transfer_ready: Optional[Callable[[AsyncTransfer], None]] = None,
+        store: AsyncTransferStore | None = None,
+        on_transfer_ready: Callable[[AsyncTransfer], None] | None = None,
     ):
         self.device_id = device_id
         self.device_name = device_name
         self.store = store or AsyncTransferStore()
         self.on_transfer_ready = on_transfer_ready
         self._pending_lock = threading.Lock()
-        self._pending_devices: Dict[str, threading.Event] = {}
+        self._pending_devices: dict[str, threading.Event] = {}
 
     def queue_offline(
         self,
         file_path: str,
         receiver_id: str,
         receiver_name: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Dosyayı alıcı çevrimdışıysa kuyruğa ekler."""
         if not os.path.exists(file_path):
             logger.error("Dosya bulunamadı: %s", file_path)
@@ -368,7 +368,7 @@ class AsyncTransferManager:
         )
         return tid
 
-    def check_pending_for(self, peer_id: str) -> List[AsyncTransfer]:
+    def check_pending_for(self, peer_id: str) -> list[AsyncTransfer]:
         """Bir eş çevrimiçi olduğunda bekleyen transferlerini döndürür."""
         pending = self.store.get_pending_for_receiver(peer_id)
         for t in pending:
@@ -377,7 +377,7 @@ class AsyncTransferManager:
                 self.on_transfer_ready(t)
         return pending
 
-    def sync_to_peer(self, peer_id: str) -> List[AsyncTransfer]:
+    def sync_to_peer(self, peer_id: str) -> list[AsyncTransfer]:
         """Bir eşe gönderilmesi gereken bekleyen transferleri döndürür."""
         return self.store.get_pending_for_sender(peer_id)
 

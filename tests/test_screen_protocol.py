@@ -289,8 +289,8 @@ def test_screen_protocols():
     # Check /info endpoint
     print("\n[3] Testing /info endpoint...")
     try:
-        req = urllib.request.Request(f"{base}/info")
-        with urllib.request.urlopen(req, timeout=2, context=ctx) as response:
+        req = urllib.request.Request(f"{base}/info")  # noqa: S310
+        with urllib.request.urlopen(req, timeout=2, context=ctx) as response:  # noqa: S310
             print(f" /info Response: {response.status}")
             print(f" /info JSON: {json.loads(response.read().decode())}")
     except Exception as e:
@@ -299,8 +299,8 @@ def test_screen_protocols():
     # Check /stream endpoint without PIN (Should fail)
     print("\n[4] Testing /stream endpoint (Auth Rejection)...")
     try:
-        req = urllib.request.Request(f"{base}/stream?pin=WRONG")
-        with urllib.request.urlopen(req, timeout=2, context=ctx) as response:
+        req = urllib.request.Request(f"{base}/stream?pin=WRONG")  # noqa: S310
+        with urllib.request.urlopen(req, timeout=2, context=ctx) as response:  # noqa: S310
             print(f" /stream (Wrong PIN) Response: {response.status} (Expected 403)")
     except urllib.error.HTTPError as e:
         print(f" /stream (Wrong PIN) Response: {e.code} (Expected 403)")

@@ -11,7 +11,6 @@ from pardus_paylasim.cleaner.report_builder import ReportBuilder
 from pardus_paylasim.clipboard.sensitive_masker import SensitiveMasker
 from pardus_paylasim.i18n import _, setup_i18n
 from pardus_paylasim.logging_setup import setup_logging
-from pardus_paylasim.window import MainWindow
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ try:
     gi.require_version("Adw", "1")
     from gi.repository import Adw
     HAS_GTK = True
-except Exception as e:
+except Exception:
     HAS_GTK = False
 
 
@@ -34,6 +33,10 @@ class PardusPaylasimApp:
             self.app = None
 
     def on_activate(self, app):
+        # GTK penceresi yalnız GUI yolunda import edilir; CLI (--mask/--clean)
+        # PyGObject kurulu olmayan sistemlerde de çalışır.
+        from pardus_paylasim.window import MainWindow
+
         MainWindow(app)
 
     def run(self, args=None):
@@ -65,9 +68,10 @@ class PardusPaylasimApp:
             return 0
 
         if cli_args.mesh_status:
-            from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
             import socket
             import uuid
+
+            from pardus_paylasim.discovery.mesh.mesh_network import MeshNode
 
             def _local_ip() -> str:
                 try:
@@ -118,6 +122,7 @@ class PardusPaylasimApp:
             import os
             import tempfile
             import threading
+
             from pardus_paylasim.cleaner.metadata_cleaner import prepare_send_file
             from pardus_paylasim.discovery.transfer import FileSender
             from pardus_paylasim.progress import compute_stats, format_progress_line
@@ -165,16 +170,23 @@ class PardusPaylasimApp:
                     health = TransferHealth()
                     last_line = {"pct": -1}
 
-                    def on_stats_throttled(sent, total, elapsed, _n=name):
+                    def on_stats_throttled(
+                        sent,
+                        total,
+                        elapsed,
+                        _n=name,
+                        _last_line=last_line,
+                        _health=health,
+                    ):
                         import sys
                         s = compute_stats(sent, total, elapsed)
                         pct = int(round(s.percent * 100))
-                        if pct != last_line["pct"]:
-                            last_line["pct"] = pct
+                        if pct != _last_line["pct"]:
+                            _last_line["pct"] = pct
                             line = format_progress_line(s)
-                            health.check(sent, total, elapsed)
-                            if health.active_warning:
-                                line += "  " + health.active_warning
+                            _health.check(sent, total, elapsed)
+                            if _health.active_warning:
+                                line += "  " + _health.active_warning
                             sys.stdout.write(f"\r  {_n}: {line}   ")
                             sys.stdout.flush()
                     sender.send_file(

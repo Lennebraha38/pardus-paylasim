@@ -12,10 +12,11 @@ import shlex
 import shutil
 import socketserver
 import subprocess
+import tempfile
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import replace
-from typing import Callable, List, Optional, Tuple
 
 from pardus_paylasim.platform_info import (
     SESSION_WAYLAND,
@@ -55,7 +56,7 @@ _JPEG_SOI = b"\xff\xd8"
 _JPEG_EOI = b"\xff\xd9"
 
 
-def extract_jpeg_frames(buffer: bytes) -> Tuple[List[bytes], bytes]:
+def extract_jpeg_frames(buffer: bytes) -> tuple[list[bytes], bytes]:
     """Bayt tamponundan tam JPEG karelerini ayıkla → (kareler, kalan).
 
     GStreamer `fdsink` stdout'u parça parça (chunk) akar: bir JPEG karesi
@@ -67,7 +68,7 @@ def extract_jpeg_frames(buffer: bytes) -> Tuple[List[bytes], bytes]:
     Saf/stdlib (GStreamer/soket gerektirmez) → headless unit-test edilebilir.
     Davranış `_read_gst_frames`'in eski gömülü döngüsüyle birebir aynıdır.
     """
-    frames: List[bytes] = []
+    frames: list[bytes] = []
     remainder = buffer
     while True:
         start = remainder.find(_JPEG_SOI)
@@ -122,7 +123,7 @@ _VIEWER_DIR_UNSET = object()
 _web_viewer_dir_cache = _VIEWER_DIR_UNSET
 
 
-def _resolve_web_viewer_dir() -> Optional[str]:
+def _resolve_web_viewer_dir() -> str | None:
     """Web viewer statik varlık dizinini çöz (dev repo-kökü / kurulu sistem yolu).
 
     Aday sırası: (1) geliştirme deposu kökü `<repo>/data/web-viewer`
@@ -141,7 +142,7 @@ def _resolve_web_viewer_dir() -> Optional[str]:
         os.path.join(here, "..", "..", "..", "data", "web-viewer"),
         os.path.join("/usr", "share", "pardus-paylasim", "web-viewer"),
     ]
-    resolved: Optional[str] = None
+    resolved: str | None = None
     for cand in candidates:
         norm = os.path.normpath(cand)
         if os.path.isdir(norm):
@@ -151,7 +152,7 @@ def _resolve_web_viewer_dir() -> Optional[str]:
     return resolved
 
 
-def read_web_viewer_asset(route: str) -> Optional[Tuple[bytes, str]]:
+def read_web_viewer_asset(route: str) -> tuple[bytes, str] | None:
     """Sabit-allowlist web viewer varlığını oku → (içerik, içerik-tipi) / None.
 
     Yalnız `_WEB_VIEWER_ASSETS` allowlist'indeki sabit route'lar servis edilir;
@@ -210,7 +211,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
 
         return False
 
-    def _cors_origin(self) -> Optional[str]:
+    def _cors_origin(self) -> str | None:
         """İstek `Origin`'i allowlist'teyse onu döndür; değilse None.
 
         Asla '*' dönmez. Origin yoksa (same-origin/native istemci, tarayıcı
@@ -280,7 +281,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                 "resolution": self.server_instance.capture_resolution,
                 "status": "streaming" if self.server_instance.is_streaming else "stopped",
                 "port": self.server_instance.port,
-                "version": "1.0.0",
+                "version": "1.1.0",
                 "capture_error": self.server_instance.capture_error,
                 "capture_backend": self.server_instance.capture_backend,
                 # TLS durumu + parmak izi: istemci akış öncesi pinler (TOFU).
@@ -443,7 +444,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(b'{"status":"ok"}')
                 else:
                     self._send_json('{"error":"INVALID_PIN"}', 403)
-            except Exception as e:
+            except Exception:
                 self._send_json('{"error":"BAD_REQUEST"}', 400)
             return
 
@@ -529,8 +530,8 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                             "sha256": hasher.hexdigest(),
                         },
                     )
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
 
                 try:
                     from pardus_paylasim.notifications import send_notification
@@ -540,8 +541,8 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                         message=f"{os.path.basename(final_path)} indirilenlere kaydedildi.",
                         notification_id="file-received",
                     )
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
 
             except Exception as e:
                 self._send_json(f'{{"error":"UPLOAD_FAILED", "detail":"{str(e)}"}}', 500)
@@ -577,8 +578,8 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
                             "quality": quality,
                         },
                     )
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
 
                 from pardus_paylasim.screen.webrtc_server import process_offer_sync
 
@@ -596,8 +597,8 @@ class ScreenStreamServer:
     def __init__(
         self,
         device_name: str = "Pardus Ekran Sunucusu",
-        port: Optional[int] = None,
-        config: Optional[StreamConfig] = None,
+        port: int | None = None,
+        config: StreamConfig | None = None,
     ):
         self.device_name = device_name
         # Akış parametreleri config'den (GSettings/JSON) gelir; hardcoded değil.
@@ -608,26 +609,26 @@ class ScreenStreamServer:
             self._config = replace(self._config, port=port)
         self.port = self._config.port
         self._streaming_event = threading.Event()  # Thread-safe streaming flag
-        self.httpd: Optional[socketserver.TCPServer] = None
+        self.httpd: socketserver.TCPServer | None = None
         self.pairing_mgr = ScreenPairingManager()
 
         from pardus_paylasim.screen.pairing import SessionManager
 
         self.session_mgr = SessionManager()
-        self._current_frame: Optional[bytes] = None
+        self._current_frame: bytes | None = None
         self._frame_lock = threading.Lock()
-        self._capture_thread: Optional[threading.Thread] = None
+        self._capture_thread: threading.Thread | None = None
         # Denenen GStreamer backend'i; ilk kare gelince capture_backend'e yazılır.
-        self._pending_backend: Optional[str] = None
+        self._pending_backend: str | None = None
         # Yakalanan gerçek çözünürlük. Native modda ilk JPEG'den doldurulur
         # (dürüst /info); ölçekli modda config'in çözünürlük etiketi.
         self.capture_resolution = (
             "unknown" if self._config.is_native_resolution else self._config.resolution_label
         )
         # Set when no working capture backend exists (honest state, not fake frames).
-        self.capture_error: Optional[str] = None
+        self.capture_error: str | None = None
         # Aktif yakalama backend'i ("pipewire"/"x11"/"scrot"/... ); /info'da göster.
-        self.capture_backend: Optional[str] = None
+        self.capture_backend: str | None = None
         # Query-string PIN kullanımı bir kez uyarılır (log spam engelle).
         self._query_pin_warned = False
         # Web istemci CORS izin listesi (allowlist). Boş → hiçbir origin echo
@@ -639,15 +640,15 @@ class ScreenStreamServer:
         self.has_gnome_screenshot = shutil.which("gnome-screenshot") is not None
         self.has_import = shutil.which("import") is not None  # ImageMagick
         self.has_scrot = shutil.which("scrot") is not None
-        self._gst_process: Optional[subprocess.Popen] = None
+        self._gst_process: subprocess.Popen | None = None
 
         # TLS: ephemeral self-signed cert şifreler; fingerprint PIN akışında
         # öğrenilip akıştan önce doğrulanır (MITM koruması). cryptography yoksa
         # düz HTTP'ye düşer (yalnız asgari geliştirme kurulumu).
         self.tls_enabled = tls_util.HAS_TLS
-        self.cert_fingerprint: Optional[str] = None
-        self._tls_cert_path: Optional[str] = None
-        self._tls_key_path: Optional[str] = None
+        self.cert_fingerprint: str | None = None
+        self._tls_cert_path: str | None = None
+        self._tls_key_path: str | None = None
         self._ssl_context = None
 
         # Uzaktan kontrol kanalı (AnyDesk-tarzı). Default KAPALI; host açıkça
@@ -715,7 +716,7 @@ class ScreenStreamServer:
         else:
             self._streaming_event.clear()
 
-    def start_server(self, pin_callback: Optional[Callable[[str], None]] = None) -> str:
+    def start_server(self, pin_callback: Callable[[str], None] | None = None) -> str:
         """Starts the screen stream server and returns the authorization PIN."""
         self.pin_callback = pin_callback
         # Generate initial PIN for any client
@@ -755,12 +756,14 @@ class ScreenStreamServer:
         except Exception as e:
             self.tls_enabled = False
             self._ssl_context = None
-            raise RuntimeError(f"TLS kurulumu başarısız. Faz 1 Fail-closed: {e}")
+            raise RuntimeError(
+                f"TLS kurulumu başarısız. Faz 1 Fail-closed: {e}"
+            ) from e
 
     def _run_http_server(self):
         try:
             socketserver.TCPServer.allow_reuse_address = True
-            self.httpd = socketserver.ThreadingTCPServer(("0.0.0.0", self.port), MJPEGHandler)
+            self.httpd = socketserver.ThreadingTCPServer(("0.0.0.0", self.port), MJPEGHandler)  # noqa: S104 - LAN keşfi için bilinçli
             # TLS sarımı: dinleyen soketi self-signed sertifika ile şifrele.
             if self.tls_enabled and self._ssl_context is not None:
                 self.httpd.socket = self._ssl_context.wrap_socket(
@@ -851,7 +854,7 @@ class ScreenStreamServer:
         Başarılı yolda `capture_backend` set + `capture_error` temizlenir.
         """
         try:
-            self._gst_process = subprocess.Popen(
+            self._gst_process = subprocess.Popen(  # noqa: S603 - sabit komut, shell yok
                 ["gst-launch-1.0", "-q"] + shlex.split(pipeline),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -894,8 +897,8 @@ class ScreenStreamServer:
             try:
                 for chunk in iter(lambda: stderr.read(4096), b""):
                     sink.append(chunk)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
         thread = threading.Thread(target=_pump, daemon=True)
         thread.start()
@@ -936,7 +939,7 @@ class ScreenStreamServer:
                         self.capture_error = None
                     self._update_native_resolution(jpeg)
             return True
-        except Exception as e:
+        except Exception:
             return False
 
     def _fallback_screenshot_loop(self):
@@ -961,7 +964,9 @@ class ScreenStreamServer:
             self.is_streaming = False
             return
 
-        tmp_path = f"/tmp/pardus_screen_{os.getpid()}.jpg"
+        tmp_path = os.path.join(
+            tempfile.gettempdir(), f"pardus_screen_{os.getpid()}.jpg"
+        )
         tmp_write_path = tmp_path + ".tmp"
 
         while self.is_streaming:
@@ -970,7 +975,7 @@ class ScreenStreamServer:
                 env["CANBERRA_DRIVER"] = "null"  # Silence shutter sounds
 
                 cmd = screenshot_cmd + [tmp_write_path]
-                subprocess.run(cmd, timeout=3, capture_output=True, env=env)
+                subprocess.run(cmd, timeout=3, capture_output=True, env=env)  # noqa: S603 - sabit komut, shell yok
 
                 if os.path.exists(tmp_write_path) and os.path.getsize(tmp_write_path) > 100:
                     os.replace(tmp_write_path, tmp_path)
@@ -982,8 +987,8 @@ class ScreenStreamServer:
                     if self.capture_backend is None:
                         self.capture_backend = backend_label
                     self._update_native_resolution(frame)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
             # Kare aralığı config'den (1/fps); hardcoded 0.04 değil.
             time.sleep(self._config.frame_interval)
 
@@ -1001,7 +1006,7 @@ class ScreenStreamServer:
         if dims is not None:
             self.capture_resolution = f"{dims[0]}x{dims[1]}"
 
-    def get_current_frame(self) -> Optional[bytes]:
+    def get_current_frame(self) -> bytes | None:
         with self._frame_lock:
             return self._current_frame
 
@@ -1014,19 +1019,19 @@ class ScreenStreamServer:
             try:
                 self._gst_process.terminate()
                 self._gst_process.wait(timeout=2)
-            except Exception as e:
+            except Exception:
                 try:
                     self._gst_process.kill()
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
             self._gst_process = None
 
         # Join capture thread to ensure clean shutdown
         if self._capture_thread and self._capture_thread.is_alive():
             try:
                 self._capture_thread.join(timeout=2)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
         self._capture_thread = None
 
         # Stop HTTP server
@@ -1034,16 +1039,18 @@ class ScreenStreamServer:
             try:
                 self.httpd.shutdown()
                 self.httpd.server_close()
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
         # Clean temp file
-        tmp_path = f"/tmp/pardus_screen_{os.getpid()}.jpg"
+        tmp_path = os.path.join(
+            tempfile.gettempdir(), f"pardus_screen_{os.getpid()}.jpg"
+        )
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
         # TLS geçici sertifika/anahtar dosyalarını sil (0600 izinli temp).
         for tls_path in (self._tls_cert_path, self._tls_key_path):
@@ -1051,6 +1058,6 @@ class ScreenStreamServer:
                 try:
                     os.remove(tls_path)
                 except OSError:
-                    pass
+                    logger.debug("istisna yutuldu", exc_info=True)
         self._tls_cert_path = None
         self._tls_key_path = None

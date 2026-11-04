@@ -4,12 +4,15 @@ Uses BlueZ D-Bus API for continuous BLE scanning and device discovery.
 Supports both LE and Classic Bluetooth device detection.
 """
 
+import logging
 import re
 import shutil
 import subprocess
 import threading
 import time
-from typing import Callable, Dict
+from collections.abc import Callable
+
+logger = logging.getLogger(__name__)
 
 
 class BLEDiscovery:
@@ -18,9 +21,11 @@ class BLEDiscovery:
     def __init__(self, device_name: str):
         self.device_name = device_name
         self.running = False
-        self.has_bluetoothctl = shutil.which("bluetoothctl") is not None
-        self.has_hcitool = shutil.which("hcitool") is not None
-        self._seen_devices: Dict[str, dict] = {}
+        self.bluetoothctl_path = shutil.which("bluetoothctl")
+        self.hcitool_path = shutil.which("hcitool")
+        self.has_bluetoothctl = self.bluetoothctl_path is not None
+        self.has_hcitool = self.hcitool_path is not None
+        self._seen_devices: dict[str, dict] = {}
         self._scan_proc = None  # Track scan subprocess for cleanup
 
     def start_scanning(self, on_device_found: Callable[[str, str, int, dict], None]):
@@ -45,15 +50,15 @@ class BLEDiscovery:
         """Continuous scan using bluetoothctl command."""
         try:
             # Ensure adapter is powered on
-            subprocess.run(
-                ["bluetoothctl", "power", "on"],
+            subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                [self.bluetoothctl_path or "bluetoothctl", "power", "on"],
                 capture_output=True,
                 timeout=5,
             )
 
             # Start scan process
-            self._scan_proc = subprocess.Popen(
-                ["bluetoothctl", "scan", "on"],
+            self._scan_proc = subprocess.Popen(  # noqa: S603 - sabit komut, shell yok
+                [self.bluetoothctl_path or "bluetoothctl", "scan", "on"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -109,7 +114,7 @@ class BLEDiscovery:
                                 )
                                 self._seen_devices[last_mac]["rssi"] = f"{rssi_val} dBm"
 
-                except Exception as e:
+                except Exception:
                     time.sleep(0.1)
 
             # If scan process ended, keep listing known devices
@@ -117,7 +122,7 @@ class BLEDiscovery:
                 self._list_known_devices(on_device_found)
                 time.sleep(5)
 
-        except Exception as e:
+        except Exception:
             # Fallback to periodic listing
             while self.running:
                 self._list_known_devices(on_device_found)
@@ -128,8 +133,8 @@ class BLEDiscovery:
         while self.running:
             try:
                 # Scan for LE devices
-                le_result = subprocess.run(
-                    ["hcitool", "lescan", "--duration=2"],
+                le_result = subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                    [self.hcitool_path or "hcitool", "lescan", "--duration=2"],
                     capture_output=True,
                     text=True,
                     timeout=5,
@@ -145,8 +150,8 @@ class BLEDiscovery:
                                     self._report_device(on_device_found, mac, name)
 
                 # Scan for classic devices
-                classic_result = subprocess.run(
-                    ["hcitool", "scan"],
+                classic_result = subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                    [self.hcitool_path or "hcitool", "scan"],
                     capture_output=True,
                     text=True,
                     timeout=5,
@@ -160,16 +165,16 @@ class BLEDiscovery:
                                 if self._is_valid_mac(mac):
                                     self._report_device(on_device_found, mac, name)
 
-            except Exception as e:
-                pass
+            except Exception:
+                logger.debug("istisna yutuldu", exc_info=True)
 
             time.sleep(3)
 
     def _list_known_devices(self, on_device_found: Callable[[str, str, int, dict], None]):
         """List already-known/paired Bluetooth devices."""
         try:
-            result = subprocess.run(
-                ["bluetoothctl", "devices"],
+            result = subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                [self.bluetoothctl_path or "bluetoothctl", "devices"],
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -181,8 +186,8 @@ class BLEDiscovery:
                         if len(parts) >= 3:
                             mac, name = parts[1], parts[2]
                             self._report_device(on_device_found, mac, name)
-        except Exception as e:
-            pass
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)
 
     def _scan_fallback(self, on_device_found: Callable[[str, str, int, dict], None]):
         """Fallback: periodic device listing without continuous scan."""
@@ -239,17 +244,17 @@ class BLEDiscovery:
             try:
                 self._scan_proc.terminate()
                 self._scan_proc.wait(timeout=2)
-            except Exception as e:
+            except Exception:
                 try:
                     self._scan_proc.kill()
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.debug("istisna yutuldu", exc_info=True)
             self._scan_proc = None
         try:
-            subprocess.run(
-                ["bluetoothctl", "scan", "off"],
+            subprocess.run(  # noqa: S603 - sabit komut, shell yok
+                [self.bluetoothctl_path or "bluetoothctl", "scan", "off"],
                 capture_output=True,
                 timeout=3,
             )
-        except Exception as e:
-            pass
+        except Exception:
+            logger.debug("istisna yutuldu", exc_info=True)

@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import tempfile
 import time
 
 # Add src to path
@@ -16,10 +17,11 @@ def main():
     print("[Alice] Starting Alice (Host)...")
 
     # Configuration
+    alice_dl = os.path.join(tempfile.gettempdir(), "alice_downloads")
     config = AppConfig()
     config.set("device_name", "Pardus-Alice")
-    config.set("download_dir", "/tmp/alice_downloads")
-    os.makedirs("/tmp/alice_downloads", exist_ok=True)
+    config.set("download_dir", alice_dl)
+    os.makedirs(alice_dl, exist_ok=True)
 
     # Onceki kosumdan kalan durum dosyalarini temizle (self-cleaning harness).
     for stale in ("/shared/pins.json", "/shared/received.json"):
@@ -31,20 +33,20 @@ def main():
     # 1. Start File Receiver Server
     def on_completed(file_path):
         print(f"[Alice] File transfer completed: {file_path}")
-        # Bob'un uctan-uca dogrulamasi icin onay + md5 yaz.
+        # Bob'un uctan-uca dogrulamasi icin onay + sha256 yaz.
         import hashlib
 
         try:
             with open(file_path, "rb") as fh:
-                digest = hashlib.md5(fh.read()).hexdigest()
+                digest = hashlib.sha256(fh.read()).hexdigest()
             with open("/shared/received.json", "w") as rf:
-                json.dump({"path": file_path, "md5": digest}, rf)
-            print(f"[Alice] Receipt written (md5={digest}).")
+                json.dump({"path": file_path, "sha256": digest}, rf)
+            print(f"[Alice] Receipt written (sha256={digest}).")
         except Exception as e:
             print(f"[Alice] Receipt write failed: {e}")
 
     file_port = 52345
-    file_server = FileReceiverServer("/tmp/alice_downloads", port=file_port)
+    file_server = FileReceiverServer(alice_dl, port=file_port)
     file_server.on_file_received = on_completed
     file_server.start()
     print(f"[Alice] File server started on port {file_port}")
@@ -84,7 +86,7 @@ def main():
     for _ in range(60):
         time.sleep(1)
         # Check if file was received
-        if os.path.exists("/tmp/alice_downloads/test_file.txt"):
+        if os.path.exists(os.path.join(alice_dl, "test_file.txt")):
             print("[Alice] Found received file! Transfer successful.")
             break
 

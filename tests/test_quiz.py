@@ -90,8 +90,11 @@ class TestEngine(unittest.TestCase):
 class TestFileRoundtrip(unittest.TestCase):
     def test_quiz_file_and_score_file(self):
         from pardus_paylasim.discovery.quiz import (
-            QuizState, answers_to_file, parse_questions_text, quiz_from_file,
-            quiz_to_file, score_answers_file,
+            answers_to_file,
+            parse_questions_text,
+            quiz_from_file,
+            quiz_to_file,
+            score_answers_file,
         )
         with tempfile.TemporaryDirectory() as tmp:
             from pardus_paylasim.discovery.quiz import QuizEngine

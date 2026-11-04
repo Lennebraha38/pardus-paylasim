@@ -3,7 +3,8 @@
 **Yarışma Kategorisi:** Geliştirme Kategorisi  
 **Proje Adı:** Pardus Güvenli Paylaşım (Pardus Secure Share)  
 **Hedef İşletim Sistemi:** Pardus İşletim Sistemi (Debian tabanlı)  
-**Açık Kaynak Kod Deposu:** [https://github.com/tefografi/pardus-paylasim](https://github.com/tefografi/pardus-paylasim) *(Yarışma şartnamesi Madde 3.b ve Madde 27 gereğince başvuru esnasında açık/public hale getirilmelidir.)*
+**Açık Kaynak Kod Deposu:** [https://github.com/Lennebraha38/pardus-paylasim](https://github.com/Lennebraha38/pardus-paylasim) *(Yarışma şartnamesi Madde 3.b ve Madde 27 gereğince başvuru esnasında açık/public hale getirilmelidir.)*  
+**Geliştirici / Takım:** Lennebraha38
 
 **Hata / Öneri Türü (Madde 7.2):** Kullanılabilirlik Önerisi ve Güvenlik Zafiyeti Giderimi  
 **Önem Seviyesi (Madde 7.1):** Yüksek Önem Dereceli Öneri
@@ -83,4 +84,4 @@ TEKNOFEST 2026 Pardus Teknik Şartnamesi'nde belirtilen kriterler bazında proje
 - **7.2 Puanlama (Geliştirilen kod içeriği ve kalitesi):** Python kullanılarak MVC modelinde modüler bir mimari oluşturulmuş, Docker entegrasyon testleriyle fonksiyonellik %100 güvence altına alınmıştır.
 - **Kategori Uygunluğu:** Şartname'de belirtilen **"yeni bir yazılım geliştirmeleri"** kapsamında tamamen Pardus ekosistemine özgür yazılım olarak kazandırılmak üzere tasarlanmıştır.
 
-> *Önemli Not (Madde 3.b): Uygulama kaynak kodları sisteme (talep.pardus.org.tr) girilirken, depo linkinin (https://github.com/tefografi/pardus-paylasim) erişilebilir (public) olması gerekmektedir. İlgili bağlantı başvuru formunda "Geliştirme Kategorisi - Çözüm Bağlantısı" alanına eklenecektir.*
+> *Önemli Not (Madde 3.b): Uygulama kaynak kodları sisteme (talep.pardus.org.tr) girilirken, depo linkinin (https://github.com/Lennebraha38/pardus-paylasim) erişilebilir (public) olması gerekmektedir. İlgili bağlantı başvuru formunda "Geliştirme Kategorisi - Çözüm Bağlantısı" alanına eklenecektir.*

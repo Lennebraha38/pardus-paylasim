@@ -2,7 +2,7 @@
 GTK4 Screen Sharing View Controller (AirPlay / Sidecar style).
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from pardus_paylasim.screen.control_client import ControlChannelClient
 from pardus_paylasim.screen.stream_client import ScreenStreamClient
@@ -19,7 +19,7 @@ class ScreenShareViewHandler:
         self.client = ScreenStreamClient()
         # Uzaktan kontrol istemcisi (yalnız client tarafında, "Kontrolü İste"
         # sonrası kurulur). Host tarafı server.control_server üstünden yönetilir.
-        self.control_client: Optional[ControlChannelClient] = None
+        self.control_client: ControlChannelClient | None = None
 
     @property
     def host_port(self) -> int:
@@ -38,7 +38,7 @@ class ScreenShareViewHandler:
         host_ip: str,
         port: int = DEFAULT_PORT,
         pin: str = "",
-        on_frame: Optional[Callable[[bytes], None]] = None,
+        on_frame: Callable[[bytes], None] | None = None,
     ) -> bool:
         """Connects to remote host's screen stream."""
         return self.client.connect_to_stream(host_ip, port, pin, on_frame)

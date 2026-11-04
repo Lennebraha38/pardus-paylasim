@@ -1,8 +1,9 @@
 # Güvenlik bildirimi
 
-Güvenlik açığı bildirmek için herkese açık issue açmak yerine proje
-sahipleriyle özel bir kanal kullanın. Bildirimde etkilenen sürümü, yeniden
-üretme adımlarını ve mümkünse güvenli bir düzeltme önerisini paylaşın.
+Güvenlik açığı bildirmek için herkese açık issue açmak yerine GitHub Güvenlik Bildirimi (Security Advisory) kanalını veya proje sahibine özel iletişimi kullanın:
+https://github.com/Lennebraha38/pardus-paylasim/security/advisories/new
+
+Bildirimde etkilenen sürümü, yeniden üretme adımlarını ve mümkünse güvenli bir düzeltme önerisini paylaşın.
 
 Kimlik bilgileri, erişim belirteçleri veya özel kullanıcı verilerini rapora
 eklemeyin. Bir belirteç yanlışlıkla paylaşıldıysa önce sağlayıcı üzerinden

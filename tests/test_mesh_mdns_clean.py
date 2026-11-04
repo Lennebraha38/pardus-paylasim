@@ -27,8 +27,9 @@ class TestMdnsHelpers(unittest.TestCase):
         self.assertEqual(decode_peer_id({"peer_id": "plain"}), "plain")
 
     def test_listener_ignores_self_and_reports_peer(self):
-        from pardus_paylasim.discovery.mesh import mdns as M
         import socket
+
+        from pardus_paylasim.discovery.mesh import mdns as M
 
         seen = []
         lost = []

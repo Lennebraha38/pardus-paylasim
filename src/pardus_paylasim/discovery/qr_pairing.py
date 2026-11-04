@@ -12,7 +12,6 @@ genelindeki zarif-düşüş (graceful degradation) kalıbıyla tutarlı.
 
 import logging
 import socket
-from typing import Dict, List, Optional
 from urllib.parse import parse_qs, quote, unquote, urlencode, urlparse
 
 logger = logging.getLogger(__name__)
@@ -53,10 +52,10 @@ def get_local_ip() -> str:
 
 def build_pairing_uri(
     name: str,
-    ip: Optional[str] = None,
+    ip: str | None = None,
     file_port: int = 8900,
     clip_port: int = 8901,
-    capabilities: Optional[List[str]] = None,
+    capabilities: list[str] | None = None,
     fingerprint: str = "",
 ) -> str:
     """Yerel cihaz için eşleştirme URI'si üretir."""
@@ -77,7 +76,7 @@ def build_pairing_uri(
     return f"{PAIR_SCHEME}://{PAIR_HOST}?{query}"
 
 
-def parse_pairing_uri(uri: str) -> Optional[Dict]:
+def parse_pairing_uri(uri: str) -> dict | None:
     """Eşleştirme URI'sini ayrıştırır. Geçersizse None döner.
 
     Returns:
@@ -149,7 +148,7 @@ def generate_qr_png(uri: str, path: str, box_size: int = 8, border: int = 2) -> 
         return False
 
 
-def generate_qr_ascii(uri: str) -> Optional[str]:
+def generate_qr_ascii(uri: str) -> str | None:
     """URI'yi ASCII QR metnine çevirir (terminal/etiket). qrcode yoksa None."""
     if not HAS_QRCODE:
         return None
