@@ -296,3 +296,7 @@ class DeviceManager:
         """Stop all discovery activities."""
         self.mdns.stop()
         self.ble.stop()
+
+    def get_ble_status(self) -> dict[str, bool | str]:
+        """Bluetooth LE adaptör ve tarama durumunu döndürür."""
+        return self.ble.get_adapter_status()

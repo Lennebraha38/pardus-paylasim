@@ -1,37 +1,80 @@
 import asyncio
 import logging
+import threading
 import time
 
-import mss
-import numpy as np
-from aiortc import AudioStreamTrack, VideoStreamTrack
-from av import AudioFrame, VideoFrame
-from PIL import Image
+try:
+    import mss
+    HAS_MSS = True
+except ImportError:
+    mss = None
+    HAS_MSS = False
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    from aiortc import AudioStreamTrack, VideoStreamTrack
+    HAS_AIORTC = True
+except ImportError:
+    class VideoStreamTrack:  # type: ignore[no-redef]
+        def stop(self):
+            pass
+
+    class AudioStreamTrack:  # type: ignore[no-redef]
+        def stop(self):
+            pass
+
+    HAS_AIORTC = False
+
+try:
+    from av import AudioFrame, VideoFrame
+    HAS_AV = True
+except ImportError:
+    AudioFrame = None  # type: ignore[assignment,misc]
+    VideoFrame = None  # type: ignore[assignment,misc]
+    HAS_AV = False
+
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    Image = None  # type: ignore[assignment]
+    HAS_PIL = False
 
 try:
     import soundcard as sc
 except ImportError:
     sc = None
 
-import threading
+from .hardware_codec import HardwareCodecManager
 
 logger = logging.getLogger(__name__)
 
 
 class ScreenCaptureTrack(VideoStreamTrack):
-    """Mss ile ekran yakalayıp aiortc'ye besler (Faz 5.5 Worker Thread)."""
+    """Mss ile ekran yakalayıp aiortc'ye besler ve donanım kodlama parametrelerini uygular."""
 
-    def __init__(self, monitor_index=0, quality="high", fps=30):
+    def __init__(self, monitor_index: int = 0, quality: str = "high", fps: int = 30):
         super().__init__()
         self.quality = quality
         self.fps = fps
-        self._target_delay = 1.0 / self.fps
+        self._target_delay = 1.0 / max(1, self.fps)
 
-        self.sct = mss.mss()
-        monitors = self.sct.monitors
-        if monitor_index < 0 or monitor_index >= len(monitors):
-            monitor_index = 0
-        self.monitor = monitors[monitor_index]
+        # Donanım hızlandırma ve profil parametreleri
+        self.tuning = HardwareCodecManager.get_encoder_tuning(quality=quality, fps=fps)
+        self.is_hardware_accelerated = bool(self.tuning.get("is_hardware", False))
+
+        self.sct = mss.mss() if HAS_MSS and mss else None
+        if self.sct:
+            monitors = self.sct.monitors
+            if monitor_index < 0 or monitor_index >= len(monitors):
+                monitor_index = 0
+            self.monitor = monitors[monitor_index]
+        else:
+            self.monitor = {"top": 0, "left": 0, "width": 1920, "height": 1080}
 
         self._frame_buffer = None
         self._frame_lock = threading.Lock()
@@ -44,20 +87,21 @@ class ScreenCaptureTrack(VideoStreamTrack):
         while self._running:
             start_time = time.time()
             try:
-                sct_img = self.sct.grab(self.monitor)
-                img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+                if self.sct and HAS_PIL and HAS_AV and VideoFrame:
+                    sct_img = self.sct.grab(self.monitor)
+                    img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
 
-                if self.quality == "low":
-                    img = img.resize((img.width // 2, img.height // 2), Image.Resampling.LANCZOS)
-                elif self.quality == "medium":
-                    img = img.resize(
-                        (int(img.width * 0.75), int(img.height * 0.75)), Image.Resampling.LANCZOS
-                    )
+                    if self.quality == "low":
+                        img = img.resize((img.width // 2, img.height // 2), Image.Resampling.LANCZOS)
+                    elif self.quality == "medium":
+                        img = img.resize(
+                            (int(img.width * 0.75), int(img.height * 0.75)), Image.Resampling.LANCZOS
+                        )
 
-                frame = VideoFrame.from_image(img)
+                    frame = VideoFrame.from_image(img)
 
-                with self._frame_lock:
-                    self._frame_buffer = frame
+                    with self._frame_lock:
+                        self._frame_buffer = frame
 
             except Exception:
                 # Capture hatalarını yut ve döngüyü sürdür
@@ -69,25 +113,30 @@ class ScreenCaptureTrack(VideoStreamTrack):
                 time.sleep(sleep_time)
 
     async def recv(self):
+        if not hasattr(self, "next_timestamp"):
+            return None
         pts, time_base = await self.next_timestamp()
 
         frame = None
-        while frame is None:
+        while frame is None and self._running:
             with self._frame_lock:
                 frame = self._frame_buffer
             if frame is None:
                 await asyncio.sleep(0.01)
 
-        # Aiortc frame timestamp'i set eder
-        frame.pts = pts
-        frame.time_base = time_base
+        if frame is not None:
+            frame.pts = pts
+            frame.time_base = time_base
         return frame
 
     def stop(self):
         super().stop()
         self._running = False
         if self.sct:
-            self.sct.close()
+            try:
+                self.sct.close()
+            except Exception:
+                logger.debug("sct kapatma hatası", exc_info=True)
 
 
 class AudioCaptureTrack(AudioStreamTrack):
@@ -107,20 +156,19 @@ class AudioCaptureTrack(AudioStreamTrack):
             raise RuntimeError(f"Ses yakalama cihazı başlatılamadı: {e}") from e
 
     async def recv(self):
+        if not hasattr(self, "next_timestamp"):
+            return None
         pts, time_base = await self.next_timestamp()
 
-        # Sesi oku (bloklamaması için ufak chunk)
-        # sc.recorder senkron okur, asyncio dünyasında event loop'u bloklamamak için küçük boyut
-        # (Gerçek kullanımda run_in_executor önerilir ancak basit MVP için)
         loop = asyncio.get_event_loop()
         data = await loop.run_in_executor(
             None, self.recorder.record, 960
-        )  # 960 frame = 20ms @ 48kHz
+        )
 
-        # data = (frames, channels) numpy array, float32, aralığı -1..1
-        # av kütüphanesi için int16 array'e çevirmeliyiz (plan: s16)
+        if np is None or not HAS_AV or AudioFrame is None:
+            return None
+
         data_int16 = np.int16(data * 32767)
-        # av AudioFrame beklenen format: channels x frames
         data_int16 = data_int16.T.copy(order="C")
 
         frame = AudioFrame.from_ndarray(data_int16, format="s16p", layout="stereo")
@@ -133,4 +181,7 @@ class AudioCaptureTrack(AudioStreamTrack):
     def stop(self):
         super().stop()
         if hasattr(self, "recorder"):
-            self.recorder.__exit__(None, None, None)
+            try:
+                self.recorder.__exit__(None, None, None)
+            except Exception:
+                logger.debug("recorder kapatma hatası", exc_info=True)

@@ -105,3 +105,25 @@ class ScreenShareViewHandler:
                 self.control_client.close()
             finally:
                 self.control_client = None
+
+
+
+class ScreenShareViewComponent:
+    """GTK4 Ekran Paylaşımı ve Uzaktan Kontrol Görünüm Bileşeni."""
+
+    def __init__(self, handler: ScreenShareViewHandler | None = None):
+        self.handler = handler or ScreenShareViewHandler()
+        self.is_hosting = False
+        self.is_connected = False
+        self.active_pin = ""
+
+    def start_host(self, on_pin: Callable[[str], None]) -> str:
+        pin = self.handler.start_host_stream(on_pin)
+        self.is_hosting = True
+        self.active_pin = pin
+        return pin
+
+    def stop_host(self) -> None:
+        self.handler.stop_host_stream()
+        self.is_hosting = False
+        self.active_pin = ""

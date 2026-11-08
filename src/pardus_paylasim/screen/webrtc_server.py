@@ -3,20 +3,33 @@ import json
 import logging
 import threading
 
-from aiortc import RTCPeerConnection, RTCSessionDescription
-from aiortc.contrib.media import MediaRelay
+try:
+    from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
+    from aiortc.contrib.media import MediaRelay
+    HAS_AIORTC = True
+    relay = MediaRelay()
+except ImportError:
+    RTCConfiguration = None  # type: ignore[assignment,misc]
+    RTCPeerConnection = None  # type: ignore[assignment,misc]
+    RTCSessionDescription = None  # type: ignore[assignment,misc]
+    MediaRelay = None  # type: ignore[assignment,misc]
+    relay = None
+    HAS_AIORTC = False
 
+from .hardware_codec import HardwareCodecManager
 from .webrtc_tracks import AudioCaptureTrack, ScreenCaptureTrack
 
 logger = logging.getLogger("WebRTCServer")
-relay = MediaRelay()
 
 
 class WebRTCManager:
+    """WebRTC eşler arası oturum yöneticisi ve ekran/ses kanalları orkestratörü."""
+
     def __init__(self):
         self.pcs = set()
         self._loop = None
         self._thread = None
+        self.hardware_profile = HardwareCodecManager.detect_capabilities()
 
     def start_loop(self):
         if self._thread is not None:
@@ -32,8 +45,9 @@ class WebRTCManager:
         monitor_index: int = 0,
         quality: str = "high",
         with_audio: bool = False,
-    ) -> RTCSessionDescription:
-        from aiortc import RTCConfiguration
+    ):
+        if not HAS_AIORTC or RTCPeerConnection is None:
+            raise RuntimeError("aiortc kütüphanesi kurulu değil; WebRTC kullanılamaz.")
 
         config = RTCConfiguration(iceServers=[])  # Faz 5.2 LAN Privacy Default
 
@@ -58,66 +72,40 @@ class WebRTCManager:
                     try:
                         from pardus_paylasim.notifications import send_notification
 
+                        data = json.loads(message)
+                        sender = data.get("sender", "Bilinmeyen")
+                        text = data.get("text", "")
                         send_notification(
-                            title="Sohbet Mesajı (Web İstemcisi)",
-                            message=message,
-                            notification_id="chat-msg",
+                            "Pardus Paylaşım — Sohbet",
+                            f"{sender}: {text}",
                         )
                     except Exception:
-                        logger.debug("istisna yutuldu", exc_info=True)
+                        logger.debug("Chat mesajı işleme hatası", exc_info=True)
 
-        # Video (Ekran) Ekle
-        try:
-            video_track = ScreenCaptureTrack(monitor_index=monitor_index, quality=quality)
+        video_track = ScreenCaptureTrack(monitor_index=monitor_index, quality=quality)
+        if relay:
+            pc.addTrack(relay.subscribe(video_track))
+        else:
             pc.addTrack(video_track)
-        except Exception as e:
-            logger.error(f"WebRTC Video Track eklenemedi: {e}")
 
-        # Ses Ekle (Faz 6 - Varsayılan Kapalı)
         if with_audio:
             try:
                 audio_track = AudioCaptureTrack()
-                pc.addTrack(audio_track)
+                if relay:
+                    pc.addTrack(relay.subscribe(audio_track))
+                else:
+                    pc.addTrack(audio_track)
             except Exception as e:
-                logger.error(f"WebRTC Audio Track eklenemedi: {e}")
+                logger.warning(f"Ses parçası eklenemedi, sadece görüntü iletilecek: {e}")
 
         await pc.setRemoteDescription(offer)
         answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
 
-        # Faz 5.1 ICE gathering wait (Non-trickle ICE)
-        async def wait_for_ice():
-            while pc.iceGatheringState != "complete":
-                await asyncio.sleep(0.1)
-
-        try:
-            await asyncio.wait_for(wait_for_ice(), timeout=5.0)
-        except asyncio.TimeoutError:
-            logger.debug("istisna yutuldu", exc_info=True)
-
         return pc.localDescription
 
     async def close_all(self):
+        """Tüm açık WebRTC eş bağlantılarını güvenle kapatır."""
         coros = [pc.close() for pc in self.pcs]
-        if coros:
-            await asyncio.gather(*coros)
+        await asyncio.gather(*coros, return_exceptions=True)
         self.pcs.clear()
-        if self._loop:
-            self._loop.stop()
-
-
-# Global nesne
-webrtc_manager = WebRTCManager()
-
-
-def process_offer_sync(
-    sdp: str, type: str, monitor_index: int = 0, quality: str = "high", with_audio: bool = False
-) -> str:
-    """Faz 5.4 Tek Sahipli Uzun Ömürlü Asyncio Loop."""
-    webrtc_manager.start_loop()
-    future = asyncio.run_coroutine_threadsafe(
-        webrtc_manager.handle_offer(sdp, type, monitor_index, quality, with_audio),
-        webrtc_manager._loop,
-    )
-    desc = future.result(timeout=10.0)
-    return json.dumps({"sdp": desc.sdp, "type": desc.type})

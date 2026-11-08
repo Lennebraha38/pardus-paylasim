@@ -40,10 +40,13 @@ from pardus_paylasim.screen.control_client import (
     map_widget_to_normalized,
 )
 from pardus_paylasim.screen.stream_config import DEFAULT_PORT
+from pardus_paylasim.ui.classroom_view import ClassroomViewHandler
 from pardus_paylasim.ui.clipboard_view import ClipboardViewHandler
 from pardus_paylasim.ui.discovery_view import DiscoveryViewHandler
+from pardus_paylasim.ui.mesh_view import MeshViewHandler
 from pardus_paylasim.ui.privacy_view import PrivacyViewHandler
 from pardus_paylasim.ui.screen_share_view import ScreenShareViewHandler
+from pardus_paylasim.ui.settings_view import SettingsViewHandler
 
 try:
     import gi
@@ -70,6 +73,9 @@ class MainWindow:
         self.screen_handler = ScreenShareViewHandler()
         self.clipboard_handler = ClipboardViewHandler()
         self.config = AppConfig()
+        self.mesh_handler = MeshViewHandler()
+        self.classroom_handler = ClassroomViewHandler()
+        self.settings_handler = SettingsViewHandler(config=self.config)
 
         self.history = TransferHistory()
 

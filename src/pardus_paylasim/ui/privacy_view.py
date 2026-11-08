@@ -2,6 +2,7 @@
 GTK4 Privacy View: Drag-and-Drop file metadata scanning and anonymization.
 """
 
+from typing import Any
 
 from pardus_paylasim.cleaner.metadata_cleaner import CleaningResult, MetadataCleaner
 from pardus_paylasim.cleaner.report_builder import ReportBuilder
@@ -39,3 +40,21 @@ class PrivacyViewHandler:
 
     def generate_report_txt(self) -> str:
         return ReportBuilder.to_txt(self.last_results)
+
+
+class PrivacyViewComponent:
+    """GTK4 Gizlilik ve Üstveri Temizleme Sekmesi Bileşeni."""
+
+    def __init__(self, handler: PrivacyViewHandler | None = None):
+        self.handler = handler or PrivacyViewHandler()
+        self.container: Any = None
+
+    def clean_dropped_paths(self, paths: list[str]) -> tuple[list[CleaningResult], dict[str, int]]:
+        """Dosyaları işler ve özet istatistikleri döner (toplam, başarılı, riskli)."""
+        results = self.handler.process_files(paths)
+        stats = {
+            "total": len(results),
+            "success": sum(1 for r in results if r.success),
+            "with_risk": sum(1 for r in results if bool(r.risks_found) or r.risks_removed_count > 0),
+        }
+        return results, stats
