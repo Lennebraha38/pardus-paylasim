@@ -1,6 +1,6 @@
-mask min=0.027 p50=0.028 p95=0.038 mean=0.031 ops=32510
-mesh_pack_64kb min=0.002 p50=0.003 p95=0.003 mean=0.003 ops=366333
-mesh_unpack_64kb min=0.003 p50=0.003 p95=0.003 mean=0.003 ops=342622
-sqlite_queue min=0.418 p50=0.819 p95=1.838 mean=0.933 ops=1071
-webrtc_send_30kb min=0.003 p50=0.003 p95=0.005 mean=0.003 ops=318171
-webrtc_e2e_200kb min=20.197 p50=28.861 p95=34.240 mean=27.962 ops=36
+mask min=0.028 p50=0.032 p95=0.049 mean=0.037 ops=26776
+mesh_pack_64kb min=0.002 p50=0.003 p95=0.003 mean=0.003 ops=333864
+mesh_unpack_64kb min=0.003 p50=0.003 p95=0.003 mean=0.003 ops=338330
+sqlite_queue min=0.471 p50=0.897 p95=1.928 mean=1.041 ops=961
+webrtc_send_30kb min=0.003 p50=0.003 p95=0.004 mean=0.003 ops=289592
+webrtc_e2e_200kb min=19.306 p50=30.380 p95=51.303 mean=30.890 ops=32

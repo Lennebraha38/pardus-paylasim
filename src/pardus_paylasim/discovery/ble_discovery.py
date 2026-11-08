@@ -30,6 +30,7 @@ class BLEDiscovery:
         self._seen_devices: dict[str, dict] = {}
         self._scan_proc: subprocess.Popen | None = None
         self._mock_mode = os.getenv("PARDUS_BLE_MOCK", "0").lower() in ("1", "true", "yes")
+        self.backend_type: str = "mock" if self._mock_mode else "auto"
 
     def is_adapter_available(self) -> bool:
         """Sistemde fiziksel bir Bluetooth adaptörü (hci0, hci1 vb.) olup olmadığını doğrular."""
@@ -66,6 +67,7 @@ class BLEDiscovery:
             "scanning": self.running,
             "mock_mode": self._mock_mode,
             "adapter_name": "hci0" if available else "Yok",
+            "backend": self.backend_type,
         }
 
     def start_scanning(self, on_device_found: Callable[[str, str, int, dict], None]):
@@ -76,18 +78,67 @@ class BLEDiscovery:
         # Start the main scanning thread
         threading.Thread(target=self._scan_loop, args=(on_device_found,), daemon=True).start()
 
+    def _try_scan_with_dbus(self, on_device_found: Callable[[str, str, int, dict], None]) -> bool:
+        """BlueZ sistem D-Bus (org.bluez ObjectManager) üzerinden cihazları yerel API ile sorgular."""
+        try:
+            import gi
+            gi.require_version("Gio", "2.0")
+            from gi.repository import Gio
+
+            bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            if bus is None:
+                return False
+
+            msg = Gio.DBusMessage.new_method_call(
+                "org.bluez",
+                "/",
+                "org.freedesktop.DBus.ObjectManager",
+                "GetManagedObjects",
+            )
+            reply = bus.send_message_with_reply_sync(msg, Gio.DBusSendMessageFlags.NONE, 2000)
+            if reply and reply.get_message_type() == Gio.DBusMessageType.METHOD_RETURN:
+                body = reply.get_body()
+                if body:
+                    objects = body.unpack()[0]
+                    for _, ifaces in objects.items():
+                        if "org.bluez.Device1" in ifaces:
+                            dev_props = ifaces["org.bluez.Device1"]
+                            mac = str(dev_props.get("Address", ""))
+                            name = str(dev_props.get("Name", dev_props.get("Alias", "Bluetooth Cihazı")))
+                            rssi = dev_props.get("RSSI", None)
+                            if rssi is not None:
+                                self._seen_devices.setdefault(mac.upper(), {})["rssi"] = f"{rssi} dBm"
+                            if self._is_valid_mac(mac):
+                                self._report_device(on_device_found, mac, name)
+                    return True
+        except Exception:
+            logger.debug("BlueZ D-Bus sorgusu başarısız veya D-Bus erişilemez", exc_info=True)
+        return False
+
     def _scan_loop(self, on_device_found: Callable[[str, str, int, dict], None]):
-        """Main scanning loop with adapter check and fallback."""
+        """Main scanning loop with adapter check, native D-Bus first, and fallback."""
         if self._mock_mode:
+            self.backend_type = "mock"
             self._scan_mock(on_device_found)
             return
 
         if not self.is_adapter_available():
+            self.backend_type = "none"
             logger.info("Bluetooth donanımı (adaptör) bulunamadı; BLE tarama pasif bekliyor.")
             while self.running:
                 time.sleep(2)
             return
 
+        # 1. Öncelikli olarak doğrudan BlueZ D-Bus API'sini dene (sıfır alt süreç, yerli Linux API)
+        if self._try_scan_with_dbus(on_device_found):
+            self.backend_type = "dbus"
+            while self.running:
+                self._try_scan_with_dbus(on_device_found)
+                time.sleep(4)
+            return
+
+        # 2. D-Bus erişimi kısıtlıysa bluetoothctl alt süreç yedeğine geç
+        self.backend_type = "bluetoothctl"
         if self.has_bluetoothctl:
             self._scan_with_bluetoothctl(on_device_found)
         elif self.has_hcitool:

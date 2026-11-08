@@ -174,5 +174,22 @@ class TestPaths(unittest.TestCase):
             self.assertEqual(pi.downloads_dir(), os.path.join("/home/u", "Downloads"))
 
 
+class TestDesktopEnvironment(unittest.TestCase):
+    def test_desktop_xfce(self):
+        with mock.patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "XFCE"}, clear=True):
+            self.assertEqual(pi.desktop_environment(), "xfce")
+            self.assertTrue(pi.is_xfce())
+
+    def test_desktop_gnome(self):
+        with mock.patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=True):
+            self.assertEqual(pi.desktop_environment(), "gnome")
+            self.assertFalse(pi.is_xfce())
+
+    def test_desktop_unknown(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(pi.desktop_environment(), "unknown")
+            self.assertFalse(pi.is_xfce())
+
+
 if __name__ == "__main__":
     unittest.main()

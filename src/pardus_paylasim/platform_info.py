@@ -76,6 +76,32 @@ def is_x11() -> bool:
     return session_type() == SESSION_X11
 
 
+def desktop_environment() -> str:
+    """
+    Masaüstü ortamı tespiti (Pardus XFCE vs GNOME uyumluluk katmanı).
+    'xfce' | 'gnome' | 'kde' | 'mate' | 'unknown'.
+    """
+    raw = (
+        os.environ.get("XDG_CURRENT_DESKTOP", "")
+        or os.environ.get("DESKTOP_SESSION", "")
+    ).lower()
+
+    if "xfce" in raw:
+        return "xfce"
+    if "gnome" in raw:
+        return "gnome"
+    if "kde" in raw or "plasma" in raw:
+        return "kde"
+    if "mate" in raw:
+        return "mate"
+    return "unknown"
+
+
+def is_xfce() -> bool:
+    """Pardus varsayılan masaüstü ortamı (XFCE) altında mı çalışıyor?"""
+    return desktop_environment() == "xfce"
+
+
 def current_os_label() -> str:
     """
     İnsan-okunur OS etiketi (mDNS TXT `os` alanı için).

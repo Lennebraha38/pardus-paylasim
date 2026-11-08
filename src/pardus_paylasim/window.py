@@ -162,8 +162,44 @@ class MainWindow:
             logger.info("           pardus-paylasim --mask <metin>")
 
     # ──────────────────────────────────────────────
-    #  GTK4 UI Construction
+    #  GTK4 UI Construction & Desktop Compatibility
     # ──────────────────────────────────────────────
+
+    def _apply_desktop_environment_styling(self):
+        """Pardus XFCE ve GNOME masaüstü ortamlarına özel tema ve görsel uyumluluk CSS'i enjekte eder."""
+        if not HAS_GTK:
+            return
+        try:
+            from pardus_paylasim.platform_info import is_xfce
+
+            display = Gdk.Display.get_default()
+            if display:
+                provider = Gtk.CssProvider()
+                css = """
+                /* Pardus Masaüstü Uyumluluk Katmanı */
+                window.background {
+                    border-radius: 8px;
+                }
+                """
+                if is_xfce():
+                    css += """
+                    /* XFCE / xfwm4 tema uyumluluğu */
+                    headerbar {
+                        border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+                        box-shadow: none;
+                    }
+                    button.flat {
+                        border-radius: 4px;
+                    }
+                    """
+                provider.load_from_data(css.encode("utf-8"))
+                Gtk.StyleContext.add_provider_for_display(
+                    display,
+                    provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                )
+        except Exception:
+            logger.debug("Masaüstü CSS sağlayıcısı yüklenemedi", exc_info=True)
 
     def _build_gtk_ui(self, app):
         self.win = Adw.ApplicationWindow(application=app)
@@ -173,6 +209,7 @@ class MainWindow:
         # Connect close handler for cleanup
         self.win.connect("close-request", self._on_window_close)
         self.app = app
+        self._apply_desktop_environment_styling()
 
         # Header bar
         header = Adw.HeaderBar()

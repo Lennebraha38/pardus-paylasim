@@ -163,6 +163,10 @@ exec python3 -m {mod_name} "$@"
     if os.path.exists("data/web-viewer"):
         shutil.copytree("data/web-viewer", f"{BUILD_DIR}/usr/share/pardus-paylasim/web-viewer", dirs_exist_ok=True)
 
+    # Declarative UI Templates (GtkBuilder)
+    if os.path.exists("data/ui"):
+        shutil.copytree("data/ui", f"{BUILD_DIR}/usr/share/pardus-paylasim/ui", dirs_exist_ok=True)
+
     # Debian Copyright
     doc_dir = f"{BUILD_DIR}/usr/share/doc/pardus-paylasim"
     os.makedirs(doc_dir, exist_ok=True)

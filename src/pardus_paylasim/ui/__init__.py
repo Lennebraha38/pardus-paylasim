@@ -14,6 +14,7 @@ from .mesh_view import MeshPeerInfo, MeshViewComponent, MeshViewHandler
 from .privacy_view import PrivacyViewComponent, PrivacyViewHandler
 from .screen_share_view import ScreenShareViewComponent, ScreenShareViewHandler
 from .settings_view import SettingsViewComponent, SettingsViewHandler
+from .template_loader import TemplateLoader
 
 __all__ = [
     "ClassroomViewComponent",
@@ -33,4 +34,5 @@ __all__ = [
     "ScreenShareViewHandler",
     "SettingsViewComponent",
     "SettingsViewHandler",
+    "TemplateLoader",
 ]

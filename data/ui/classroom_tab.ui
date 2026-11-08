@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1"/>
+  <object class="GtkScrolledWindow" id="classroom_tab">
+    <property name="hscrollbar-policy">never</property>
+    <property name="vscrollbar-policy">automatic</property>
+    <child>
+      <object class="AdwClamp" id="classroom_clamp">
+        <property name="maximum-size">800</property>
+        <child>
+          <object class="GtkBox" id="classroom_content_box">
+            <property name="orientation">vertical</property>
+            <property name="spacing">18</property>
+            <property name="margin-top">18</property>
+            <property name="margin-bottom">18</property>
+            <property name="margin-start">18</property>
+            <property name="margin-end">18</property>
+            <child>
+              <object class="AdwPreferencesGroup" id="classroom_info_group">
+                <property name="title" translatable="yes">Sınıf Modu ve Etkileşimli Tahta Yönetimi</property>
+                <property name="description" translatable="yes">Öğretmen cihazından sınıf içi tahtalara tek tuşla yayın ve sınav orkestrasyonu</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

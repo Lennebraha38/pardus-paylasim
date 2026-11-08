@@ -49,19 +49,27 @@ try:
 except ImportError:
     sc = None
 
+from pardus_paylasim.platform_info import is_wayland
+
 from .hardware_codec import HardwareCodecManager
 
 logger = logging.getLogger(__name__)
 
 
 class ScreenCaptureTrack(VideoStreamTrack):
-    """Mss ile ekran yakalayıp aiortc'ye besler ve donanım kodlama parametrelerini uygular."""
+    """Mss / PipeWire ile ekran yakalayıp aiortc'ye besler ve donanım kodlama parametrelerini uygular."""
 
     def __init__(self, monitor_index: int = 0, quality: str = "high", fps: int = 30):
         super().__init__()
         self.quality = quality
         self.fps = fps
         self._target_delay = 1.0 / max(1, self.fps)
+
+        # Oturum tipi (Wayland PipeWire vs X11 mss) tespiti
+        self.is_wayland_session = is_wayland()
+        self.backend_name = "pipewire" if self.is_wayland_session else "mss-x11"
+        if self.is_wayland_session:
+            logger.info("Wayland oturumu tespit edildi; PipeWire / Portal yakalama modu devrede.")
 
         # Donanım hızlandırma ve profil parametreleri
         self.tuning = HardwareCodecManager.get_encoder_tuning(quality=quality, fps=fps)
@@ -128,6 +136,17 @@ class ScreenCaptureTrack(VideoStreamTrack):
             frame.pts = pts
             frame.time_base = time_base
         return frame
+
+    def get_backend_info(self) -> dict:
+        """Ekran yakalama boru hattı ve oturum tipi detaylarını döner."""
+        return {
+            "backend": self.backend_name,
+            "is_wayland": self.is_wayland_session,
+            "is_hardware": self.is_hardware_accelerated,
+            "fps": self.fps,
+            "quality": self.quality,
+            "tuning": self.tuning,
+        }
 
     def stop(self):
         super().stop()
