@@ -14,7 +14,7 @@ def run_cmd(cmd):
     """Kabuk kullanmadan komutu argüman listesi olarak çalıştır."""
     env = os.environ.copy()
     repo_src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-    env["PYTHONPATH"] = f"{repo_src}:{env.get('PYTHONPATH', '')}"
+    env["PYTHONPATH"] = f"{repo_src}{os.pathsep}{env.get('PYTHONPATH', '')}"
     if cmd and cmd[0] == "pardus-paylasim":
         cmd = [sys.executable, "-m", "pardus_paylasim"] + cmd[1:]
     return subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)

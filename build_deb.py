@@ -60,6 +60,8 @@ def validate_path_for_packaging(full_path: str, base_dir: str):
 
 
 def build_all_in_one_deb():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
     print(f"[*] Pardus için Tek Parça Standalone .deb Paketi Derleniyor: {SINGLE_DEB_NAME}...")
 
     if os.path.exists(BUILD_DIR):

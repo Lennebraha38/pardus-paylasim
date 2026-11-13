@@ -92,10 +92,11 @@ class TestRestrictWindowsAcl(unittest.TestCase):
         return completed
 
     def test_builds_expected_icacls_command(self):
-        # Arrange: getpass/subprocess fonksiyon içinde import edilir; global
+        # Arrange: getpass/subprocess/shutil fonksiyon içinde import edilir; global
         # modül isimleri üzerinden patch'lenir.
         with (
             mock.patch("getpass.getuser", return_value="tevfik"),
+            mock.patch("shutil.which", return_value="icacls"),
             mock.patch("subprocess.run", return_value=self._run_mock(0)) as run,
         ):
             # Act

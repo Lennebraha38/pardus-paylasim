@@ -448,6 +448,7 @@ class FileReceiverServer:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind(("0.0.0.0", self.port))  # noqa: S104 - LAN keşfi için bilinçli
+        self.port = self.server_socket.getsockname()[1]
         self.server_socket.listen(5)
         if self.ssl_context:
             self.server_socket = self.ssl_context.wrap_socket(self.server_socket, server_side=True)
@@ -647,7 +648,14 @@ class FileReceiverServer:
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump({"size": total_size, "mtime_ns": mtime_ns,
                            "received": received}, f)
-            os.replace(tmp_path, sidecar)
+            for attempt in range(5):
+                try:
+                    os.replace(tmp_path, sidecar)
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.05)
         except OSError as e:
             logger.warning("Sidecar yazılamadı: %s", e)
 

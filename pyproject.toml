@@ -64,6 +64,7 @@ test = [
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21",
     "pytest-timeout>=2.2",
+    "aiohttp>=3.8",
 ]
 dev = [
     "build>=1.0",
@@ -81,9 +82,9 @@ pardus-paylasim-agent = "pardus_paylasim_agent.agent:main"
 pardus-paylasim-server = "pardus_paylasim_server.router:cli"
 
 [project.urls]
-Homepage = "https://github.com/Lennebraha38/pardus-paylasim"
-Repository = "https://github.com/Lennebraha38/pardus-paylasim"
-Issues = "https://github.com/Lennebraha38/pardus-paylasim/issues"
+Homepage = "https://github.com/quantro11/pardus-paylasim"
+Repository = "https://github.com/quantro11/pardus-paylasim"
+Issues = "https://github.com/quantro11/pardus-paylasim/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -139,4 +140,4 @@ markers = [
     "security: Güvenlik, fuzzing ve payload testleri",
     "accessibility: UI/UX Erişilebilirlik (WCAG) testleri",
 ]
-addopts = "--strict-markers -ra"
+addopts = "--strict-markers -ra --basetemp=.pytest_tmp"

@@ -131,7 +131,7 @@ class TestTransferSafePath:
     def test_safe_target_path_normal(self):
         from pardus_paylasim.discovery.transfer import safe_target_path
         result = safe_target_path("/downloads", "dosya.txt")
-        assert result == "/downloads/dosya.txt"
+        assert os.path.normpath(result) == os.path.normpath("/downloads/dosya.txt")
 
     def test_safe_target_path_traversal_blocked(self):
         from pardus_paylasim.discovery.transfer import safe_target_path

@@ -2,7 +2,7 @@
 
 > Pardus/Linux ekosistemi için güvenli dosya transferi, ekran yayınlama ve hassas veri koruma platformu.
 
-[![CI](https://github.com/Lennebraha38/pardus-paylasim/actions/workflows/build.yml/badge.svg)](https://github.com/Lennebraha38/pardus-paylasim/actions)
+[![CI](https://github.com/quantro11/pardus-paylasim/actions/workflows/build.yml/badge.svg)](https://github.com/quantro11/pardus-paylasim/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
 
@@ -59,7 +59,7 @@ sudo apt-get install -f
 ### Geliştirme Ortamı
 
 ```bash
-git clone https://github.com/Lennebraha38/pardus-paylasim.git
+git clone https://github.com/quantro11/pardus-paylasim.git
 cd pardus-paylasim
 python -m venv venv
 source venv/bin/activate

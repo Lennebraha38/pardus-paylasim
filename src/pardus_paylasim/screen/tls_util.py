@@ -257,7 +257,9 @@ def get_peer_fingerprint(
         return None
 
 
-def fetch_server_cert_to_tempfile(host: str, port: int, expected_fingerprint: str) -> str | None:
+def fetch_server_cert_to_tempfile(
+    host: str, port: int, expected_fingerprint: str, timeout: float = 5.0
+) -> str | None:
     """Sunucudan sertifikayı indirip fingerprint kontrolü yapar.
 
     Yalnızca sertifikanın DER SHA-256 parmak izi `expected_fingerprint` ile
@@ -269,7 +271,10 @@ def fetch_server_cert_to_tempfile(host: str, port: int, expected_fingerprint: st
         import ssl
         import tempfile
 
-        cert_pem = ssl.get_server_certificate((host, port))
+        try:
+            cert_pem = ssl.get_server_certificate((host, port), timeout=timeout)
+        except TypeError:
+            cert_pem = ssl.get_server_certificate((host, port))
         der = ssl.PEM_cert_to_DER_cert(cert_pem)
         live_fp = fingerprint_from_der(der)
 

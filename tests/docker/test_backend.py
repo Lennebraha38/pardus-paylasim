@@ -29,7 +29,7 @@ def test_file_transfer_normal(tmp_path):
     download_dir.mkdir()
 
     # Start receiver
-    receiver = FileReceiverServer(str(download_dir), port=8901, ssl_context=server_ctx)
+    receiver = FileReceiverServer(str(download_dir), port=0, ssl_context=server_ctx)
 
     received_files = []
 
@@ -40,17 +40,17 @@ def test_file_transfer_normal(tmp_path):
     receiver.on_file_request = lambda name, size, ip: True
     receiver.start()
 
-    time.sleep(1)  # wait for bind
+    time.sleep(0.5)  # wait for bind
 
     # Create test file
     test_file = tmp_path / "test_normal.txt"
     test_file.write_text("Hello Pardus Normal Transfer!")
 
-    sender = FileSender("127.0.0.1", 8901)
+    sender = FileSender("127.0.0.1", receiver.port)
     sender.ssl_context = client_ctx
     sender.send_file(str(test_file))
 
-    time.sleep(2)  # wait for receive
+    time.sleep(1)  # wait for receive
     receiver.stop()
 
     assert len(received_files) == 1
@@ -71,7 +71,7 @@ def test_file_transfer_secret(tmp_path):
     download_dir = tmp_path / "secret_downloads"
     download_dir.mkdir()
 
-    receiver = FileReceiverServer(str(download_dir), port=8902, ssl_context=server_ctx)
+    receiver = FileReceiverServer(str(download_dir), port=0, ssl_context=server_ctx)
 
     received_files = []
 
@@ -86,17 +86,17 @@ def test_file_transfer_secret(tmp_path):
     receiver.on_file_request = lambda name, size, ip: True
     receiver.start()
 
-    time.sleep(1)
+    time.sleep(0.5)
 
     test_file = tmp_path / "test_secret.txt"
     test_file.write_text("Hello Pardus Secret AES-256 Transfer!")
 
-    sender = FileSender("127.0.0.1", 8902)
+    sender = FileSender("127.0.0.1", receiver.port)
     sender.ssl_context = client_ctx
     test_pin = "999999"
     sender.send_file(str(test_file), secret_pin=test_pin)
 
-    time.sleep(2)
+    time.sleep(1)
     receiver.stop()
 
     assert len(received_files) == 1
